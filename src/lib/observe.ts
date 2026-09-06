@@ -238,7 +238,8 @@ export async function listCaptures(limit = 50) {
     return await s`
       select
         c.id, c.created_at, c.source, c.transcript,
-        c.asr_verdict, c.avg_logprob, c.no_speech_prob,
+        c.asr_verdict, c.asr_reason, c.audio_bytes, c.audio_ms,
+        c.avg_logprob, c.no_speech_prob,
         c.extract_error, c.device_id,
         coalesce(
           json_agg(

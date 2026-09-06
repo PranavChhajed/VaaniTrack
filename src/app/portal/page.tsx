@@ -22,6 +22,9 @@ type CaptureRow = {
   source: string;
   transcript: string | null;
   asr_verdict: string | null;
+  asr_reason: string | null;
+  audio_bytes: number | null;
+  audio_ms: number | null;
   avg_logprob: number | null;
   extract_error: string | null;
   transactions: {
@@ -41,12 +44,24 @@ type CaptureRow = {
  */
 function likelyFailure(row: {
   asr_verdict: string | null;
+  asr_reason?: string | null;
+  audio_bytes?: number | null;
+  audio_ms?: number | null;
   extract_error: string | null;
   transactions: { outcome: string; failed: string[] | null }[];
   events?: { action: string }[];
 }): { label: string; tone: "ok" | "warn" | "bad" } {
-  if (row.asr_verdict === "rejected_too_small")
+  if (row.asr_verdict === "rejected_too_small") {
+    // Distinguishes a brief tap from a normal-length recording of
+    // near-silence — the two look identical as a byte count but point at
+    // completely different fixes (nothing to do vs. a muted or misrouted mic).
+    const rate =
+      row.audio_bytes && row.audio_ms ? row.audio_bytes / row.audio_ms : null;
+    if (rate !== null && rate < 1 && (row.audio_ms ?? 0) > 1200) {
+      return { label: "Mic hardware — recorded silence, not a short tap", tone: "bad" };
+    }
     return { label: "Recording too short — mis-tap", tone: "warn" };
+  }
   if (row.asr_verdict === "rejected_no_speech")
     return { label: "Audio — no speech detected", tone: "warn" };
   if (row.asr_verdict === "rejected_denylist")
@@ -107,6 +122,9 @@ export default async function Portal({
     const c = detail.capture as Record<string, unknown>;
     const verdict = likelyFailure({
       asr_verdict: c.asr_verdict as string | null,
+      asr_reason: c.asr_reason as string | null,
+      audio_bytes: c.audio_bytes as number | null,
+      audio_ms: c.audio_ms as number | null,
       extract_error: c.extract_error as string | null,
       transactions: detail.transactions as unknown as {
         outcome: string;

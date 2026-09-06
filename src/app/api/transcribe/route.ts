@@ -197,11 +197,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "No audio received." }, { status: 400 });
   }
 
-  // Anything this small is a mis-tap, not speech. Rejecting here saves a
-  // round trip and gives the user a message that tells them what to do.
+  // Too little data can mean two different things, and they need different
+  // messages. A brief tap and a normal-length recording of near-silence both
+  // land under 2000 bytes, but only one of them is fixed by "hold it longer" —
+  // telling someone whose mic is muted to record for longer just gets the
+  // identical message on every retry, which is indistinguishable from the app
+  // being broken.
   if (audio.size < 2000) {
-    // Logged like any other outcome. A rash of these says something real —
-    // that the button is being mis-tapped, or ends the recording too eagerly.
+    const briefTap = (audioMs ?? 0) < 1200;
+    const reason = briefTap ? "brief tap" : "near-silent despite normal duration";
     await recordCapture({
       deviceId,
       source: "voice",
@@ -209,12 +213,14 @@ export async function POST(request: Request) {
       audioBytes: audio.size,
       audioMs,
       asrVerdict: "rejected_too_small",
-      asrReason: "under 2000 bytes",
+      asrReason: reason,
     });
     return NextResponse.json(
       {
-        error: "That recording was too short. Hold on a moment before tapping again.",
-        debug: { bytes: audio.size, type: audio.type },
+        error: briefTap
+          ? "That recording was too short. Hold on a moment before tapping again."
+          : "That recording didn't pick up any sound, even though it ran for a few seconds. Check that this tab has microphone access and that your mic isn't muted or covered, then try again closer to it.",
+        debug: { bytes: audio.size, ms: audioMs, type: audio.type, reason },
       },
       { status: 422 },
     );
