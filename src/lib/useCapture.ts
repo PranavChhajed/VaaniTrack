@@ -2,6 +2,14 @@
 
 import { useCallback, useState } from "react";
 import { useRecorder } from "./useRecorder";
+import { audioConsent, deviceId } from "./device";
+import {
+  changedFields,
+  gateFailures,
+  reportEvent,
+  reportGate,
+  reportTransactions,
+} from "./report";
 import {
   toTransaction,
   type ExtractedTransaction,
@@ -12,6 +20,8 @@ export type Pending = {
   transaction: Transaction;
   needsConfirmation: boolean;
   confirmationReason: string | null;
+  /** The utterance this came from, so a later save or discard can be traced. */
+  captureId: string | null;
 };
 
 /** Everything a screen needs to drive a capture. */
@@ -92,6 +102,7 @@ export function useCapture({
   const [debug, setDebug] = useState<string | null>(null);
   const [typed, setTyped] = useState("");
   const [justSaved, setJustSaved] = useState<Transaction[] | null>(null);
+  const [lastCaptureId, setLastCaptureId] = useState<string | null>(null);
 
   /**
    * Put a capture on the day being viewed — unless the speaker named a day.
@@ -119,7 +130,7 @@ export function useCapture({
    * recogniser was guessing at.
    */
   const interpret = useCallback(
-    async (text: string, heardWell = true) => {
+    async (text: string, heardWell = true, priorCaptureId: string | null = null) => {
       const reply = await postJson("/api/extract", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -129,6 +140,11 @@ export function useCapture({
           // that "yesterday" keeps meaning yesterday rather than being measured
           // from whichever page happens to be open.
           today: new Date().toISOString().slice(0, 10),
+          // Threads the spoken capture's row through, so transcript and
+          // extraction land on the same record. Null for typed captures, which
+          // get their row created here instead.
+          captureId: priorCaptureId,
+          deviceId: deviceId(),
         }),
       });
       if (!reply.ok) {
@@ -140,7 +156,9 @@ export function useCapture({
       const extracted = reply.body as {
         error?: string;
         transactions?: ExtractedTransaction[];
+        captureId?: string | null;
       };
+      const captureId = extracted.captureId ?? priorCaptureId;
       if (reply.status !== 200) {
         setError(extracted.error ?? "Could not read that as an expense.");
         return;
@@ -167,11 +185,35 @@ export function useCapture({
       const auto = rows.filter(confident);
       const review = rows.filter((row) => !confident(row));
 
+      const savedByRow = new Map<ExtractedTransaction, Transaction>();
+
       if (auto.length > 0) {
-        const saved = auto.map((row) => placeOnDate(toTransaction(row, text)));
+        const saved = auto.map((row) => {
+          const t = placeOnDate(toTransaction(row, text));
+          savedByRow.set(row, t);
+          return t;
+        });
         onLogged(saved);
         // Logged, not silent: say what was recorded and offer a way back.
         setJustSaved(saved);
+        setLastCaptureId(captureId ?? null);
+        reportTransactions(saved, captureId);
+      }
+
+      // The gate's verdict per row, naming which conditions blocked a save.
+      // This is the difference between knowing an expense went to review and
+      // knowing why — the only version of that fact worth recording.
+      if (captureId) {
+        reportGate(
+          captureId,
+          rows.map((row, idx) => ({
+            idx,
+            transactionId: savedByRow.get(row)?.id ?? null,
+            extracted: row,
+            outcome: confident(row) ? ("auto_saved" as const) : ("review" as const),
+            failed: confident(row) ? [] : gateFailures(row, heardWell),
+          })),
+        );
       }
 
       // FR-5: several expenses in one utterance stay separate transactions.
@@ -181,6 +223,7 @@ export function useCapture({
           ...review.map((row) => ({
             transaction: placeOnDate(toTransaction(row, text)),
             needsConfirmation: true,
+            captureId: captureId ?? null,
             confirmationReason:
               row.confirmationReason ??
               (row.amount === null
@@ -216,6 +259,12 @@ export function useCapture({
     try {
       const form = new FormData();
       form.append("audio", result.blob, "capture");
+      const id = deviceId();
+      if (id) form.append("deviceId", id);
+      // The server keeps the recording only if this says so. It can only ever
+      // reduce what is retained, never unlock anything.
+      form.append("audioConsent", audioConsent());
+      form.append("audioMs", String(result.ms));
 
       const reply = await postJson("/api/transcribe", {
         method: "POST",
@@ -236,6 +285,7 @@ export function useCapture({
         confidence?: number;
         error?: string;
         debug?: unknown;
+        captureId?: string | null;
       };
       if (reply.status !== 200) {
         setError(transcribed.error ?? "Could not transcribe that.");
@@ -263,7 +313,7 @@ export function useCapture({
       setDebug(
         `heard “${heard}”  ·  confidence ${(transcribed.confidence ?? 0).toFixed(2)}${heardWell ? "" : " — will ask you to check"}`,
       );
-      await interpret(heard, heardWell);
+      await interpret(heard, heardWell, transcribed.captureId ?? null);
     } catch (err) {
       // Anything reaching here is a bug in our own handling, not a transport
       // failure — postJson already turned those into messages above.
@@ -302,21 +352,58 @@ export function useCapture({
 
   const commit = useCallback(
     (index: number, transaction: Transaction) => {
+      const item = pending[index];
+      // What the model proposed, against what the user accepted. A review the
+      // user changed and a review they waved through are very different
+      // signals, and only the comparison tells them apart.
+      if (item) {
+        reportEvent("review_saved", {
+          captureId: item.captureId,
+          transactionId: transaction.id,
+          before: item.transaction,
+          after: transaction,
+          changedFields: changedFields(item.transaction, transaction),
+        });
+      }
+      reportTransactions([transaction], item?.captureId ?? null);
       onLogged([transaction]);
       setPending((prev) => prev.filter((_, i) => i !== index));
     },
-    [onLogged],
+    [onLogged, pending],
   );
 
-  const discard = useCallback((index: number) => {
-    setPending((prev) => prev.filter((_, i) => i !== index));
-  }, []);
+  const discard = useCallback(
+    (index: number) => {
+      const item = pending[index];
+      // A discard is the strongest possible statement that the pipeline got it
+      // wrong — the user looked at the proposal and rejected it outright.
+      if (item) {
+        reportEvent("review_discarded", {
+          captureId: item.captureId,
+          transactionId: item.transaction.id,
+          before: item.transaction,
+        });
+      }
+      setPending((prev) => prev.filter((_, i) => i !== index));
+    },
+    [pending],
+  );
 
   const undo = useCallback(() => {
     if (!justSaved) return;
+    // Reported before the local state drops them: an undone auto-save means
+    // the gate let through something it shouldn't have, and once the rows are
+    // gone from localStorage there is nothing left to say so.
+    for (const t of justSaved) {
+      reportEvent("undone", {
+        captureId: lastCaptureId,
+        transactionId: t.id,
+        before: t,
+      });
+    }
     onUndo(justSaved.map((t) => t.id));
     setJustSaved(null);
-  }, [justSaved, onUndo]);
+  }, [justSaved, onUndo, lastCaptureId]);
 
   return {
     state,

@@ -22,6 +22,12 @@ import {
 } from "@/lib/journal";
 import { useCapture } from "@/lib/useCapture";
 import {
+  changedFields,
+  reportDelete,
+  reportEvent,
+  reportTransactions,
+} from "@/lib/report";
+import {
   DEFAULTS,
   loadTransactions,
   saveTransactions,
@@ -393,10 +399,22 @@ export default function Journal() {
           transaction={openLive}
           onClose={() => setOpen(null)}
           onSave={(next) => {
+            // Reported before the edit lands: `openLive` still holds what the
+            // model produced, and after this line nothing does. A correction is
+            // only evidence if you can see what it corrected.
+            reportEvent("edited", {
+              transactionId: next.id,
+              before: openLive,
+              after: next,
+              changedFields: changedFields(openLive, next),
+            });
+            reportTransactions([next]);
             setTransactions((prev) => updateTransaction(prev, next.id, next));
             setOpen(null);
           }}
           onDelete={(id) => {
+            reportEvent("deleted", { transactionId: id, before: openLive });
+            reportDelete(id);
             setTransactions((prev) => deleteTransaction(prev, id));
             setOpen(null);
           }}

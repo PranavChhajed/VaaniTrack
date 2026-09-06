@@ -1,6 +1,13 @@
 import { NextResponse } from "next/server";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import {
+  recordCapture,
+  recordAudioDecision,
+  storeAudio,
+  validDeviceId,
+  type AsrVerdict,
+} from "@/lib/observe";
 
 const GROQ_URL = "https://api.groq.com/openai/v1/audio/transcriptions";
 
@@ -144,6 +151,17 @@ function extensionFor(type: string): string {
   return "webm";
 }
 
+/**
+ * Mean avg_logprob across segments — the same figure the accepted path
+ * reports as "confidence". Negative by nature: about -0.27 for a clean
+ * capture, against a gate threshold of -0.9.
+ */
+function meanLogprob(segments: Segment[]): number | null {
+  if (segments.length === 0) return null;
+  const sum = segments.reduce((acc, s) => acc + (s.avg_logprob ?? 0), 0);
+  return Number((sum / segments.length).toFixed(4));
+}
+
 export async function POST(request: Request) {
   const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) {
@@ -154,10 +172,20 @@ export async function POST(request: Request) {
   }
 
   let audio: File | null = null;
+  let deviceId: string | null = null;
+  let consent = false;
+  let audioMs: number | null = null;
   try {
     const form = await request.formData();
     const value = form.get("audio");
     if (value instanceof File) audio = value;
+    deviceId = validDeviceId(form.get("deviceId"));
+    // Consent is a claim the client makes about what its user agreed to. It
+    // can only ever reduce what is kept, never unlock anything else, so
+    // trusting it costs nothing.
+    consent = form.get("audioConsent") === "granted";
+    const ms = Number(form.get("audioMs"));
+    audioMs = Number.isFinite(ms) && ms > 0 ? Math.round(ms) : null;
   } catch {
     return NextResponse.json(
       { error: "Could not read the uploaded audio." },
@@ -172,6 +200,17 @@ export async function POST(request: Request) {
   // Anything this small is a mis-tap, not speech. Rejecting here saves a
   // round trip and gives the user a message that tells them what to do.
   if (audio.size < 2000) {
+    // Logged like any other outcome. A rash of these says something real —
+    // that the button is being mis-tapped, or ends the recording too eagerly.
+    await recordCapture({
+      deviceId,
+      source: "voice",
+      audioMime: audio.type || null,
+      audioBytes: audio.size,
+      audioMs,
+      asrVerdict: "rejected_too_small",
+      asrReason: "under 2000 bytes",
+    });
     return NextResponse.json(
       {
         error: "That recording was too short. Hold on a moment before tapping again.",
@@ -250,13 +289,41 @@ export async function POST(request: Request) {
         `[transcribe] REJECTED ${audio.size}B -> "${text}" ` +
           `(stock=${stock} noNumber=${noNumber} noSpeech=${worstNoSpeech.toFixed(2)})`,
       );
+      const reason = stock ? "stock-phrase" : noNumber ? "no-amount" : "no-speech";
       await keepCapture(audio, bytes, {
         verdict: "rejected",
         heard: text,
-        reason: stock ? "stock-phrase" : noNumber ? "no-amount" : "no-speech",
+        reason,
         noSpeechProb: Number(worstNoSpeech.toFixed(3)),
         segments,
       });
+      // Rejections are the most informative rows in the table: they mark
+      // exactly where the trust boundary sits, and they are invisible in a
+      // record that only keeps successful transactions.
+      const verdict: AsrVerdict = stock
+        ? "rejected_denylist"
+        : noNumber
+          ? "rejected_no_amount"
+          : "rejected_no_speech";
+      const rejectedId = await recordCapture({
+        deviceId,
+        source: "voice",
+        audioMime: audio.type || null,
+        audioBytes: audio.size,
+        audioMs,
+        asrModel: "whisper-large-v3",
+        transcript: text || null,
+        asrVerdict: verdict,
+        asrReason: reason,
+        avgLogprob: meanLogprob(segments),
+        noSpeechProb: Number(worstNoSpeech.toFixed(3)),
+      });
+      if (rejectedId) {
+        const path = consent
+          ? await storeAudio(rejectedId, bytes, audio.type || "audio/webm")
+          : null;
+        await recordAudioDecision(rejectedId, { consent, path });
+      }
       return NextResponse.json(
         {
           error: stock
@@ -297,9 +364,32 @@ export async function POST(request: Request) {
       segments,
     });
 
+    // The capture id threads through to extraction, so the transcript and what
+    // the extractor made of it end up on the same row and can be blamed
+    // separately when the final transaction is wrong.
+    const captureId = await recordCapture({
+      deviceId,
+      source: "voice",
+      audioMime: audio.type || null,
+      audioBytes: audio.size,
+      audioMs,
+      asrModel: "whisper-large-v3",
+      transcript: text,
+      asrVerdict: "accepted",
+      avgLogprob: Number(confidence.toFixed(4)),
+      noSpeechProb: Number(worstNoSpeech.toFixed(4)),
+    });
+    if (captureId) {
+      const path = consent
+        ? await storeAudio(captureId, bytes, audio.type || "audio/webm")
+        : null;
+      await recordAudioDecision(captureId, { consent, path });
+    }
+
     return NextResponse.json({
       text,
       confidence,
+      captureId,
       debug: {
         bytes: audio.size,
         type: audio.type,

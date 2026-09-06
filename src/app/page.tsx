@@ -6,6 +6,7 @@ import { ReviewCard } from "@/components/ReviewCard";
 import { TransactionList } from "@/components/TransactionList";
 import { WaveformButton } from "@/components/WaveformButton";
 import { useCapture } from "@/lib/useCapture";
+import { reportDelete, reportEvent } from "@/lib/report";
 import { todayISO } from "@/lib/journal";
 import {
   loadTransactions,
@@ -202,9 +203,12 @@ export default function Home() {
 
       <TransactionList
         transactions={todays}
-        onDelete={(id) =>
-          setTransactions((prev) => prev.filter((t) => t.id !== id))
-        }
+        onDelete={(id) => {
+          const before = transactions.find((t) => t.id === id) ?? null;
+          reportEvent("deleted", { transactionId: id, before });
+          reportDelete(id);
+          setTransactions((prev) => prev.filter((t) => t.id !== id));
+        }}
       />
     </main>
   );

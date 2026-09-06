@@ -43,7 +43,9 @@ App Router with Turbopack. Chosen because the product needs both a client-side U
 | `/diag` | Static | On-device diagnostics (mic, codecs) |
 | `/api/transcribe` | Dynamic | Stage 1 — audio → text |
 | `/api/extract` | Dynamic | Stage 2 — text → transaction |
-| `/portal` | Dynamic | PLANNED — diagnostic portal |
+| `/portal` | Dynamic | Diagnostic portal (password-gated) |
+| `/api/observe` | Dynamic | Gate verdicts and user actions from the client |
+| `/api/portal` | Dynamic | Portal password exchange |
 
 ### React `19.2.8` — IN USE
 
@@ -202,7 +204,8 @@ Three runtime dependencies total. That is deliberate: fewer moving parts, faster
 |---|---|---|
 | `GROQ_API_KEY` | Required | Both models |
 | `GROQ_MODEL` | Optional | Override the extraction model |
-| `SAVE_CAPTURES` | Optional | `0` disables capture logging (becoming consent-gated) |
+| `SAVE_CAPTURES` | Optional | Now `0`; superseded by Supabase, audio is consent-gated |
+| `PORTAL_PASSWORD` | Required | Gates `/portal`; unset denies everyone (fails closed) |
 | `NEXT_PUBLIC_SUPABASE_URL` | Required | Supabase project URL |
 | `SUPABASE_SECRET_KEY` | Required | Server-side Supabase access (new-format secret key) |
 | `DATABASE_URL` | Required | Postgres connection for observability writes |
@@ -228,4 +231,5 @@ Three runtime dependencies total. That is deliberate: fewer moving parts, faster
 | Date | Change |
 |---|---|
 | 2026-09-06 | File created. Supabase and Vercel recorded as PLANNED for Phase C |
+| 2026-09-06 | C2–C5 done: pipeline instrumented, consent gate, transaction mirror, Supabase Storage bucket, `/portal`. Switched `DATABASE_URL` to the Supavisor pooler (the direct host is IPv6-only and unreachable from Vercel) |
 | 2026-09-06 | C1 done: added `postgres@^3`; three observability tables live in Supabase. Chose raw SQL over `@supabase/supabase-js` |

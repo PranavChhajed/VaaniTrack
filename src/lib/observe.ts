@@ -281,3 +281,153 @@ export async function getCapture(id: string) {
     return null;
   }
 }
+
+/* ------------------------------------------------------------------ *
+ * Transaction mirror
+ *
+ * localStorage stays the fast local cache; this is the durable copy, keyed by
+ * the anonymous device id. No accounts, no cross-device sync — the brief warns
+ * against turning this into an authentication project, and durability alone is
+ * what was actually missing.
+ * ------------------------------------------------------------------ */
+
+export async function upsertTransaction(row: {
+  id: string;
+  deviceId: string | null;
+  captureId?: string | null;
+  data: unknown;
+  amount?: number | null;
+  date?: string | null;
+}): Promise<void> {
+  const s = db();
+  if (!s || !row.deviceId) return;
+  try {
+    await s`
+      insert into transactions ${s({
+        id: row.id,
+        device_id: row.deviceId,
+        capture_id: row.captureId ?? null,
+        data: s.json(row.data as never),
+        amount: row.amount ?? null,
+        txn_date: row.date ?? null,
+      })}
+      on conflict (id) do update set
+        data       = excluded.data,
+        amount     = excluded.amount,
+        txn_date   = excluded.txn_date,
+        capture_id = coalesce(transactions.capture_id, excluded.capture_id),
+        updated_at = now(),
+        deleted_at = null
+    `;
+  } catch {
+    /* diagnostics never break capture */
+  }
+}
+
+/**
+ * Soft delete.
+ *
+ * A deleted transaction is evidence about where trust broke, so the row
+ * survives the user removing it from their journal. `deleted_at` is what makes
+ * it invisible to the app while still answerable to the portal.
+ */
+export async function markTransactionDeleted(
+  id: string,
+  deviceId: string | null,
+): Promise<void> {
+  const s = db();
+  if (!s || !deviceId) return;
+  try {
+    await s`
+      update transactions set deleted_at = now(), updated_at = now()
+      where id = ${id} and device_id = ${deviceId}
+    `;
+  } catch {
+    /* diagnostics never break capture */
+  }
+}
+
+/** The durable copy of a device's journal, newest first. */
+export async function listTransactions(deviceId: string, limit = 1000) {
+  const s = db();
+  if (!s) return [];
+  try {
+    return await s`
+      select data from transactions
+      where device_id = ${deviceId} and deleted_at is null
+      order by txn_date desc nulls last, created_at desc
+      limit ${limit}
+    `;
+  } catch {
+    return [];
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * Audio retention
+ * ------------------------------------------------------------------ */
+
+/** Consented recordings live 90 days — long enough to span several prompt and
+ *  model iterations, short enough to remain a policy rather than a hoard. */
+export const AUDIO_RETENTION_DAYS = 90;
+
+const STORAGE_BUCKET = "captures";
+
+/**
+ * Put a consented recording in Supabase Storage.
+ *
+ * Uses the storage REST endpoint directly rather than adding a second client
+ * library for one upload. Returns the object path, or null if anything at all
+ * went wrong — an unstored recording is a lost data point, never a failed
+ * capture.
+ */
+export async function storeAudio(
+  captureId: string,
+  bytes: ArrayBuffer,
+  mime: string,
+): Promise<string | null> {
+  const base = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/+$/, "");
+  const key = process.env.SUPABASE_SECRET_KEY;
+  if (!base || !key) return null;
+
+  const path = `${captureId}.${mime.includes("mp4") ? "mp4" : "webm"}`;
+  try {
+    const res = await fetch(`${base}/storage/v1/object/${STORAGE_BUCKET}/${path}`, {
+      method: "POST",
+      headers: {
+        apikey: key,
+        Authorization: `Bearer ${key}`,
+        "Content-Type": mime || "application/octet-stream",
+      },
+      body: bytes,
+    });
+    return res.ok ? path : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Record what was decided about this capture's audio, stored or not. */
+export async function recordAudioDecision(
+  captureId: string,
+  row: { consent: boolean; path: string | null },
+): Promise<void> {
+  const s = db();
+  if (!s) return;
+  try {
+    await s`
+      update captures set
+        audio_consent    = ${row.consent},
+        audio_stored     = ${row.path !== null},
+        audio_path       = ${row.path},
+        audio_expires_at = ${
+          row.path
+            ? new Date(Date.now() + AUDIO_RETENTION_DAYS * 86_400_000)
+            : null
+        }
+      where id = ${captureId}
+    `;
+  } catch {
+    /* diagnostics never break capture */
+  }
+}

@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { EB_Garamond, Figtree } from "next/font/google";
+import { AudioConsentGate } from "@/components/AudioConsent";
 import "./globals.css";
 
 const ebGaramond = EB_Garamond({
@@ -35,7 +36,13 @@ export default function RootLayout({
       lang="en"
       className={`${ebGaramond.variable} ${figtree.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        {children}
+        {/* Mounted here, not on the capture screen: the journal records too,
+            and asking in only one place would let a recording be kept that
+            nobody agreed to. */}
+        <AudioConsentGate />
+      </body>
     </html>
   );
 }

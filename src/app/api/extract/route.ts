@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { DEFAULTS, type ExtractedTransaction } from "@/lib/types";
+import { recordCapture, recordExtraction, validDeviceId } from "@/lib/observe";
 
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 const MODEL = process.env.GROQ_MODEL ?? "openai/gpt-oss-120b";
@@ -48,10 +49,21 @@ export async function POST(request: Request) {
 
   let text = "";
   let today = new Date().toISOString().slice(0, 10);
+  // Present for spoken captures, which already created a row in transcribe.
+  // Absent for typed ones, which skip stage 1 entirely and get their row here.
+  let captureId: string | null = null;
+  let deviceId: string | null = null;
   try {
-    const body = (await request.json()) as { text?: string; today?: string };
+    const body = (await request.json()) as {
+      text?: string;
+      today?: string;
+      captureId?: string;
+      deviceId?: string;
+    };
     text = (body.text ?? "").trim();
     if (body.today) today = body.today;
+    captureId = typeof body.captureId === "string" ? body.captureId : null;
+    deviceId = validDeviceId(body.deviceId);
   } catch {
     return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
   }
@@ -60,6 +72,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "No text to interpret." }, { status: 400 });
   }
 
+  const started = Date.now();
   try {
     const response = await fetch(GROQ_URL, {
       method: "POST",
@@ -112,6 +125,14 @@ export async function POST(request: Request) {
     try {
       parsed = JSON.parse(content);
     } catch {
+      if (captureId) {
+        await recordExtraction(captureId, {
+          model: MODEL,
+          raw: { content },
+          error: "malformed JSON",
+          ms: Date.now() - started,
+        });
+      }
       return NextResponse.json(
         { error: "The model returned malformed JSON.", detail: content },
         { status: 502 },
@@ -121,6 +142,29 @@ export async function POST(request: Request) {
     const transactions = Array.isArray(parsed.transactions)
       ? parsed.transactions
       : [];
+
+    // A typed capture never went through transcription, so it has no row yet.
+    // It still belongs in the record — the extractor can be just as wrong
+    // about text the user typed perfectly.
+    if (!captureId) {
+      captureId = await recordCapture({
+        deviceId,
+        source: "manual",
+        transcript: text,
+        asrVerdict: "skipped_typed",
+      });
+    }
+
+    if (captureId) {
+      // The raw response is stored, not just the parsed fields. When
+      // extraction is the suspect, the parsed view is exactly what cannot be
+      // trusted to describe the failure.
+      await recordExtraction(captureId, {
+        model: MODEL,
+        raw: parsed,
+        ms: Date.now() - started,
+      });
+    }
 
     console.log(
       `[extract] "${text}" -> ${transactions.length} txn(s)` +
@@ -132,7 +176,7 @@ export async function POST(request: Request) {
           : "  <-- EMPTY, user sees an error"),
     );
 
-    return NextResponse.json({ transactions, transcript: text });
+    return NextResponse.json({ transactions, transcript: text, captureId });
   } catch (error) {
     return NextResponse.json(
       { error: "Could not reach the extraction service.", detail: String(error) },
