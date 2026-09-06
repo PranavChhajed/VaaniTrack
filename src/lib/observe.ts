@@ -392,18 +392,36 @@ export async function storeAudio(
   if (!base || !key) return null;
 
   const path = `${captureId}.${mime.includes("mp4") ? "mp4" : "webm"}`;
+  // Browsers report "audio/webm;codecs=opus", but the bucket's allowlist
+  // matches on the bare type and rejects the codec parameter outright with a
+  // 415. Every consented recording was being silently dropped because of it —
+  // consent recorded as given, audio_stored false, no error anywhere.
+  const bucketMime = mime.split(";")[0].trim() || "application/octet-stream";
   try {
     const res = await fetch(`${base}/storage/v1/object/${STORAGE_BUCKET}/${path}`, {
       method: "POST",
       headers: {
         apikey: key,
         Authorization: `Bearer ${key}`,
-        "Content-Type": mime || "application/octet-stream",
+        "Content-Type": bucketMime,
       },
       body: bytes,
     });
-    return res.ok ? path : null;
-  } catch {
+    if (!res.ok) {
+      // Swallowing this quietly is what let every consented recording vanish
+      // while the row cheerfully reported consent=true, stored=false. Failing
+      // silently is still right for the user's capture; failing invisibly to
+      // the operator is not.
+      console.warn(
+        `[storeAudio] ${res.status} for ${path} (${bucketMime}): ${await res
+          .text()
+          .catch(() => "")}`,
+      );
+      return null;
+    }
+    return path;
+  } catch (err) {
+    console.warn(`[storeAudio] threw for ${path}: ${String(err)}`);
     return null;
   }
 }
