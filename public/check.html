@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>VaaniTrack mic check</title>
+<!--
+  Deliberately plain: no React, no bundler, no hydration, no modules, no
+  optional chaining, no arrow functions. If the React diagnostics page shows
+  nothing but this one works, the problem is the app bundle, not the device.
+  If this one also shows nothing, the problem is the browser itself.
+-->
+<style>
+  body{margin:0;padding:16px;background:#f0ede7;color:#1a1a1a;
+       font:16px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  h1{font-size:20px;margin:0 0 4px}
+  .sub{color:#8a857c;font-size:13px;margin:0 0 16px}
+  .box{background:#f9f7f3;border:2px solid #1a1a1a;border-radius:14px;
+       padding:12px;margin-bottom:12px}
+  .row{border-top:1px solid #ddd7cb;padding:8px 0;word-break:break-all}
+  .row:first-child{border-top:0}
+  .k{color:#8a857c;font-size:12px;display:block}
+  .ok{color:#034f46;font-weight:600}
+  .bad{color:#c0392b;font-weight:600}
+  button{display:block;width:100%;margin:8px 0;padding:16px;
+         background:#cfead9;color:#1a1a1a;border:2px solid #1a1a1a;
+         border-radius:12px;font-size:16px;font-weight:600}
+  button:active{background:#aeddc6}
+  #out{background:#1a1a1a;color:#f0ede7;border-radius:14px;padding:12px;
+       font:12px/1.5 ui-monospace,Menlo,Consolas,monospace;
+       white-space:pre-wrap;word-break:break-word;min-height:90px}
+  a{color:#034f46}
+</style>
+</head>
+<body>
+
+<h1>Mic check</h1>
+<p class="sub">Plain HTML. No app code involved.</p>
+
+<div class="box" id="env">checking…</div>
+
+<button id="b1">1 &nbsp; Ask for microphone</button>
+<button id="b2">2 &nbsp; Record 5 seconds</button>
+<button id="bp" style="background:#ffa946">▶ &nbsp; Play back what it heard</button>
+<button id="b3">3 &nbsp; Send to server</button>
+<button id="b4" style="background:#f9f7f3">Copy this output</button>
+<audio id="pb" controls style="width:100%;margin:8px 0;display:none"></audio>
+
+<div id="out">Tap 1, then 2, then 3.</div>
+
+<p style="margin-top:16px"><a href="/">back to VaaniTrack</a></p>
+
+<script>
+(function () {
+  var out = document.getElementById("out");
+  var lines = [];
+  function say(s) {
+    lines.push(s);
+    out.textContent = lines.join("\n");
+  }
+
+  // ---- environment ----------------------------------------------------
+  function envReport() {
+    var types = ["audio/webm;codecs=opus","audio/webm","audio/mp4;codecs=mp4a.40.2","audio/mp4","audio/ogg;codecs=opus"];
+    var supported = [];
+    if (typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported) {
+      for (var i = 0; i < types.length; i++) {
+        try { if (MediaRecorder.isTypeSupported(types[i])) supported.push(types[i]); } catch (e) {}
+      }
+    }
+    var md = navigator.mediaDevices;
+    var rows = [
+      ["Address", location.protocol + "//" + location.host, null],
+      ["Secure context", String(window.isSecureContext), window.isSecureContext],
+      ["mediaDevices", md ? "present" : "MISSING", !!md],
+      ["getUserMedia", (md && typeof md.getUserMedia === "function") ? "present" : "MISSING",
+        !!(md && typeof md.getUserMedia === "function")],
+      ["MediaRecorder", (typeof MediaRecorder !== "undefined") ? "present" : "MISSING",
+        typeof MediaRecorder !== "undefined"],
+      ["Audio formats", supported.length ? supported.join(", ") : "NONE", supported.length > 0],
+      ["Browser", navigator.userAgent, null]
+    ];
+    var html = "";
+    for (var j = 0; j < rows.length; j++) {
+      var r = rows[j];
+      var cls = r[2] === true ? "ok" : (r[2] === false ? "bad" : "");
+      var mark = r[2] === true ? "✓ " : (r[2] === false ? "✗ " : "");
+      html += '<div class="row"><span class="k">' + r[0] + '</span>' +
+              '<span class="' + cls + '">' + mark + r[1] + "</span></div>";
+    }
+    document.getElementById("env").innerHTML = html;
+    say("page loaded, script running ✓");
+    if (!window.isSecureContext) say("✗ NOT a secure context — the mic cannot work here.");
+    if (!md) say("✗ navigator.mediaDevices missing — the mic cannot work here.");
+    if (typeof MediaRecorder === "undefined") say("✗ MediaRecorder missing — this browser cannot record.");
+  }
+
+  try { envReport(); } catch (e) {
+    document.getElementById("env").textContent = "env check failed: " + e.message;
+    say("✗ env check threw: " + e.message);
+  }
+
+  var stream = null, blob = null;
+
+  // ---- 1: permission --------------------------------------------------
+  document.getElementById("b1").onclick = function () {
+    say("\n1) asking for microphone…");
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      say("✗ getUserMedia is not available on this page.");
+      return;
+    }
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(function (s) {
+      stream = s;
+      var t = s.getAudioTracks()[0];
+      say("✓ granted — " + (t && t.label ? t.label : "unnamed mic"));
+      say("   state=" + (t && t.readyState) + " enabled=" + (t && t.enabled));
+    })["catch"](function (err) {
+      say("✗ " + err.name + ": " + err.message);
+    });
+  };
+
+  // ---- 2: record ------------------------------------------------------
+  document.getElementById("b2").onclick = function () {
+    if (!stream) { say("✗ do step 1 first"); return; }
+    var btn = document.getElementById("b2");
+    say("\n2) recording 5s — SAY \"two fifty lunch\" NOW, loudly");
+    var types = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4"];
+    var mime = "";
+    for (var i = 0; i < types.length; i++) {
+      try { if (MediaRecorder.isTypeSupported(types[i])) { mime = types[i]; break; } } catch (e) {}
+    }
+    var rec;
+    try {
+      rec = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
+    } catch (e) { say("✗ could not create recorder: " + e.message); return; }
+
+    var chunks = [], started = Date.now();
+    rec.ondataavailable = function (e) {
+      say("   chunk " + e.data.size + " bytes");
+      if (e.data.size > 0) chunks.push(e.data);
+    };
+    rec.onerror = function (e) { say("✗ recorder error: " + (e.error ? e.error.name : "?")); };
+    rec.onstop = function () {
+      blob = new Blob(chunks, { type: rec.mimeType || mime || "audio/webm" });
+      btn.textContent = "2   Record 5 seconds";
+      say("✓ stopped after " + (Date.now() - started) + "ms");
+      say("   total " + blob.size + " bytes, type " + (blob.type || "?"));
+      if (blob.size === 0) { say("✗ ZERO BYTES — this is the failure."); return; }
+
+      // Loud speech in Opus runs well over 2 KB/s. Much less than that and the
+      // file is mostly silence, which is what makes Whisper invent a phrase.
+      var perSec = blob.size / ((Date.now() - started) / 1000);
+      say("   ~" + Math.round(perSec) + " bytes/sec");
+      if (perSec < 1500) {
+        say("⚠ that is very quiet — mostly silence. Speak louder / closer.");
+      } else {
+        say("   loudness looks fine");
+      }
+
+      var el = document.getElementById("pb");
+      el.src = URL.createObjectURL(blob);
+      el.style.display = "block";
+      say("   ▶ tap play above to hear exactly what was captured");
+    };
+    try {
+      rec.start(200);
+      say("   started, mimeType=" + (rec.mimeType || mime || "default"));
+    } catch (e) { say("✗ start() threw: " + e.message); return; }
+
+    var left = 5;
+    btn.textContent = "● recording… " + left;
+    var tick = setInterval(function () {
+      left--;
+      if (left > 0) btn.textContent = "● recording… " + left;
+    }, 1000);
+
+    setTimeout(function () {
+      clearInterval(tick);
+      try { if (rec.state !== "inactive") rec.stop(); } catch (e) { say("✗ stop() threw: " + e.message); }
+    }, 5000);
+  };
+
+  document.getElementById("bp").onclick = function () {
+    if (!blob) { say("✗ record something first"); return; }
+    var el = document.getElementById("pb");
+    el.style.display = "block";
+    el.play();
+    say("   (playing back — if you hear silence, the mic isn't picking you up)");
+  };
+
+  // ---- 3: upload ------------------------------------------------------
+  document.getElementById("b3").onclick = function () {
+    if (!blob || blob.size === 0) { say("✗ no audio yet — do step 2"); return; }
+    say("\n3) uploading " + blob.size + " bytes…");
+    var fd = new FormData();
+    fd.append("audio", blob, "capture");
+    fetch("/api/transcribe", { method: "POST", body: fd })
+      .then(function (r) { return r.json().then(function (j) { return { s: r.status, j: j }; }); })
+      .then(function (res) {
+        if (res.s !== 200) {
+          say("✗ " + res.s + ": " + res.j.error);
+          if (res.j.debug) say("   " + JSON.stringify(res.j.debug));
+          return;
+        }
+        say("✓ heard: \"" + res.j.text + "\"");
+        return fetch("/api/extract", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: res.j.text, today: new Date().toISOString().slice(0, 10) })
+        }).then(function (r) { return r.json(); }).then(function (j) {
+          var t = j.transactions || [];
+          if (!t.length) { say("✗ no expense found in that"); return; }
+          for (var i = 0; i < t.length; i++) {
+            say("✓ ₹" + t[i].amount + " " + (t[i].description || "-") +
+                " [" + (t[i].category || "no category") + "]");
+          }
+        });
+      })["catch"](function (e) { say("✗ upload failed: " + e.message); });
+  };
+
+  // ---- copy -----------------------------------------------------------
+  document.getElementById("b4").onclick = function () {
+    var text = document.getElementById("env").innerText + "\n\n" + lines.join("\n");
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () { say("\n(copied to clipboard)"); },
+        function () { say("\n(copy failed — select the text above manually)"); });
+    } else {
+      say("\n(no clipboard access — select the text above manually)");
+    }
+  };
+})();
+</script>
+</body>
+</html>

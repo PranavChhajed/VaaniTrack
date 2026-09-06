@@ -1,0 +1,103 @@
+"use client";
+
+import type { RecorderState } from "@/lib/useRecorder";
+
+/**
+ * The capture affordance.
+ *
+ * DESIGN.md specifies a "waveform visualizer" — a pill with a 2px ink border
+ * containing 5–7 pulsing bars, described as the mic-active indicator. Here that
+ * component is promoted from decoration to the primary action, which is what it
+ * always wanted to be in a voice-first product.
+ *
+ * Idle it wears the primary-action fill. Recording, it switches to Ember Glow,
+ * which DESIGN.md reserves for exactly this: "active mic indicators".
+ */
+
+const BAR_COUNT = 7;
+const BASE_HEIGHTS = [0.45, 0.7, 1, 0.85, 1, 0.7, 0.45];
+
+export function WaveformButton({
+  state,
+  level,
+  busy,
+  onStart,
+  onStop,
+}: {
+  state: RecorderState;
+  level: number;
+  busy: boolean;
+  onStart: () => void;
+  onStop: () => void;
+}) {
+  const recording = state === "recording";
+  const disabled = busy || state === "requesting";
+
+  return (
+    <button
+      type="button"
+      onClick={recording ? onStop : onStart}
+      disabled={disabled}
+      aria-label={recording ? "Stop recording" : "Record an expense"}
+      className={[
+        "group relative inline-flex items-center justify-center gap-[6px]",
+        "h-[88px] w-full max-w-[340px] rounded-[9999px] border-2 border-vast-ink",
+        "transition-colors duration-200",
+        recording ? "bg-ember-glow" : "bg-mint-whisper",
+        disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer",
+        !disabled && !recording ? "hover:bg-forest-ink active:bg-mint-deep" : "",
+      ].join(" ")}
+    >
+      {busy ? (
+        <>
+          <span className="flex items-end gap-[5px]" aria-hidden="true">
+            {[0, 1, 2].map((i) => (
+              <span
+                key={i}
+                className="wave-bar block h-4 w-[5px] rounded-full bg-vast-ink"
+                style={{ animationDelay: `${i * 150}ms` }}
+              />
+            ))}
+          </span>
+          <span className="ml-3 font-figtree text-body-sm font-medium text-vast-ink">
+            Reading it back…
+          </span>
+        </>
+      ) : (
+        <>
+          <span className="flex items-end gap-[6px]" aria-hidden="true">
+            {BASE_HEIGHTS.slice(0, BAR_COUNT).map((base, i) => {
+              const height = recording
+                ? 8 + base * (16 + level * 28)
+                : 8 + base * 16;
+              return (
+                <span
+                  key={i}
+                  className={[
+                    "block w-[5px] rounded-full bg-vast-ink",
+                    recording ? "wave-bar" : "",
+                    !recording ? "transition-colors group-hover:bg-paper" : "",
+                  ].join(" ")}
+                  style={{
+                    height: `${height}px`,
+                    animationDelay: `${i * 90}ms`,
+                  }}
+                />
+              );
+            })}
+          </span>
+          <span
+            className={[
+              "ml-3 font-figtree text-body-sm font-medium",
+              recording
+                ? "text-vast-ink"
+                : "text-vast-ink transition-colors group-hover:text-paper",
+            ].join(" ")}
+          >
+            {recording ? "Tap to finish" : "Say what you spent"}
+          </span>
+        </>
+      )}
+    </button>
+  );
+}
