@@ -19,7 +19,7 @@ Last updated: **6 September 2026** · Status legend: **IN USE** · **PLANNED** �
 | Speech → text | Groq · `whisper-large-v3` | IN USE |
 | Text → transaction | Groq · `openai/gpt-oss-120b` | IN USE |
 | Client storage | Browser `localStorage` | IN USE |
-| Server storage | Supabase (Postgres + Storage) | PLANNED — Phase C |
+| Server storage | Supabase Postgres via `postgres` | IN USE — Phase C1 |
 | Hosting | Vercel | PLANNED — Phase C6 |
 | Phone testing | Cloudflare quick tunnel | IN USE (to be retired by hosting) |
 | Version control | Git + GitHub (private) | IN USE |
@@ -133,7 +133,7 @@ Controlled by `SAVE_CAPTURES`. **Being changed from default-on to consent-gated*
 
 Chosen because it provides both the database and the blob storage behind one service and one client library, avoiding a second vendor purely for audio.
 
-**Client library:** `@supabase/supabase-js` — PLANNED
+**Client library:** `postgres` ^3 (raw SQL) — IN USE. Chosen over `@supabase/supabase-js` because the portal reconstructs a pipeline across three tables with joins and aggregation, which is clearer as SQL than as nested PostgREST selects — and it matches the no-ORM stance below. Audio uploads (C4) will go to Supabase Storage over plain `fetch`, so no second client library is needed.
 
 | Env var | Scope | Notes |
 |---|---|---|
@@ -192,7 +192,7 @@ Windows one-click startup: clears stale processes, verifies dependencies and the
 
 **Development** — `typescript@^5`, `tailwindcss@^4`, `@tailwindcss/postcss@^4`, `eslint@^9`, `eslint-config-next@16.3.4`, `cloudflared@^0.7.3`, `qrcode@^1.5.4`, `@types/node@^20`, `@types/react@^19`, `@types/react-dom@^19`
 
-**Planned** — `@supabase/supabase-js`
+**Server data** — `postgres@^3` (Postgres client, raw SQL)
 
 Three runtime dependencies total. That is deliberate: fewer moving parts, faster installs, less to break.
 
@@ -203,8 +203,9 @@ Three runtime dependencies total. That is deliberate: fewer moving parts, faster
 | `GROQ_API_KEY` | Required | Both models |
 | `GROQ_MODEL` | Optional | Override the extraction model |
 | `SAVE_CAPTURES` | Optional | `0` disables capture logging (becoming consent-gated) |
-| `NEXT_PUBLIC_SUPABASE_URL` | PLANNED | Supabase project URL |
-| `SUPABASE_SERVICE_ROLE_KEY` | PLANNED | Server-side Supabase access |
+| `NEXT_PUBLIC_SUPABASE_URL` | Required | Supabase project URL |
+| `SUPABASE_SECRET_KEY` | Required | Server-side Supabase access (new-format secret key) |
+| `DATABASE_URL` | Required | Postgres connection for observability writes |
 
 ---
 
@@ -227,3 +228,4 @@ Three runtime dependencies total. That is deliberate: fewer moving parts, faster
 | Date | Change |
 |---|---|
 | 2026-09-06 | File created. Supabase and Vercel recorded as PLANNED for Phase C |
+| 2026-09-06 | C1 done: added `postgres@^3`; three observability tables live in Supabase. Chose raw SQL over `@supabase/supabase-js` |
