@@ -279,6 +279,12 @@ export function useCapture({
       if (result.meanDb !== null && Number.isFinite(result.meanDb)) {
         form.append("meanDb", result.meanDb.toFixed(2));
       }
+      // How long the mic took to start carrying sound. Only the device can
+      // observe this, and it is the difference between a handset that works
+      // and one that does not.
+      if (result.warmupMs !== null) {
+        form.append("warmupMs", String(result.warmupMs));
+      }
 
       const reply = await postJson("/api/transcribe", {
         method: "POST",

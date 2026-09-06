@@ -1,0 +1,12 @@
+-- How long the microphone took to start carrying sound, in milliseconds.
+--
+-- The gap between getUserMedia resolving and the audio hardware delivering a
+-- non-zero sample. On one handset it ranged from 60ms to 1440ms, and once
+-- covered the whole of a 1340ms recording. The app used to invite speech the
+-- moment the track existed, so the opening words were spoken into digital
+-- zeros; nothing else recorded here could see it, because the recording was
+-- the right length and, Opus being fixed-bitrate, the right size too.
+--
+-- Kept per capture because it varies run to run on the same device, so only a
+-- distribution says whether the wait is working.
+alter table captures add column if not exists audio_warmup_ms integer;

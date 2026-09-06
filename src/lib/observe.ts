@@ -98,6 +98,7 @@ export async function recordCapture(row: {
    *  good one right up until the transcript comes back wrong. */
   audioPeakDb?: number | null;
   audioMeanDb?: number | null;
+  audioWarmupMs?: number | null;
   asrModel?: string | null;
   transcript?: string | null;
   asrVerdict?: AsrVerdict | null;
@@ -117,6 +118,7 @@ export async function recordCapture(row: {
         audio_ms: row.audioMs ?? null,
         audio_peak_db: row.audioPeakDb ?? null,
         audio_mean_db: row.audioMeanDb ?? null,
+        audio_warmup_ms: row.audioWarmupMs ?? null,
         asr_model: row.asrModel ?? null,
         transcript: row.transcript ?? null,
         asr_verdict: row.asrVerdict ?? null,
@@ -247,7 +249,7 @@ export async function listCaptures(limit = 50) {
       select
         c.id, c.created_at, c.source, c.transcript,
         c.asr_verdict, c.asr_reason, c.audio_bytes, c.audio_ms,
-        c.audio_peak_db, c.audio_mean_db,
+        c.audio_peak_db, c.audio_mean_db, c.audio_warmup_ms,
         c.avg_logprob, c.no_speech_prob,
         c.extract_error, c.device_id,
         coalesce(

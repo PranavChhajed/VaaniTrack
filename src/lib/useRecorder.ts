@@ -2,7 +2,22 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-export type RecorderState = "idle" | "requesting" | "recording" | "denied";
+/**
+ * `warming` is the gap between the browser handing over a microphone track and
+ * that track carrying any sound. On the handset this was found on it ran from
+ * 0.06s to 1.44s, and once for the whole of a 1.34s take — the audio hardware
+ * emits digital zeros until it has actually started. The app used to say "Tap
+ * to finish" the instant getUserMedia resolved, so the first words were spoken
+ * into a dead stream and short ones vanished entirely. Nothing downstream could
+ * tell: the recording was the right length, and Opus spends its fixed bitrate
+ * on zeros as readily as on speech, so it was the right size too.
+ */
+export type RecorderState =
+  | "idle"
+  | "requesting"
+  | "warming"
+  | "recording"
+  | "denied";
 
 export type RecorderResult =
   | {
@@ -14,6 +29,10 @@ export type RecorderResult =
        *  meter never ran. Negative; 0 is full scale. See SILENT_DB. */
       peakDb: number | null;
       meanDb: number | null;
+      /** How long the microphone took to start carrying sound, in ms, or null
+       *  if that could not be observed. Kept because it is the difference
+       *  between a handset that works and one that does not. */
+      warmupMs: number | null;
     }
   | { ok: false; reason: string };
 
@@ -56,6 +75,26 @@ const MIN_MS = 400;
  */
 const SILENT_DB = -55;
 
+/**
+ * The line between "the hardware has not started" and "the room is quiet".
+ *
+ * About -66 dBFS. The dead lead-in on the handset this was found on measured
+ * -77 dBFS and below, frequently true digital zero; the quietest real content
+ * in the same recordings sat around -55. Sitting between the two means the wait
+ * ends on the first genuine sample rather than on encoder noise.
+ */
+const LIVE_RMS = 5e-4;
+
+/**
+ * How long to wait for that first sample before starting anyway.
+ *
+ * A ceiling, not a target — the wait normally ends in a few frames. It exists
+ * because a microphone that never delivers anything must not leave the button
+ * stuck: better to record a take the level meter cannot vouch for than to
+ * refuse to record at all.
+ */
+const WARMUP_TIMEOUT_MS = 1200;
+
 function dbOf(rms: number): number {
   return rms > 0 ? 20 * Math.log10(rms) : -Infinity;
 }
@@ -79,6 +118,13 @@ export function useRecorder() {
   const peakRef = useRef(0);
   const sumRef = useRef(0);
   const framesRef = useRef(0);
+  const liveRef = useRef(false);
+  const warmupMsRef = useRef<number | null>(null);
+  // Whether the level numbers mean anything. False when the meter never got a
+  // running AudioContext — iOS in particular can leave one suspended — in which
+  // case its readings are zeros about the meter, not about the microphone, and
+  // must not be allowed to condemn a perfectly good recording as silence.
+  const meterTrustedRef = useRef(false);
 
   const teardown = useCallback(() => {
     if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
@@ -141,6 +187,9 @@ export function useRecorder() {
       peakRef.current = 0;
       sumRef.current = 0;
       framesRef.current = 0;
+      liveRef.current = false;
+      warmupMsRef.current = null;
+      meterTrustedRef.current = false;
 
       recorder.ondataavailable = (event) => {
         if (event.data && event.data.size > 0) chunksRef.current.push(event.data);
@@ -164,9 +213,10 @@ export function useRecorder() {
         resolveRef.current = null;
         if (!resolve) return;
 
-        const measured = framesRef.current > 0;
+        const measured = meterTrustedRef.current && framesRef.current > 0;
         const peakDb = measured ? dbOf(peakRef.current) : null;
         const meanDb = measured ? dbOf(sumRef.current / framesRef.current) : null;
+        const warmupMs = warmupMsRef.current;
 
         if (blob.size === 0) {
           resolve({
@@ -191,7 +241,7 @@ export function useRecorder() {
               "and make sure nothing is covering the bottom edge of the phone.",
           });
         } else {
-          resolve({ ok: true, blob, mimeType: type, ms, peakDb, meanDb });
+          resolve({ ok: true, blob, mimeType: type, ms, peakDb, meanDb, warmupMs });
         }
       };
 
@@ -203,7 +253,13 @@ export function useRecorder() {
       startedAtRef.current = Date.now();
       recorder.start(200);
       recorderRef.current = recorder;
-      setState("recording");
+      // Not "recording" yet. The recorder is running and will keep whatever
+      // arrives, but the user is not invited to speak until sound is actually
+      // reaching it — see the note on RecorderState. The dead lead-in stays in
+      // the blob, where it is harmless; what matters is that nobody spoke into
+      // it. If the meter cannot start, the tick below never runs and the catch
+      // falls through to "recording" immediately.
+      setState("warming");
 
       // The level meter, wired up only now that the recorder already has
       // uncontested first claim on the stream. It is a second live consumer of
@@ -232,20 +288,51 @@ export function useRecorder() {
         // floor is around -48 dBFS and it cannot tell a very quiet room from
         // true silence — which is precisely the distinction that matters here.
         const data = new Float32Array(analyser.fftSize);
+
+        const goLive = (trusted: boolean) => {
+          liveRef.current = true;
+          meterTrustedRef.current = trusted;
+          warmupMsRef.current = Date.now() - startedAtRef.current;
+          setState("recording");
+        };
+
         const tick = () => {
           analyser.getFloatTimeDomainData(data);
           let sq = 0;
           for (const v of data) sq += v * v;
           const rms = Math.sqrt(sq / data.length);
-          peakRef.current = Math.max(peakRef.current, rms);
-          sumRef.current += rms;
-          framesRef.current += 1;
+
+          if (!liveRef.current) {
+            if (rms > LIVE_RMS) {
+              // Sound is reaching the page. Only now is it fair to ask someone
+              // to speak, and only from here are the level readings about the
+              // microphone rather than about hardware that has not woken up.
+              goLive(true);
+            } else if (ctx.state !== "running") {
+              // A suspended context reports silence no matter what the
+              // microphone is doing, so there is nothing to wait for and
+              // nothing its numbers can be trusted to say.
+              goLive(false);
+            } else if (Date.now() - startedAtRef.current > WARMUP_TIMEOUT_MS) {
+              goLive(false);
+            }
+          } else {
+            peakRef.current = Math.max(peakRef.current, rms);
+            sumRef.current += rms;
+            framesRef.current += 1;
+          }
+
           setLevel(Math.min(1, rms * 12));
           rafRef.current = requestAnimationFrame(tick);
         };
         tick();
       } catch {
-        // Visualisation is a nicety; recording works without it.
+        // Visualisation is a nicety; recording works without it — but the
+        // warm-up wait is gated on the meter, so without one there is nothing
+        // to wait for and the button must not be left saying "getting ready".
+        liveRef.current = true;
+        meterTrustedRef.current = false;
+        setState("recording");
       }
     } catch (err) {
       teardown();
@@ -280,7 +367,7 @@ export function useRecorder() {
         resolveRef.current = null;
         teardown();
         setState("idle");
-        const measured = framesRef.current > 0;
+        const measured = meterTrustedRef.current && framesRef.current > 0;
         resolve(
           blob.size > 0
             ? {
@@ -290,6 +377,7 @@ export function useRecorder() {
                 ms: Date.now() - startedAtRef.current,
                 peakDb: measured ? dbOf(peakRef.current) : null,
                 meanDb: measured ? dbOf(sumRef.current / framesRef.current) : null,
+                warmupMs: warmupMsRef.current,
               }
             : { ok: false, reason: "The recorder never returned any audio." },
         );

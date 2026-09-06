@@ -184,6 +184,17 @@ export default async function Portal({
                 : `${Number(c.audio_mean_db).toFixed(1)} dBFS`
             }
           />
+          {/* Time between the browser handing over the track and that track
+              carrying sound. Anyone speaking during it is speaking into
+              zeros. Measured from 0.06s to 1.44s on one handset. */}
+          <Row
+            k="Mic warm-up"
+            v={
+              c.audio_warmup_ms === null || c.audio_warmup_ms === undefined
+                ? "not measured"
+                : `${Number(c.audio_warmup_ms)} ms`
+            }
+          />
           <Row k="Recording kept" v={c.audio_stored ? "yes" : "no"} />
         </Stage>
 

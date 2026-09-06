@@ -191,6 +191,7 @@ export async function POST(request: Request) {
   let audioMs: number | null = null;
   let audioPeakDb: number | null = null;
   let audioMeanDb: number | null = null;
+  let audioWarmupMs: number | null = null;
   try {
     const form = await request.formData();
     const value = form.get("audio");
@@ -207,6 +208,9 @@ export async function POST(request: Request) {
     // use of it below tolerates null rather than reading it as silence.
     audioPeakDb = finiteDb(form.get("peakDb"));
     audioMeanDb = finiteDb(form.get("meanDb"));
+    const warm = Number(form.get("warmupMs"));
+    audioWarmupMs =
+      Number.isFinite(warm) && warm >= 0 && warm < 60000 ? Math.round(warm) : null;
   } catch {
     return NextResponse.json(
       { error: "Could not read the uploaded audio." },
@@ -235,6 +239,7 @@ export async function POST(request: Request) {
       audioMs,
       audioPeakDb,
       audioMeanDb,
+      audioWarmupMs,
       asrVerdict: "rejected_too_small",
       asrReason: reason,
     });
@@ -342,6 +347,7 @@ export async function POST(request: Request) {
         audioMs,
         audioPeakDb,
         audioMeanDb,
+        audioWarmupMs,
         asrModel: "whisper-large-v3",
         transcript: text || null,
         asrVerdict: verdict,
@@ -406,6 +412,7 @@ export async function POST(request: Request) {
       audioMs,
       audioPeakDb,
       audioMeanDb,
+      audioWarmupMs,
       asrModel: "whisper-large-v3",
       transcript: text,
       asrVerdict: "accepted",

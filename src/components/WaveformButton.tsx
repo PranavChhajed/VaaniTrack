@@ -31,20 +31,34 @@ export function WaveformButton({
   onStop: () => void;
 }) {
   const recording = state === "recording";
-  const disabled = busy || state === "requesting";
+  // The mic is open but not yet carrying sound. Shown, not hidden: the whole
+  // failure this state exists to prevent was someone speaking during it,
+  // which they did because the button looked exactly like it does when idle.
+  const warming = state === "warming";
+  const disabled = busy || state === "requesting" || warming;
 
   return (
     <button
       type="button"
       onClick={recording ? onStop : onStart}
       disabled={disabled}
-      aria-label={recording ? "Stop recording" : "Record an expense"}
+      aria-label={
+        recording
+          ? "Stop recording"
+          : warming
+            ? "Waiting for the microphone"
+            : "Record an expense"
+      }
+      aria-live="polite"
       className={[
         "group relative inline-flex items-center justify-center gap-[6px]",
         "h-[88px] w-full max-w-[340px] rounded-[9999px] border-2 border-vast-ink",
         "transition-colors duration-200",
-        recording ? "bg-ember-glow" : "bg-mint-whisper",
-        disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer",
+        recording || warming ? "bg-ember-glow" : "bg-mint-whisper",
+        // Dimmed while warming, but not to the flat disabled grey: the mic is
+        // genuinely opening, and this reads as a step in progress rather than
+        // as a dead control.
+        disabled ? (warming ? "cursor-wait opacity-80" : "cursor-not-allowed opacity-60") : "cursor-pointer",
         !disabled && !recording ? "hover:bg-forest-ink active:bg-mint-deep" : "",
       ].join(" ")}
     >
@@ -94,7 +108,11 @@ export function WaveformButton({
                 : "text-vast-ink transition-colors group-hover:text-paper",
             ].join(" ")}
           >
-            {recording ? "Tap to finish" : "Say what you spent"}
+            {recording
+              ? "Tap to finish"
+              : warming
+                ? "Getting the mic ready…"
+                : "Say what you spent"}
           </span>
         </>
       )}
