@@ -25,6 +25,7 @@ type CaptureRow = {
   asr_reason: string | null;
   audio_bytes: number | null;
   audio_ms: number | null;
+  audio_peak_db: number | null;
   avg_logprob: number | null;
   extract_error: string | null;
   transactions: {
@@ -47,10 +48,23 @@ function likelyFailure(row: {
   asr_reason?: string | null;
   audio_bytes?: number | null;
   audio_ms?: number | null;
+  audio_peak_db?: number | null;
   extract_error: string | null;
   transactions: { outcome: string; failed: string[] | null }[];
   events?: { action: string }[];
 }): { label: string; tone: "ok" | "warn" | "bad" } {
+  // Checked before anything downstream, because when the microphone sent
+  // nothing every later stage is reporting on silence. The byte count cannot
+  // reveal this — Opus spends the same bitrate on silence as on speech, so a
+  // dead capture arrives looking entirely healthy — which is why this number
+  // is measured in the browser and carried along with the audio.
+  const peak = row.audio_peak_db;
+  if (peak !== null && peak !== undefined) {
+    if (peak < -55)
+      return { label: "Mic sent silence — nothing reached the page", tone: "bad" };
+    if (peak < -40)
+      return { label: `Mic far too quiet (peak ${Number(peak).toFixed(0)} dB)`, tone: "bad" };
+  }
   if (row.asr_verdict === "rejected_too_small") {
     // Distinguishes a brief tap from a normal-length recording of
     // near-silence — the two look identical as a byte count but point at
@@ -125,6 +139,7 @@ export default async function Portal({
       asr_reason: c.asr_reason as string | null,
       audio_bytes: c.audio_bytes as number | null,
       audio_ms: c.audio_ms as number | null,
+      audio_peak_db: c.audio_peak_db as number | null,
       extract_error: c.extract_error as string | null,
       transactions: detail.transactions as unknown as {
         outcome: string;
@@ -151,6 +166,24 @@ export default async function Portal({
           <Row k="Source" v={String(c.source)} />
           <Row k="Size" v={c.audio_bytes ? `${Math.round(Number(c.audio_bytes) / 1024)} KB` : "—"} />
           <Row k="Duration" v={c.audio_ms ? `${Number(c.audio_ms)} ms` : "—"} />
+          {/* The only number here that distinguishes a silent capture from a
+              spoken one. Everything else about the two is identical. */}
+          <Row
+            k="Peak level"
+            v={
+              c.audio_peak_db === null || c.audio_peak_db === undefined
+                ? "not measured"
+                : `${Number(c.audio_peak_db).toFixed(1)} dBFS`
+            }
+          />
+          <Row
+            k="Mean level"
+            v={
+              c.audio_mean_db === null || c.audio_mean_db === undefined
+                ? "not measured"
+                : `${Number(c.audio_mean_db).toFixed(1)} dBFS`
+            }
+          />
           <Row k="Recording kept" v={c.audio_stored ? "yes" : "no"} />
         </Stage>
 

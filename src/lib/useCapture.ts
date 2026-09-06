@@ -252,8 +252,12 @@ export function useCapture({
     setBusy(true);
     setError(null);
     setJustSaved(null);
+    const levels =
+      result.peakDb === null
+        ? ""
+        : ` · peak ${result.peakDb.toFixed(0)} dB`;
     setDebug(
-      `captured ${(result.blob.size / 1024).toFixed(0)} KB · ${result.mimeType} · ${result.ms} ms`,
+      `captured ${(result.blob.size / 1024).toFixed(0)} KB · ${result.mimeType} · ${result.ms} ms${levels}`,
     );
 
     try {
@@ -265,6 +269,16 @@ export function useCapture({
       // reduce what is retained, never unlock anything.
       form.append("audioConsent", audioConsent());
       form.append("audioMs", String(result.ms));
+      // What the microphone actually delivered, measured on the device. The
+      // server cannot derive this: it receives Opus, which spends the same
+      // bitrate on silence as on speech, so a silent take arrives looking
+      // exactly like a good one.
+      if (result.peakDb !== null && Number.isFinite(result.peakDb)) {
+        form.append("peakDb", result.peakDb.toFixed(2));
+      }
+      if (result.meanDb !== null && Number.isFinite(result.meanDb)) {
+        form.append("meanDb", result.meanDb.toFixed(2));
+      }
 
       const reply = await postJson("/api/transcribe", {
         method: "POST",

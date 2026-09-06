@@ -162,6 +162,20 @@ function meanLogprob(segments: Segment[]): number | null {
   return Number((sum / segments.length).toFixed(4));
 }
 
+/**
+ * A signal level sent by the client, in dBFS.
+ *
+ * Rejects anything that is not a finite negative number below full scale. The
+ * client computes these from live audio, so -Infinity is an ordinary outcome
+ * for a stream that never carried a sample, and it must not be stored as if it
+ * were a measurement.
+ */
+function finiteDb(value: FormDataEntryValue | null): number | null {
+  if (typeof value !== "string") return null;
+  const n = Number(value);
+  return Number.isFinite(n) && n <= 0 && n > -200 ? Number(n.toFixed(2)) : null;
+}
+
 export async function POST(request: Request) {
   const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) {
@@ -175,6 +189,8 @@ export async function POST(request: Request) {
   let deviceId: string | null = null;
   let consent = false;
   let audioMs: number | null = null;
+  let audioPeakDb: number | null = null;
+  let audioMeanDb: number | null = null;
   try {
     const form = await request.formData();
     const value = form.get("audio");
@@ -186,6 +202,11 @@ export async function POST(request: Request) {
     consent = form.get("audioConsent") === "granted";
     const ms = Number(form.get("audioMs"));
     audioMs = Number.isFinite(ms) && ms > 0 ? Math.round(ms) : null;
+    // Measured by the browser's level meter, in dBFS, so negative. Absent on
+    // older clients and whenever the meter could not start, which is why every
+    // use of it below tolerates null rather than reading it as silence.
+    audioPeakDb = finiteDb(form.get("peakDb"));
+    audioMeanDb = finiteDb(form.get("meanDb"));
   } catch {
     return NextResponse.json(
       { error: "Could not read the uploaded audio." },
@@ -212,6 +233,8 @@ export async function POST(request: Request) {
       audioMime: audio.type || null,
       audioBytes: audio.size,
       audioMs,
+      audioPeakDb,
+      audioMeanDb,
       asrVerdict: "rejected_too_small",
       asrReason: reason,
     });
@@ -317,6 +340,8 @@ export async function POST(request: Request) {
         audioMime: audio.type || null,
         audioBytes: audio.size,
         audioMs,
+        audioPeakDb,
+        audioMeanDb,
         asrModel: "whisper-large-v3",
         transcript: text || null,
         asrVerdict: verdict,
@@ -379,6 +404,8 @@ export async function POST(request: Request) {
       audioMime: audio.type || null,
       audioBytes: audio.size,
       audioMs,
+      audioPeakDb,
+      audioMeanDb,
       asrModel: "whisper-large-v3",
       transcript: text,
       asrVerdict: "accepted",

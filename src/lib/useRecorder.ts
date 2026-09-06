@@ -5,7 +5,16 @@ import { useCallback, useEffect, useRef, useState } from "react";
 export type RecorderState = "idle" | "requesting" | "recording" | "denied";
 
 export type RecorderResult =
-  | { ok: true; blob: Blob; mimeType: string; ms: number }
+  | {
+      ok: true;
+      blob: Blob;
+      mimeType: string;
+      ms: number;
+      /** Loudest and average window RMS of the take, in dBFS, or null if the
+       *  meter never ran. Negative; 0 is full scale. See SILENT_DB. */
+      peakDb: number | null;
+      meanDb: number | null;
+    }
   | { ok: false; reason: string };
 
 /** Safari (including iOS) cannot produce webm; it records mp4/aac. Chrome and
@@ -31,6 +40,26 @@ function pickMimeType(): string | undefined {
 /** Below this, the user tapped twice by accident rather than saying anything. */
 const MIN_MS = 400;
 
+/**
+ * Below this peak, nothing audible reached the page at all.
+ *
+ * Deliberately far below speech. A phone held at arm's length still peaks
+ * around -30 dBFS; a quiet room floor sits near -50. This only fires on a
+ * stream that is essentially digital silence, which is a real state that has
+ * happened here: a recording of normal length and normal byte count measuring
+ * -77 to -103 dBFS end to end. Byte count cannot see that, because Opus encodes
+ * silence at the same fixed bitrate as speech, so the recording looked healthy
+ * all the way to the transcriber, which then invented "Thank you."
+ *
+ * The threshold is set to catch only the unambiguous case. Audio that is merely
+ * too quiet is still sent; the server, which can see the whole take, decides.
+ */
+const SILENT_DB = -55;
+
+function dbOf(rms: number): number {
+  return rms > 0 ? 20 * Math.log10(rms) : -Infinity;
+}
+
 export function useRecorder() {
   const [state, setState] = useState<RecorderState>("idle");
   const [error, setError] = useState<string | null>(null);
@@ -43,6 +72,13 @@ export function useRecorder() {
   const rafRef = useRef<number | null>(null);
   const resolveRef = useRef<((r: RecorderResult) => void) | null>(null);
   const startedAtRef = useRef(0);
+  // Accumulated by the level meter. The meter was already reading the stream
+  // for the animation; keeping the numbers costs nothing and is the only way
+  // the app can tell a silent take from a spoken one before it pays for a
+  // transcription and shows the user whatever the model invented.
+  const peakRef = useRef(0);
+  const sumRef = useRef(0);
+  const framesRef = useRef(0);
 
   const teardown = useCallback(() => {
     if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
@@ -102,6 +138,9 @@ export function useRecorder() {
         mimeType ? { mimeType } : undefined,
       );
       chunksRef.current = [];
+      peakRef.current = 0;
+      sumRef.current = 0;
+      framesRef.current = 0;
 
       recorder.ondataavailable = (event) => {
         if (event.data && event.data.size > 0) chunksRef.current.push(event.data);
@@ -125,6 +164,10 @@ export function useRecorder() {
         resolveRef.current = null;
         if (!resolve) return;
 
+        const measured = framesRef.current > 0;
+        const peakDb = measured ? dbOf(peakRef.current) : null;
+        const meanDb = measured ? dbOf(sumRef.current / framesRef.current) : null;
+
         if (blob.size === 0) {
           resolve({
             ok: false,
@@ -136,8 +179,19 @@ export function useRecorder() {
             ok: false,
             reason: "That was too quick — hold on a moment while you speak.",
           });
+        } else if (peakDb !== null && peakDb < SILENT_DB) {
+          // Caught here rather than at the server because the server sees only
+          // a healthy-looking file. Stopping now also spares the user a
+          // confident, invented transaction.
+          resolve({
+            ok: false,
+            reason:
+              "The microphone sent silence — the recording ran, but no sound reached this page. " +
+              "Close any other app using the mic (a call, a voice note), disconnect Bluetooth earphones, " +
+              "and make sure nothing is covering the bottom edge of the phone.",
+          });
         } else {
-          resolve({ ok: true, blob, mimeType: type, ms });
+          resolve({ ok: true, blob, mimeType: type, ms, peakDb, meanDb });
         }
       };
 
@@ -172,14 +226,21 @@ export function useRecorder() {
         if (ctx.state === "suspended") void ctx.resume().catch(() => {});
         audioCtxRef.current = ctx;
         const analyser = ctx.createAnalyser();
-        analyser.fftSize = 256;
+        analyser.fftSize = 2048;
         ctx.createMediaStreamSource(stream).connect(analyser);
-        const data = new Uint8Array(analyser.frequencyBinCount);
+        // Float, not byte. getByteTimeDomainData quantises to 8 bits, so its
+        // floor is around -48 dBFS and it cannot tell a very quiet room from
+        // true silence — which is precisely the distinction that matters here.
+        const data = new Float32Array(analyser.fftSize);
         const tick = () => {
-          analyser.getByteTimeDomainData(data);
-          let peak = 0;
-          for (const v of data) peak = Math.max(peak, Math.abs(v - 128));
-          setLevel(Math.min(1, peak / 64));
+          analyser.getFloatTimeDomainData(data);
+          let sq = 0;
+          for (const v of data) sq += v * v;
+          const rms = Math.sqrt(sq / data.length);
+          peakRef.current = Math.max(peakRef.current, rms);
+          sumRef.current += rms;
+          framesRef.current += 1;
+          setLevel(Math.min(1, rms * 12));
           rafRef.current = requestAnimationFrame(tick);
         };
         tick();
@@ -219,9 +280,17 @@ export function useRecorder() {
         resolveRef.current = null;
         teardown();
         setState("idle");
+        const measured = framesRef.current > 0;
         resolve(
           blob.size > 0
-            ? { ok: true, blob, mimeType: blob.type, ms: Date.now() - startedAtRef.current }
+            ? {
+                ok: true,
+                blob,
+                mimeType: blob.type,
+                ms: Date.now() - startedAtRef.current,
+                peakDb: measured ? dbOf(peakRef.current) : null,
+                meanDb: measured ? dbOf(sumRef.current / framesRef.current) : null,
+              }
             : { ok: false, reason: "The recorder never returned any audio." },
         );
       }, 3000);

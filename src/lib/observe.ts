@@ -92,6 +92,12 @@ export async function recordCapture(row: {
   audioMime?: string | null;
   audioBytes?: number | null;
   audioMs?: number | null;
+  /** dBFS as measured in the browser, where the PCM still exists. The server
+   *  only ever sees Opus, which spends its bitrate on silence and speech
+   *  alike, so without these a silent capture is indistinguishable from a
+   *  good one right up until the transcript comes back wrong. */
+  audioPeakDb?: number | null;
+  audioMeanDb?: number | null;
   asrModel?: string | null;
   transcript?: string | null;
   asrVerdict?: AsrVerdict | null;
@@ -109,6 +115,8 @@ export async function recordCapture(row: {
         audio_mime: row.audioMime ?? null,
         audio_bytes: row.audioBytes ?? null,
         audio_ms: row.audioMs ?? null,
+        audio_peak_db: row.audioPeakDb ?? null,
+        audio_mean_db: row.audioMeanDb ?? null,
         asr_model: row.asrModel ?? null,
         transcript: row.transcript ?? null,
         asr_verdict: row.asrVerdict ?? null,
@@ -239,6 +247,7 @@ export async function listCaptures(limit = 50) {
       select
         c.id, c.created_at, c.source, c.transcript,
         c.asr_verdict, c.asr_reason, c.audio_bytes, c.audio_ms,
+        c.audio_peak_db, c.audio_mean_db,
         c.avg_logprob, c.no_speech_prob,
         c.extract_error, c.device_id,
         coalesce(
