@@ -85,45 +85,16 @@ export function useRecorder() {
 
     setState("requesting");
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-        },
-      });
+      // Plain `audio: true`, not { echoCancellation, noiseSuppression,
+      // autoGainControl }. Those constraints were the difference between this
+      // path and the diagnostics page's bare getUserMedia call, and the
+      // combination — layered with a second live consumer of the same track
+      // below — reproduced recordings that ran for a normal duration while
+      // carrying almost no audio data, on a real device, while the diag page's
+      // plain call captured full-volume speech every time. Duration lied about
+      // nothing being wrong; the byte count told the truth.
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
-
-      // Drive the bars from real input, so the animation tells the user
-      // something true about whether the mic is hearing them.
-      try {
-        const Ctx =
-          window.AudioContext ??
-          (window as unknown as { webkitAudioContext: typeof AudioContext })
-            .webkitAudioContext;
-        const ctx = new Ctx();
-        // iOS starts contexts suspended. Do NOT await resume() here: the user
-        // gesture has already been spent on getUserMedia, and on iOS the
-        // promise can then hang forever — which would leave start() pending
-        // and the button stuck in "requesting" with no error and no recording.
-        // The meter is cosmetic; recording must not wait on it.
-        if (ctx.state === "suspended") void ctx.resume().catch(() => {});
-        audioCtxRef.current = ctx;
-        const analyser = ctx.createAnalyser();
-        analyser.fftSize = 256;
-        ctx.createMediaStreamSource(stream).connect(analyser);
-        const data = new Uint8Array(analyser.frequencyBinCount);
-        const tick = () => {
-          analyser.getByteTimeDomainData(data);
-          let peak = 0;
-          for (const v of data) peak = Math.max(peak, Math.abs(v - 128));
-          setLevel(Math.min(1, peak / 64));
-          rafRef.current = requestAnimationFrame(tick);
-        };
-        tick();
-      } catch {
-        // Visualisation is a nicety; recording works without it.
-      }
 
       const mimeType = pickMimeType();
       const recorder = new MediaRecorder(
@@ -170,13 +141,51 @@ export function useRecorder() {
         }
       };
 
-      // A timeslice matters: without it Safari may deliver nothing until the
-      // recorder is torn down, and on some builds nothing at all. Asking for
-      // data every 200ms makes delivery predictable everywhere.
+      // Started before the level meter touches the stream at all — see the
+      // note above the getUserMedia call. A timeslice matters too: without
+      // one, Safari may deliver nothing until the recorder is torn down, and
+      // on some builds nothing at all. Asking for data every 200ms makes
+      // delivery predictable everywhere.
       startedAtRef.current = Date.now();
       recorder.start(200);
       recorderRef.current = recorder;
       setState("recording");
+
+      // The level meter, wired up only now that the recorder already has
+      // uncontested first claim on the stream. It is a second live consumer of
+      // the same track, and on the device this bug was reproduced on, that
+      // second consumer existing before the recorder started was enough to
+      // starve the encoder while the clock kept running normally — a
+      // recording of a completely normal length carrying almost no audio. The
+      // meter is cosmetic; it can attach a beat later with no visible cost.
+      try {
+        const Ctx =
+          window.AudioContext ??
+          (window as unknown as { webkitAudioContext: typeof AudioContext })
+            .webkitAudioContext;
+        const ctx = new Ctx();
+        // iOS starts contexts suspended. Do NOT await resume() here: the user
+        // gesture has already been spent on getUserMedia, and on iOS the
+        // promise can then hang forever — which would leave start() pending
+        // and the button stuck in "requesting" with no error and no recording.
+        // The meter is cosmetic; recording must not wait on it.
+        if (ctx.state === "suspended") void ctx.resume().catch(() => {});
+        audioCtxRef.current = ctx;
+        const analyser = ctx.createAnalyser();
+        analyser.fftSize = 256;
+        ctx.createMediaStreamSource(stream).connect(analyser);
+        const data = new Uint8Array(analyser.frequencyBinCount);
+        const tick = () => {
+          analyser.getByteTimeDomainData(data);
+          let peak = 0;
+          for (const v of data) peak = Math.max(peak, Math.abs(v - 128));
+          setLevel(Math.min(1, peak / 64));
+          rafRef.current = requestAnimationFrame(tick);
+        };
+        tick();
+      } catch {
+        // Visualisation is a nicety; recording works without it.
+      }
     } catch (err) {
       teardown();
       setState("denied");
