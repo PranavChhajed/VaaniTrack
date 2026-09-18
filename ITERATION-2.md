@@ -145,6 +145,13 @@ rushed, which Principle 0 will not tolerate.
 See `ITERATION-3.md` — the Transaction Journal, from
 `transaction-journal-product-document.md`.
 
+> **▸ Broken pointer (18 Sept).** `ITERATION-3.md` no longer exists — it was
+> deleted when Phase A was built, along with `TRANSACTION-JOURNAL.md` and
+> `IDEATION-PROMPT.md`, because its premise (the journal becoming the main
+> screen) was withdrawn. The journal work it described landed as **Phase A**;
+> the specification is `VAANITRACK_PHASE_A_JOURNAL_CONTEXT.md` and the outcome
+> is in `EXECUTION.md`. The rest of this file stands as written.
+
 - **Task 3 (edit + undo)** moves there as Iteration 3 Task 4, where a real
   transaction detail screen replaces the inline edit sketched here.
 - **Task 4 (states and edges)** splits: empty states move to Iteration 3 Task 7;

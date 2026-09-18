@@ -11,7 +11,7 @@ import { DEFAULTS, type Field, type Provenance, type Transaction } from "@/lib/t
  * survivable given that currency amounts are the weakest thing ASR does
  * (36.3% baseline — RESEARCH.md §1.1).
  *
- * Provenance (FR-10) is rendered using DESIGN.md's hand-drawn underline
+ * Provenance (FR-10) is rendered using the Wispr Flow reference's hand-drawn underline
  * accent, which the reference system uses for editorial emphasis. Here it
  * marks values the system supplied rather than heard — emphasis repurposed
  * as honesty.

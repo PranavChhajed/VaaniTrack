@@ -1,5 +1,17 @@
 # VaaniTrack Persistence + Observability Layer
 
+> ## ✅ Built — this brief has been delivered
+>
+> **Status as of 18 September 2026:** everything proposed below was implemented on 6 September as **Phase C**, across commits `2ca0261` (schema + server layer) and `b6921ed` (instrumentation, consent, mirror, portal). This document is kept as the brief the work was built from. It is written in the future tense throughout — read it as *what was asked for*, not as outstanding work.
+>
+> **Where it landed:** `src/lib/observe.ts`, `src/lib/report.ts`, `src/lib/device.ts`, `src/app/api/observe/route.ts`, `src/app/portal/page.tsx`, `src/components/AudioConsent.tsx`, and the four files in `supabase/`. `CONTEXT.md` §14–§15 describes the result.
+>
+> **One item is genuinely unfinished.** The retention requirement below — *"appropriate consent, security, and retention policy"* — is only two-thirds done. Consent and security shipped. **Retention is declared but not enforced:** `AUDIO_RETENTION_DAYS = 90` is set, `audio_expires_at` is written and indexed, and no job ever reads it. The consent dialog promises users deletion after 90 days. The first stored recording comes due around **5 December 2026**.
+>
+> **A note on scope, so the portal is not mistaken for under-delivery.** This brief explicitly ruled out dashboards, aggregate analytics and a general reporting surface — *"the portal is a debugging microscope, not the product itself."* The shipped portal does exactly what was asked: the last 100 captures, a likely-failure heuristic, and one capture reconstructed stage by stage. That is the brief satisfied, not the brief cut short.
+
+---
+
 ## Goal
 
 The goal of this work is **not primarily to build a better storage system**.

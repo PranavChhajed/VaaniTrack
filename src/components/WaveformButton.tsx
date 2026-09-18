@@ -5,13 +5,13 @@ import type { RecorderState } from "@/lib/useRecorder";
 /**
  * The capture affordance.
  *
- * DESIGN.md specifies a "waveform visualizer" — a pill with a 2px ink border
+ * The Wispr Flow reference specifies a "waveform visualizer" — a pill with a 2px ink border
  * containing 5–7 pulsing bars, described as the mic-active indicator. Here that
  * component is promoted from decoration to the primary action, which is what it
  * always wanted to be in a voice-first product.
  *
  * Idle it wears the primary-action fill. Recording, it switches to Ember Glow,
- * which DESIGN.md reserves for exactly this: "active mic indicators".
+ * which that reference reserves for exactly this: "active mic indicators".
  */
 
 const BAR_COUNT = 7;

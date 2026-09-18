@@ -1,5 +1,15 @@
 # VaaniTrack - Phase A: Transaction Journal
 
+> ## ✅ Built — read this as the pre-build spec, not as open work
+>
+> **Status as of 18 September 2026.** Phase A was implemented on 6 September. This document was written *before* that build and was never reconciled with it, so it still poses as open several questions the build answered. Those points now carry an inline **▸ Resolved in the build** note. Everything without such a note stands as written.
+>
+> **§33 is the exception and is deliberately left untouched.** Its 36 acceptance bullets have never been formally run on a real phone; it remains a live checklist. Note before running it that one bullet — *"Today opens as the current journal context"* — does not match what shipped: the journal opens on the **browse** state, all populated days newest first. The intent behind it (latest transactions immediately visible) is satisfied. Decide which reading was meant before the pass, not during it.
+>
+> **The phase model here is superseded.** This document describes an A → B world. What actually happened is A → **C** → B: a persistence and observability layer displaced Phase B on 6 September, for the reasons recorded in `EXECUTION.md`. Phase B — spoken dates — is still unbuilt and is the next work. See `CONTEXT.md` §20.
+>
+> **Still genuinely open:** §37.1, the payee mini-design. The built row falls back to payee as the primary label when no description exists, but the extraction, uncertainty and correction rules §17 asks for were never specified.
+
 ## Purpose
 
 This document captures the current agreed product context and direction for Phase A of VaaniTrack. It is intended to be given to Claude or another implementation agent before work begins.
@@ -122,6 +132,8 @@ The important rule is that uncertain category information should not be presente
 Storage is currently `localStorage`.
 
 There are no accounts, server database, or sync yet.
+
+> **▸ Superseded by Phase C (6 September).** `localStorage` is still the working store the UI reads and writes, and there are still no accounts and no sync — but a server database now exists. Transactions mirror to Supabase Postgres, scoped to an anonymous per-browser device id, alongside the observability tables. See `CONTEXT.md` §14.
 
 ---
 
@@ -387,6 +399,8 @@ The logging time should have much less visual weight than the amount and reason.
 
 Do not display `created_at` as an unlabeled clock time if that could make it look like transaction time.
 
+> **▸ Resolved in the build.** The spec gives only the same-day form. A second form was needed once rows could be moved between days: when the transaction date differs from the day it was logged, the stamp carries a date — **"logged 6 Sep, 9:40 PM"**. Same-day stays **"logged 9:40 PM"**. Without this, a row moved to another day showed a bare time that read as a claim about when the money was spent.
+
 Prefer an explicit subtle label such as:
 
 ```text
@@ -437,6 +451,8 @@ Core principle:
 
 The exact visual treatment of unknown transaction times remains a design detail to finalize.
 
+> **▸ Resolved in the build.** Two zones per day. Timed rows form a chronology; untimed rows sit beneath them under a **"Time not recorded"** heading, ordered by `created_at`. Nothing untimed is ever placed between two known times.
+
 ---
 
 # 13. Transaction Ordering
@@ -460,6 +476,8 @@ The semantic rule is fixed:
 > Known time can establish chronology. Unknown time cannot.
 
 The exact visual treatment can be decided during the detailed UI pass.
+
+> **▸ Resolved in the build.** As above — the two-zone model in `journal.ts`, rendered under "Time not recorded".
 
 ---
 
@@ -615,6 +633,10 @@ The calendar is a navigation mechanism, not the primary representation.
 
 The journal opens at **today**, showing the newest/latest transactions available.
 
+> **▸ Resolved in the build, and worth reading carefully — this section and §8 pulled in different directions and the spec never reconciled them.** The journal shipped as **two states of one screen**: *browse* (the default — every populated day, newest first) and *day* (one chosen date, entered through the picker). So it does not open "at today" as a today-scoped context; it opens on browse, where the newest transactions are the first thing visible. Day-by-day scrolling, which §18's "Scrolling" subsection contemplates, was deliberately not built.
+>
+> This is the one divergence that touches §33's acceptance checklist — see the banner at the top of this file.
+
 ## Scrolling
 
 Continuous scrolling is **not** a Phase A requirement.
@@ -728,6 +750,8 @@ Capture opens with that explicit intent established.
 ```
 
 This second model needs a proper interaction design before implementation.
+
+> **▸ Resolved in the build.** Built as the `DayCapture` sheet. Opening capture from a chosen day binds the recording to that date and says so on the sheet — *"It will be filed under {date} — unless you name a different day out loud."* The spoken date still outranks the viewed one.
 
 ---
 
@@ -969,6 +993,8 @@ Recommended direction:
 Whether manual editing should allow future dates should be finalized before implementation.
 
 If future-dated expenses are not useful to the product, the simpler option is to reject future dates during editing.
+
+> **▸ Resolved in the build.** Rejected, as the simpler option suggests. The date input is capped at today and the picker disables future days.
 
 ---
 
@@ -1275,7 +1301,7 @@ The journal semantics established in Phase A become the contract that Phase B's 
 16. Empty days should not be rendered as calendar placeholders throughout the journal.
 17. Empty days should make the voice capture action more prominent.
 18. Capture prompting should become quieter as the day becomes populated.
-19. The exact sparse-day threshold is not yet hardcoded.
+19. The exact sparse-day threshold is not yet hardcoded. *(▸ Resolved in the build: it is now a named constant, `BUSY_DAY = 5`, in one place rather than scattered — a deliberate departure from "configurable", since a second place to change it is a second place for it to drift.)*
 20. Editing ships in Phase A.
 21. Date editing is required in Phase A.
 22. Delete requires deliberate confirmation.

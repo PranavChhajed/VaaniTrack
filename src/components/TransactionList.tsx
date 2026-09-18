@@ -4,7 +4,7 @@ import Link from "next/link";
 import { DEFAULTS, type Transaction } from "@/lib/types";
 
 /**
- * Today's spending, rendered as one of DESIGN.md's "dark chambers" — a
+ * Today's spending, rendered as one of the reference's "dark chambers" — a
  * near-black inset room with an oversized corner radius, bookended by paper
  * canvas. The alternation is what gives the page its rhythm; a second light
  * panel here would flatten it.

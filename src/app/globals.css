@@ -3,7 +3,8 @@
 /* ============================================================
    VaaniTrack — design system
 
-   Structure follows the Wispr Flow reference in DESIGN.md:
+   Structure follows the Wispr Flow reference in
+   WISPR-FLOW-REFERENCE.md:
    2px ink borders, zero shadows, oversized radii, light/dark
    chamber alternation, EB Garamond display + Figtree UI.
 
@@ -96,7 +97,8 @@ body {
 }
 
 /* ---- Waveform ----------------------------------------------
-   From DESIGN.md's waveform visualizer: 5–7 vertical bars,
+   From the Wispr Flow reference's waveform visualizer: 5–7
+   vertical bars,
    8–24px, pulsing to indicate active recording. Promoted here
    from decoration to the primary action. */
 
@@ -171,7 +173,8 @@ body {
 }
 
 /* ---- Provenance ---------------------------------------------
-   FR-10. The hand-drawn underline accent from DESIGN.md is
+   FR-10. The hand-drawn underline accent from the Wispr Flow
+   reference is
    repurposed as the marker for inferred values: editorial
    emphasis turned into data honesty.
 

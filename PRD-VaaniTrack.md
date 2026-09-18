@@ -4,12 +4,22 @@
 
 | | |
 |---|---|
-| **Version** | 0.2 — pre-build |
+| **Version** | 0.3 — pre-build |
 | **Date** | 2026-09-05 |
-| **Status** | Draft for alignment. Not an implementation spec. |
+| **Status** | **Superseded as a description of the system.** Preserved as the pre-build record — see the banner below. |
 | **Sources** | `Product Idea Context for Claude.md`, `IDEA.md`, `RESEARCH.md` |
 | **Changes in 0.2** | Six open decisions resolved by the product owner. Research findings incorporated. |
 | **Changes in 0.3** | Amount confirmation, segment, success bar, correction window, accent requirement and v1 scope resolved. Market positioning deliberately left open — it does not block the build. |
+
+> ## 📋 Pre-build record — not the as-built specification
+>
+> **Status as of 18 September 2026.** This PRD was written on 5 September, before any code existed, and was never revised afterwards. It is preserved as the record of what was intended. **For what VaaniTrack actually is and does, read `CONTEXT.md`.**
+>
+> **What was built but is not described here at all.** Roughly half the shipped application post-dates this document and appears nowhere in it: the **transaction journal** (browsing, editing and correcting history), the **observability layer** (Supabase Postgres recording every pipeline stage), the **diagnostic portal** at `/portal`, the **audio-consent gate**, and the **microphone signal guards**. There is no FR for any of them. See `CONTEXT.md` §12, §14 and §15.
+>
+> **What is specified here but was never built.** FR-6, FR-7 and FR-8 — conversational correction, ambiguous-correction handling, and the tappable clarification UI — were cut during the build and do not exist. §11's "what v1 must contain" still lists them as mandatory; it is wrong. Correction happens by editing fields on a card, which is precisely the interaction §6 set out to avoid. Note that self-correction *within a single utterance* ("250, no wait, 280 on lunch") does work — it came for free from the extraction prompt — but correcting a *previous* capture by speaking does not.
+>
+> **One claim here is now inverted, and it is the important one.** §13 argues the accent requirement is free because Whisper can be self-hosted with **"no audio leaving the machine."** The shipped app does the opposite: audio is posted to a hosted transcription API, and with the user's consent it is also uploaded to Supabase Storage and retained for 90 days. Anyone reading this PRD for the product's privacy posture will get it exactly backwards. `CONTEXT.md` §14 describes what actually happens.
 
 > **How to read this document.** Every substantive statement carries a tag:
 > **[FACT]** observed reality · **[OBSERVATION]** behaviour seen, not yet generalised · **[DECISION]** an explicit choice to preserve · **[ASSUMPTION]** believed but unproven · **[HYPOTHESIS]** the thing we are testing · **[UNKNOWN]** deliberately unresolved · **[RISK]** what could go wrong.
@@ -145,7 +155,7 @@ Supporting measures the source implies but does not name:
 
 **[RISK]** This is a *behaviour*, not a reachable segment. There is no channel that targets "people who quit an expense app." Acquisition will need a proxy — and finding that proxy is unresolved.
 
-**[RISK] — friction tension.** This segment quit because of friction, and v1 has chosen blocking review before save (FR-12), which adds a step back. One tap versus a seven-field form is still a large net win, but the product is adding friction for the group most sensitive to it. Held deliberately, not by accident.
+**[RISK] — friction tension.** This segment quit because of friction, and v1 has chosen blocking review before save (FR-12), which adds a step back. *(▸ Superseded: FR-12 was reversed later in this same document — the build gates on confidence and auto-saves when all four conditions hold, with undo. Blocking review on every capture is not what shipped.)* One tap versus a seven-field form is still a large net win, but the product is adding friction for the group most sensitive to it. Held deliberately, not by accident.
 
 **[DECISION]** The source's warning still stands: do **not** narrow to students or engineers without validation.
 
@@ -176,7 +186,7 @@ These are implied by the examples, not stated as decisions:
 | Says one short thing instead of filling seven fields | **[DECISION]** Core interaction |
 | Never has to repeat information that does not change | **[DECISION]** Defaults |
 | Is not interrogated by the app | **[DECISION]** Minimal clarification |
-| Can fix a mistake by talking, not by editing a form | **[DECISION]** Conversational correction |
+| ~~Can fix a mistake by talking, not by editing a form~~ | **[NOT BUILT]** Conversational correction was cut. Correcting a past capture means editing a form — the opposite of this row |
 | Can record several expenses in one breath | **[DECISION]** Multi-expense utterance |
 
 ### 6.3 Pains avoided
@@ -300,7 +310,10 @@ The governing principle:
 
 **[DECISION]** No "expense group" abstraction is introduced merely because the expenses were spoken together. **[ASSUMPTION]** Close timestamps in the history communicate the connection well enough.
 
-#### FR-6 · Conversational correction
+#### FR-6 · Conversational correction ~~(v1)~~ — **CUT**
+
+> **▸ Cut — never built (18 Sept).** Correcting a previous capture by speaking does not exist. Correction is done by editing fields on the review card or in the transaction detail view. **One part survived by accident:** self-correction *inside* a single utterance — *"250, no wait, 280 on lunch"* — works, because the extraction prompt handles it. Cross-turn correction does not.
+
 
 **[DECISION]** The user can correct a transaction by talking.
 
@@ -323,7 +336,10 @@ This matches how the correction examples in the source actually read, and it bou
 
 **[UNKNOWN]** What ends a session — a timeout, closing the app, an explicit action — is not defined.
 
-#### FR-7 · Ambiguous correction handling
+#### FR-7 · Ambiguous correction handling ~~(v1)~~ — **CUT**
+
+> **▸ Cut — never built (18 Sept).** There is no correction-target disambiguation UI. It depended on FR-6, which was cut.
+
 
 **[DECISION]** When the system knows a correction is happening but not which transaction it targets, it must **not guess silently.**
 
@@ -333,7 +349,10 @@ This matches how the correction examples in the source actually read, and it bou
 
 **[DECISION]** Ambiguity is resolved with the smallest possible interaction.
 
-#### FR-8 · Minimal clarification
+#### FR-8 · Minimal clarification ~~(v1)~~ — **CUT as specified**
+
+> **▸ Cut — never built (18 Sept).** The tappable two-choice prompt was never built. Its job — asking rather than guessing — is done instead by the **review card**, which surfaces the uncertain fields for editing. Same principle, different interaction.
+
 
 **[DECISION]** The system does not constantly ask questions. It asks only when the missing information materially affects the transaction, or when it genuinely cannot determine meaning.
 
@@ -546,6 +565,8 @@ These may become future directions. The current question is much narrower:
 
 **[DECISION — resolved 2026-09-05] Indian-accented English is a v1 requirement.** This is a separate decision from the language one, and it is settled on cost grounds: it is free.
 
+> **▸ Not what was built (18 Sept).** The reasoning below rests on self-hosting Whisper so that no audio leaves the device. The shipped app uses a **hosted** transcription API, and audio that the user consents to keep is uploaded to **Supabase Storage** and retained 90 days. The cost argument held; the privacy property did not survive the build, and nothing here should be read as describing how the app treats recordings.
+
 **[RESEARCH]** Whisper is MIT-licensed and runs fully offline — no API key, no per-minute billing, no audio leaving the machine. The model that handles Indian accents well (large-v3, single-digit WER on the Svarah benchmark) is the same model that can be self-hosted at zero licensing cost via **whisper.cpp** (pure C/C++, CPU-only, no GPU required) or **faster-whisper** (large-v3 in ~3GB VRAM at int8).
 
 The Svarah paper's "difficult to deploy in the Indian context" caveat concerns model size and inference cost at scale — not achievability, and not an MVP with a small number of testers. The accurate path and the free path are the same path.
@@ -564,13 +585,15 @@ The Svarah paper's "difficult to deploy in the Indian context" caveat concerns m
 
 What v1 must contain, by decision:
 
-- Voice capture of a natural utterance (FR-1)
-- Inference and defaults (FR-2, FR-3, FR-4)
-- Multiple expenses per utterance (FR-5)
-- Conversational correction, including ambiguous cases (FR-6, FR-7)
-- Minimal clarification UI (FR-8)
-- No fabrication, with provenance (FR-9, FR-10)
-- English
+- Voice capture of a natural utterance (FR-1) — *built*
+- Inference and defaults (FR-2, FR-3, FR-4) — *built; defaults are hard-coded, with no settings screen*
+- Multiple expenses per utterance (FR-5) — *built*
+- ~~Conversational correction, including ambiguous cases (FR-6, FR-7)~~ — **cut, never built**
+- ~~Minimal clarification UI (FR-8)~~ — **cut, never built.** The review card serves this role instead
+- No fabrication, with provenance (FR-9, FR-10) — *built, and the core of the product*
+- English — *still true*
+
+> **▸ This list is no longer what v1 contains (18 Sept).** Three of its seven items were cut. What shipped in their place, and is absent from this list entirely, is the **journal** — the ability to browse, inspect and correct history — which turned out to matter more than conversational correction. See `CONTEXT.md` §12.
 
 Explicitly later: Layers 1 and 3, multilingual, everything in 8.2.
 
@@ -704,7 +727,7 @@ Every item below is **[UNKNOWN]**, carried over from the source as an open valid
 | # | Decision | Status |
 |---|---|---|
 | **1** | **Market positioning against ~10 live competitors.** | **Deliberately deferred.** Does not block the build. Easier to answer after watching people use v1. The strongest available ground, per research, is the coverage gap auto-import cannot reach — cash, person-to-person payments, and what a spend was actually for. |
-| **2** | **What ends a capture session.** | Timeout, app close, or explicit action — undefined. Blocks FR-6. |
+| **2** | ~~**What ends a capture session.**~~ | *Moot — FR-6 was cut, so nothing depends on this any more.* |
 | **3** | **What happens when an utterance cannot be interpreted at all.** | E9 — never addressed in the source. |
 | **4** | **Whether a transaction can be deleted by voice.** | E10 — never addressed in the source. |
 | **5** | **Where inference runs** — self-hosted server vs. on-device. | Implementation choice; a cost question at scale, not at MVP. |

@@ -936,3 +936,223 @@ screen you were already on — became a "Journal" link. Nothing else moved.
 A field the user types becomes provenance `said` (FR-10 state 1, "explicitly
 provided by the user"). Untouched fields keep what they arrived with, so the
 detail view stays truthful about which values the app supplied itself.
+
+---
+
+## Phase C — persistence and observability (2026-09-06)
+
+Brief: `vaanitrack_persistence_observability.md`. Stack inventory started the
+same day in `TechStack.md`.
+
+### Why this came before Phase B
+
+Phase B (spoken dates) was next in the roadmap. It got displaced by a question
+the project could not answer: **when an expense comes out wrong, which stage
+broke?** The pipeline is audio → ASR → transcript → extraction → confidence
+gate → user action, and the only thing being stored was the final transaction.
+That says what happened and never where it went wrong. Every accuracy decision
+after this point — a prompt change, a threshold move, a model swap — is a guess
+until the stages can be blamed independently.
+
+### C1 — the schema
+
+`supabase/schema.sql`, three tables, RLS on with no policies so the publishable
+key can read nothing. Every write happens server-side with the secret key, which
+bypasses RLS: one privileged path, everything else closed.
+
+| Table | Holds |
+|---|---|
+| `captures` | One row per utterance, spoken or typed: audio metadata, ASR verdict, transcript, `avg_logprob`, `no_speech_prob`, the extractor's raw output |
+| `capture_transactions` | One capture → N transactions, with the gate verdict |
+| `capture_events` | What the user did afterwards: saved, discarded, undone, edited, deleted |
+
+Three details the schema exists to get right:
+
+1. **One utterance can yield several transactions** (extraction rule 5 splits
+   *"250 lunch and 80 chai"*), so the gate verdict cannot be a column on
+   `captures`.
+2. **The gate is four independent conditions, not a score.** `gate_failed` is a
+   `text[]` naming which ones blocked the save. "It went to review" is not
+   actionable; "the amount was inferred rather than heard" tells you whether to
+   look at the transcriber, the prompt, or the threshold.
+3. **Undo, edit and delete destroy the evidence** in the app's own storage.
+   `before_state` preserves the model's original output, so a correction can be
+   compared against what was proposed — which is the whole value of a
+   correction.
+
+Client library: `postgres@^3`, raw SQL, chosen over `@supabase/supabase-js`
+because the portal reconstructs a pipeline across three tables with joins and
+aggregation.
+
+**The rule every function in `src/lib/observe.ts` obeys:** diagnostics must
+never take down the capture path. Each one swallows its own errors and returns
+a degraded-but-safe value. A missing row costs a data point; a thrown error
+costs the user their transaction.
+
+### C2–C5 — instrumentation, consent, mirror, portal
+
+- Transcription writes the capture row and returns its id; extraction attaches
+  the raw model output to that same row; the client reports the gate verdict,
+  naming which of the four conditions blocked a save.
+- **Rejections are recorded too.** They mark where the trust boundary sits and
+  were previously invisible.
+- Transactions mirror to Supabase, scoped to an anonymous per-browser device id
+  (`src/lib/device.ts`). Durability, deliberately not accounts — the brief warns
+  against turning this into an authentication project. Deletes are soft, because
+  a deleted transaction is evidence about where trust broke.
+- Audio is kept **only with consent**, asked once before the first recording,
+  expiring after 90 days. The gate is mounted in the root layout rather than on
+  the capture screen, because the journal can record too — asking in one place
+  and not the other would mean a recording kept without anyone agreeing to it.
+- `/portal`, password-gated, fails closed when no password is configured — it
+  shows transcripts and amounts, which is the most sensitive surface in the
+  product.
+
+### Decisions taken
+
+| Question | Resolution |
+|---|---|
+| Supabase client | Raw SQL via `postgres@^3`. No second library for audio either — Storage over plain `fetch` |
+| Connection string | Supavisor **transaction pooler**. The direct host is IPv6-only and unreachable from Vercel |
+| Pool size | `max: 1`, `prepare: false`. Serverless instances are numerous and short-lived, so a larger per-instance pool multiplies into far more connections than intended; the pooler cannot carry prepared statements |
+| Identity | Anonymous device id in `localStorage`, not accounts |
+| Delete semantics | Soft (`deleted_at`), invisible to the app, still answerable to the portal |
+| Audio retention | 90 days — long enough to span several prompt and model iterations, short enough to stay a policy rather than a hoard |
+
+---
+
+## The silent-microphone arc (2026-09-06)
+
+Five commits, and the most instructive sequence in the project so far. The
+observability layer had just gone in, which is the only reason any of it was
+findable.
+
+### What was observed
+
+Captures of a completely normal length and a completely normal byte count that
+contained no voice. Whisper answered them with *"Thank you."*
+
+**Every column already in `captures` said the recording was healthy.** That is
+the finding. Opus is encoded here at a fixed target bitrate, so **silence costs
+exactly as many bytes as speech** — the byte count, the duration, and the
+bytes-per-millisecond ratio all agreed the capture was fine.
+
+### The four fixes, in order
+
+**1 · A brief tap and a silent recording are not the same failure** (`15ce1de`).
+Both land under the 2000-byte threshold and both were reported with the
+identical *"too short"* message — which explains why the message never changed
+no matter how long the button was held. A capture running several seconds at
+under 1 byte/ms is a microphone recording silence, and needs a completely
+different fix from "hold it longer". The portal's failure heuristic separates
+them too, so the pattern names itself instead of needing a manual query.
+
+**2 · The constraints and the wiring order** (`6a9239a`). `/diag`'s bare
+`getUserMedia({ audio: true })` captured full-volume speech every time — 48,652
+bytes over 3006 ms, a healthy 16 bytes/ms. The capture screen, requesting
+`echoCancellation`/`noiseSuppression`/`autoGainControl` and then wiring an
+analyser onto the same stream *before* the recorder started, produced 0.3
+bytes/ms. Both changes reproduce the diag page's known-working shape: plain
+`audio: true`, and the analyser attached only after `recorder.start()` has
+claimed the stream.
+
+**3 · Measure the signal, not the byte count** (`36409b6`). One 11.8 KB,
+1.3-second clip measured **−77 to −103 dBFS end to end**. Another held a
+dead-flat −31.5 dB for its whole length, which is a room's noise floor, not
+speech. Normalising both to −16 LUFS and re-transcribing recovered nothing,
+which rules out attenuation: the voice is not faint in there, it is **absent**.
+
+Only the browser holds the PCM, so only the browser can measure this. The level
+meter that was already running for the animation now keeps peak and mean RMS and
+sends them with the audio (`003_levels.sql`). A take below **−55 dBFS** is
+refused on the device, with a message naming the causes worth checking, rather
+than being paid for and returned as an invented expense. The meter also moved
+from `getByteTimeDomainData` to the float form — the 8-bit version's
+quantisation put its floor near −48 dB and could not tell a quiet room from
+silence at all.
+
+Added `/diag/mic`: the same utterance through three `getUserMedia`
+configurations, printing what actually arrived. Android's defaults route capture
+through the platform voice-communication path, and **whether that path works is
+a property of the handset**, so it has to be measured on the handset.
+
+**4 · The microphone needs time to wake up** (`714523d`). The real cause. The
+handset's audio track delivers digital zeros for a while after `getUserMedia`
+resolves. Measured across the retained recordings: **0.06s, 0.12s, 0.18s, 0.84s,
+1.44s — and once the whole of a 1.34s take.** The app set state to `recording`
+the moment the track existed, so the button said "Tap to finish" while nothing
+was being captured, and the opening words — often the amount — were spoken into
+a dead stream.
+
+`/diag/mic` had passed all three configurations at −5.1, −8.2 and −4.9 dBFS
+peak, which is what ruled out the microphone, the constraints and the routing.
+**It passed because it records a fixed four seconds**: human reaction time after
+"SAY NOW" steps over the dead window. Tap-speak-tap leaves no such margin.
+
+So the recorder now holds a `warming` state until the meter sees a sample above
+**−66 dBFS**, and only then invites speech. The lead-in stays in the blob, where
+leading silence costs nothing — what mattered was that someone was talking
+during it. The wait gives up after 1200 ms, and skips entirely when the
+`AudioContext` is not `running`, so a device whose meter cannot start records
+immediately rather than stalling. That same distrust guards the silence check
+from fix 3: **a suspended context reports zeros about the meter, not about the
+microphone**, and must not be allowed to reject a good recording. Warm-up time
+is recorded per capture (`004_warmup.sql`), because it varies run to run on one
+device and only a distribution shows whether the fix worked.
+
+### The retention bug found on the way (`327a01d`)
+
+Browsers report `audio/webm;codecs=opus`. The bucket's allowlist matches the
+bare type and rejects the codec parameter with a **415**, so *every* consented
+recording was being dropped — rows recording `consent=true`, `audio_stored=false`,
+and no error surfaced anywhere. That was precisely the corpus needed to diagnose
+the above. Storage failures now log to the server console: failing silently is
+still correct for the user's capture, failing invisibly to the operator is not.
+
+### What this arc changed about how to debug this product
+
+1. **A diagnostic that differs from the real path in any way can pass while the
+   real path fails.** `/diag/mic`'s fixed four-second recording was the
+   difference, and it hid the bug rather than finding it.
+2. **Byte count is not evidence of content** under a fixed-bitrate codec. The
+   only honest measure of "did sound reach us" is the signal, and it exists in
+   exactly one place: the browser.
+3. **Instrument first.** Not one of these four fixes was reachable without the
+   `captures` table, and two of them required adding a column to it.
+
+---
+
+## iQOO hackathon — Chennai, 12–13 September (2026-09-06)
+
+Plan: `IQOO-HACKATHON.md`. Idea submission closed 8 September; the build is
+12–13 September.
+
+**The repositioning is on-device rather than cloud.** Not a concession to the
+rules: expense capture happens in markets, autos and shop queues, which is
+exactly where the network is worst, and financial data is the category people
+least want leaving the phone.
+
+**The pitch moved off "voice expense tracker."** That category is a decade old
+and would not survive screening. The wedge is that every fintech app in India
+reads the UPI and card feed, and that feed has two holes — **cash never appears
+in it at all, and digital spends carry no reason.** Voice closes both, because
+it is the only interface fast enough to use while money is leaving your hand.
+That reframe answers a screener's three questions in the order they get asked
+(why voice, why on-device, why India) and it makes the reconciliation screen the
+demo beat rather than the capture flow.
+
+Ledger features that follow from it: bank-SMS reconciliation, udhaar in both
+directions, Tamil for a Chennai floor, voice query, camera capture of UPI
+screenshots. **SMS access rules out the PWA route**, so the stack decision now
+has a product consequence rather than only a scoring one.
+
+What goes to Chennai is the specification, not the source. The submission form
+asks for pre-existing components to be disclosed, so the web prototype is
+declared and linked.
+
+---
+
+## Phase B is still next
+
+Spoken dates, unchanged from the earlier plan. Phase C displaced it rather than
+replacing it, and the journal semantics remain the contract Phase B must satisfy.

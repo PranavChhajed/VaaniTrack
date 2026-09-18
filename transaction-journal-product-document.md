@@ -1,3 +1,23 @@
+# Transaction Journal — original product brief
+
+> ## 📌 Source brief, superseded twice — read it as history
+>
+> **Status as of 18 September 2026.** This is the product owner's original brief for the journal, written before any journal existed. It is phrased throughout in live spec voice — *"The journal should…"*, *"MVP scope"*, *"Acceptance criteria"* — but it is **not** the current specification and has not been since 6 September.
+>
+> **It was superseded twice:** first by `VAANITRACK_PHASE_A_JOURNAL_CONTEXT.md`, the formal spec that carried its thinking forward in far more detail, and then by the built journal itself. For what the journal actually does, see `CONTEXT.md` §12.
+>
+> **Three things here are now contradicted by what shipped:**
+>
+> - **"No undo system is required for the first MVP"** — undo was built, and the confidence gate depends on it. Auto-saving is only defensible because undo is trivial.
+> - **Every mockup row shows a clock time** (*"10:42 AM Lunch ₹250"*). In practice almost no capture yields a spoken time, so the built row shows a *logged* stamp instead, and untimed rows sit in their own "Time not recorded" zone rather than being placed inside the day's chronology.
+> - **Acceptance Scenario 3** — *"I spent 400 on dinner yesterday"* filing under Yesterday — **cannot pass today.** Spoken and relative dates are Phase B, still unbuilt. The same applies to the §12 example.
+>
+> Also note that §9A's day-by-day scrolling was deliberately not built, and the transaction model in §13 predates both `payee` and per-field provenance.
+>
+> The body below is unchanged.
+
+---
+
 ## 1\. Product objective
 
 Create a chronological journal of all recorded expenses, grouped by calendar day.

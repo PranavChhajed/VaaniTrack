@@ -2,7 +2,7 @@
 
 **This file is the single source of truth for understanding VaaniTrack.** It is written so that a person or an LLM can read only this and understand the product, the reasoning behind it, the architecture, the code, the current state, and what comes next — without opening another file.
 
-Everything here reflects the codebase as of **6 September 2026**.
+Everything here reflects the codebase as of **18 September 2026**, at commit `a84cdd8`.
 
 ---
 
@@ -78,9 +78,9 @@ This one research finding shapes the entire technical architecture:
 | **Currency amounts** | **36.3%** | **98.5%** | **95.6%** |
 | Timestamps | 3.4% | 75.9% | 83.8% |
 
-**Speech recognition is worst at exactly the field that matters most.** Raw ASR gets currency amounts right only 36.3% of the time — the lowest of every numeric category tested.
+**Speech recognition is worst at exactly the field that matters most.** Raw ASR gets currency amounts right only 36.3% of the time — the lowest of any category the app actually depends on. (Timestamps score lower still, at 3.4%; that finding gets its own consequence below.)
 
-**This is why the app is a two-stage cascade** rather than plain speech-to-text: transcribe first, then have an LLM interpret the financial meaning. That path reaches 95.6% on amounts.
+**This is why the app is a two-stage cascade** rather than plain speech-to-text: transcribe first, then have an LLM interpret the financial meaning. That path reaches 95.6% on amounts. The 98.5% in the middle column is the *fine-tuning* route, which this project did not take — so 95.6% is the number this architecture can claim.
 
 A useful side-finding: timestamps score **3.4%** at baseline — the worst number in the table. This independently justifies the decision to treat time as optional and never infer it.
 
@@ -90,9 +90,11 @@ Whisper was the best-performing model tested at **11.2% WER** on real-world use 
 
 ## 6. How the app works (user's view)
 
+**Once, before the first recording:** a single question asking whether recordings may be kept, with no pre-ticked box. Answering no changes nothing about how the app works (§14).
+
 ### Capture screen (`/`)
 
-1. Press the waveform button and speak: *"250 lunch"*
+1. Press the waveform button and speak: *"250 lunch"* — the button waits until the microphone is actually carrying sound before it says "Tap to finish" (§10)
 2. Audio → transcription → structured transaction
 3. **If confident:** saved immediately, with a green "Logged ₹250 lunch" banner and an **Undo** button
 4. **If uncertain:** a review card appears asking you to check before it saves
@@ -117,16 +119,18 @@ A quiet `+ Log an expense` button on a chosen day opens a **sheet** with the mic
 ## 7. Architecture
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│  Browser (phone or laptop)                              │
+┌──────────────────────────────────────────────────────────┐
+│  Browser (phone or laptop)                               │
 │                                                          │
 │  /            capture screen                             │
 │  /journal     the record                                 │
-│  /diag        diagnostics page                           │
+│  /portal      diagnostic portal (password-gated)         │
+│  /diag        diagnostics  ·  /diag/mic  signal test     │
 │                                                          │
 │  MediaRecorder ──▶ audio blob                            │
-│  localStorage  ◀─▶ transactions                          │
-└────────────────────────┬────────────────────────────────┘
+│  AudioContext  ──▶ dBFS level  (is there sound at all?)  │
+│  localStorage  ◀─▶ transactions, device id, consent      │
+└────────────────────────┬─────────────────────────────────┘
                          │
           ┌──────────────┴───────────────┐
           ▼                              ▼
@@ -137,11 +141,25 @@ A quiet `+ Log an expense` button on a chosen day opens a **sheet** with the mic
 │ whisper-large-v3     │─────▶│ openai/gpt-oss-120b      │
 │                      │ text │                          │
 │ → text + confidence  │      │ → structured JSON        │
-└──────────────────────┘      └──────────────────────────┘
+│ → captureId          │      │                          │
+└──────────┬───────────┘      └───────────┬──────────────┘
+           │                              │
+           │   POST /api/observe ◀────────┼──── gate verdict,
+           │   (fire-and-forget)          │     user actions,
+           ▼                              ▼     transaction mirror
+┌──────────────────────────────────────────────────────────┐
+│  Supabase — OPTIONAL, never load-bearing                  │
+│                                                          │
+│  Postgres   captures · capture_transactions ·            │
+│             capture_events · transactions                │
+│  Storage    consented audio, 90-day expiry               │
+└──────────────────────────────────────────────────────────┘
 ```
 
 **Stage 1 (`/api/transcribe`)** turns audio into words and reports how sure it is.
 **Stage 2 (`/api/extract`)** turns words into a transaction. **The prompt in stage 2 is the product** — it is where the 36.3% → 95.6% improvement actually happens.
+
+**`/api/observe`** is the third endpoint, and it is not part of the pipeline. The gate decision and every user action happen in the browser *after* both API calls have returned, so they cannot be captured server-side and are reported back deliberately. It **always answers 200**. Nothing on the capture path awaits it.
 
 ### Tech stack
 
@@ -152,13 +170,15 @@ A quiet `+ Log an expense` button on a chosen day opens a **sheet** with the mic
 | Styling | Tailwind CSS **v4** (CSS-first config in `globals.css`) |
 | Transcription | Groq — `whisper-large-v3` |
 | Extraction | Groq — `openai/gpt-oss-120b` (override via `GROQ_MODEL`) |
-| Storage | Browser `localStorage`, key `vaanitrack.transactions` |
-| Audio | Browser `MediaRecorder` API |
+| Working store | Browser `localStorage`, key `vaanitrack.transactions` |
+| Durable store | Supabase Postgres via `postgres@^3`, raw SQL — **optional** |
+| Audio retention | Supabase Storage, consent-gated, 90 days — **optional** |
+| Audio | Browser `MediaRecorder` + `AudioContext` level metering |
 | Phone testing | Cloudflare quick tunnel (`cloudflared`) + QR code |
 
-**Only one secret is needed:** `GROQ_API_KEY` in `.env.local`. It covers both models.
+**Only one secret is needed to capture:** `GROQ_API_KEY` in `.env.local`. It covers both models. The five Supabase and portal variables are optional; without them the app behaves identically and simply runs unobserved.
 
-There is **no backend database, no auth, no server-side user state.** Every transaction lives in the browser that recorded it.
+**There is still no auth and no cross-device sync.** `localStorage` remains the working copy the UI reads and writes; Postgres is a mirror keyed by an anonymous per-browser device id. A second device is a different id and sees nothing. See §14.
 
 ---
 
@@ -229,9 +249,24 @@ Rule 10 is a real bug fix, not theory — it came from watching the transcriber 
 
 ---
 
-## 10. Trust mechanisms in the transcription stage
+## 10. Trust mechanisms in the capture and transcription stages
 
-Stage 1 does more than call Whisper. It defends against the specific ways Whisper fails.
+Stage 1 does more than call Whisper. It defends against the specific ways Whisper fails — and, since 6 September, against the ways the **microphone** fails before Whisper ever sees anything.
+
+### Before the transcriber: does the recording contain sound?
+
+This exists because a handset produced recordings of a normal length and a normal byte count containing **no voice at all** — one 11.8 KB, 1.3-second clip measured −77 to −103 dBFS end to end. Whisper answered it *"Thank you."*
+
+**Byte count cannot detect this.** Opus is encoded here at a fixed target bitrate, so silence costs exactly as many bytes as speech. Only the browser holds the PCM, so only the browser can measure it.
+
+| Guard | Threshold | Why |
+|---|---|---|
+| **Warm-up wait** | level > **−66 dBFS**, giving up after 1200 ms | The audio track delivers digital zeros for up to 1.44 s after `getUserMedia` resolves. The button used to say "Tap to finish" during that window, so the amount was spoken into a dead stream. The recorder now holds a `warming` state until sound actually arrives. |
+| **Silence refusal** | peak < **−55 dBFS** | Refused on the device, naming the causes worth checking, rather than being paid for and returned as an invented expense. |
+
+Both guards **stand down when the `AudioContext` is not `running`** — a suspended context reports zeros about the meter, not about the microphone, and must never be allowed to reject a good recording. Peak, mean and warm-up time are recorded per capture, because the warm-up varies run to run on one device and only a distribution shows whether the wait is working.
+
+### The transcriber's own defences
 
 **Decoder prompt, chosen by experiment:**
 
@@ -273,7 +308,11 @@ All four conditions must hold. **The amount is the one field that must never be 
 
 The `-0.9` threshold is calibrated, not arbitrary: a known-good transcript (*"250 lunch."*) scores `-0.64`, so the threshold sits below that. It is deliberately generous — it exists to catch audio that was largely guessed at, not to second-guess good captures.
 
+> **A divergence worth recording.** `RESEARCH.md` §3 advises *against* this approach: it found mean log-probability a weak predictor of correctness (0.705 ROC AUC) and recommended **self-consistency** instead — parse the same utterance twice and check the two results agree. The gate uses `avg_logprob` anyway. The reason is cost and latency: self-consistency doubles both on every capture, and the gate is not being asked to grade the transcript, only to spot audio that was largely guessed at, where the signal is strong enough. It is a deliberate trade, not an oversight, and if amount accuracy ever disappoints in real use this is the first thing to revisit.
+
 **Auto-saving is only acceptable because undo is trivial.** Every auto-logged entry announces itself with an Undo button.
+
+**Every verdict is recorded, naming which conditions failed** — `audio_unclear`, `extractor_flagged_ambiguous`, and so on — not merely that the capture went to review. This is what makes the threshold above adjustable on evidence instead of instinct. An auto-save the user immediately undoes is the single worst outcome the product has, and the portal surfaces it as its own verdict (§15).
 
 ---
 
@@ -356,19 +395,104 @@ Derived from a Wispr Flow style reference; documented in `DESIGN.md`.
 
 ---
 
-## 14. File map
+## 14. The observability layer
+
+Added 6 September, and it displaced Phase B in the roadmap. The reason is a question the project could not answer:
+
+> **When an expense comes out wrong, which stage broke?**
+
+The pipeline is `audio → ASR → transcript → extraction → gate → user action`. Storing only the final transaction says *what* happened and never *where it went wrong*. Every accuracy decision after this point — a prompt change, a threshold move, a model swap — is a guess until the stages can be blamed independently.
+
+### The rule that governs all of it
+
+> **Diagnostics must never take down the capture path.**
+
+Every function in `src/lib/observe.ts` swallows its own errors and returns a degraded-but-safe value. `/api/observe` always answers 200. The client's `report.ts` is fire-and-forget and nothing awaits it. **A missing row costs a data point; a thrown error costs the user their transaction.** With `DATABASE_URL` unset, the whole layer disables itself and capture is unchanged.
+
+### The four tables
+
+`supabase/schema.sql`, then `002`–`004` in order.
+
+| Table | One row per | Key columns |
+|---|---|---|
+| `captures` | Utterance, spoken or typed | `transcript`, `asr_verdict`, `avg_logprob`, `no_speech_prob`, `audio_peak_db`, `audio_mean_db`, `audio_warmup_ms`, `extract_raw` |
+| `capture_transactions` | Transaction extracted from a capture | `extracted`, `gate_outcome`, `gate_failed` |
+| `capture_events` | Thing the user did afterwards | `action`, `before_state`, `after_state`, `changed_fields` |
+| `transactions` | Transaction in the journal | `data`, `amount`, `txn_date`, `deleted_at` |
+
+**Three design points worth preserving:**
+
+1. **One utterance can yield several transactions** (extraction rule 5 splits *"250 lunch and 80 chai"*), so the gate verdict cannot be a column on `captures`.
+2. **`gate_failed` names conditions, not a score.** The gate is four independent checks. *"It went to review"* is not actionable; *"the amount was inferred rather than heard"* tells you whether to look at the transcriber, the prompt, or the threshold.
+3. **`before_state` exists because undo, edit and delete destroy the evidence** in the app's own storage. Without it a correction can be seen but not compared against what the model proposed — which is the entire value of a correction.
+
+**Rejections are recorded too.** They mark where the trust boundary sits, and were previously invisible.
+
+### Security posture
+
+RLS is **on with no policies** on every table — deny by default. All writes happen server-side with `SUPABASE_SECRET_KEY`, which bypasses RLS. If the publishable key ever reaches client code by accident, none of it is readable. One privileged path, everything else closed.
+
+### Identity, and what it is not
+
+`src/lib/device.ts` generates a random UUID once per browser and keeps it in `localStorage`. It carries no personal information and resets when site data is cleared.
+
+Its purpose: **telling ten failures by one person apart from one failure by ten people**, which is usually the question that matters. It is deliberately not an account — the brief warns against turning this into an authentication project, and durability alone was what was actually missing.
+
+### Audio retention and consent
+
+One question, asked once before the first recording, mounted in the root layout because the journal can record too. No pre-ticked box, no default; "No" is as easy to press as "Yes".
+
+**Answering no is not a degraded mode.** The app works identically — it still records expenses, still shows transcripts, still logs what the pipeline did. The only difference is whether the recording itself is kept. Consented clips expire after **90 days**: long enough to span several prompt and model iterations, short enough to remain a policy rather than a hoard.
+
+---
+
+## 15. The diagnostic portal
+
+`/portal` — the read side, and the most sensitive surface in the product, because it shows transcripts and amounts.
+
+**Access:** one operator, one `PORTAL_PASSWORD`, one hashed httpOnly cookie, compared with `timingSafeEqual`. **An unset password denies everyone** rather than letting the page fall open — a missing environment variable in production must fail closed. Deliberately not an auth system; if VaaniTrack ever gains real accounts this gets replaced wholesale rather than extended.
+
+**The list view** shows the last 100 captures with a **likely-failure verdict** — labelled on screen as a heuristic, because it narrows the search rather than closing the case. Its ordering matters: *a stage can only be blamed once everything upstream of it is known to have worked.*
+
+| Verdict | Reached when |
+|---|---|
+| Mic sent silence — nothing reached the page | peak < −55 dBFS |
+| Mic far too quiet | peak < −40 dBFS |
+| Mic hardware — recorded silence, not a short tap | under 1 byte/ms across more than 1200 ms |
+| Recording too short — mis-tap | small and brief |
+| ASR — returned a stock hallucination | denylist hit |
+| Extraction — … | extractor errored |
+| **Gate — auto-saved something wrong** | the user undid an auto-save |
+| Extraction — proposal rejected / user corrected a field | discarded or edited |
+| Sent to review / Clean | — |
+
+**"Gate — auto-saved something wrong" is the worst outcome the product has**: the gate was confident and wrong. It is the one verdict that indicts the governing principle directly.
+
+**The detail view** reconstructs one capture as a pipeline — audio metrics, ASR result, raw extractor output, gate verdict per transaction, then the event trail.
+
+`/diag/mic` is the companion: it runs the same utterance through three `getUserMedia` configurations and prints the dBFS that arrived. Android routes capture through the platform voice-communication path by default, and **whether that path works is a property of the handset**, so it must be measured on the handset.
+
+> **A caution learned the hard way.** `/diag/mic` records a fixed four seconds, so human reaction time after "SAY NOW" steps over the microphone's dead lead-in. It passed at −5.1, −8.2 and −4.9 dBFS while real captures were silent. **A diagnostic that differs from the real path in any way can pass while the real path fails.**
+
+---
+
+## 16. File map
 
 ```
 src/
   app/
     page.tsx              Capture screen. Today's transactions only.
-    layout.tsx            Root layout, fonts, metadata
+    layout.tsx            Root layout, fonts, metadata, consent gate
     globals.css           Tailwind v4 config, design tokens, animations
     journal/page.tsx      Journal — browse + day states, month sections
+    portal/page.tsx       Diagnostic portal — capture list + pipeline view
     diag/page.tsx         Diagnostics page
+    diag/mic/page.tsx     Microphone signal test, three mic configurations
     api/
-      transcribe/route.ts Stage 1 — audio → text + confidence
+      transcribe/route.ts Stage 1 — audio → text + confidence, writes capture
       extract/route.ts    Stage 2 — text → structured transaction
+      observe/route.ts    Client-side reporting sink. Always 200.
+      portal/route.ts     Portal password → session cookie
 
   components/
     WaveformButton.tsx    The record button with live level visualisation
@@ -378,15 +502,28 @@ src/
     TransactionDetail.tsx Full-screen inspect / edit / delete
     DatePicker.tsx        Month grid, marks populated days, blocks future
     DayCapture.tsx        The sheet that records onto a chosen day
+    AudioConsent.tsx      The one question, asked once, before any recording
+    PortalLogin.tsx       Password form for /portal
 
   lib/
     types.ts              Transaction, Field, Provenance, localStorage
     useCapture.ts         THE capture pipeline — shared by both screens
-    useRecorder.ts        MediaRecorder wrapper
+    useRecorder.ts        MediaRecorder + level meter + warm-up gate
     journal.ts            Grouping, time semantics, date helpers
+    observe.ts            Server-side observability. Never throws.
+    report.ts             Client-side fire-and-forget reporting
+    device.ts             Anonymous device id + audio consent
+    portalAuth.ts         Portal password hashing, fails closed
+
+supabase/
+  schema.sql              captures, capture_transactions, capture_events
+  002_transactions.sql    Transaction mirror + consent/expiry columns
+  003_levels.sql          audio_peak_db, audio_mean_db
+  004_warmup.sql          audio_warmup_ms
 
 scripts/
   journal.test.ts         34 assertions, no test framework
+  observe.smoke.ts        Writes a full pipeline's rows, reads back, deletes
   dev-tunnel.mjs          Cloudflare tunnel + QR code
   dev-https.mjs           Self-signed HTTPS alternative
 
@@ -399,22 +536,35 @@ start-vaanitrack.bat      One-click morning startup (Windows)
 2. **`src/app/api/extract/route.ts`** — the prompt, which is the actual product
 3. **`src/lib/useCapture.ts`** — the pipeline and the confidence gate
 4. **`src/lib/journal.ts`** — the time and grouping semantics
+5. **`src/lib/observe.ts`** — the observability contract, and why it never throws
 
 `useCapture.ts` exists so both the capture screen and the journal's day-sheet share **identical** capture behaviour, differing only in which date a capture lands on. Duplicating it would let the two paths drift.
 
 ---
 
-## 15. Running it
+## 17. Running it
 
 ```bash
 npm install
 ```
 
-Create `.env.local`:
+Copy `.env.local.example` to `.env.local`. **One variable is required:**
 
 ```
 GROQ_API_KEY=gsk_...        # free at console.groq.com
 ```
+
+Everything else is optional. Without it, capture runs unobserved and `/portal` denies everyone:
+
+```
+DATABASE_URL=               # Supavisor TRANSACTION pooler, not the direct host
+NEXT_PUBLIC_SUPABASE_URL=
+SUPABASE_SECRET_KEY=        # sb_secret_… — server only, bypasses RLS
+PORTAL_PASSWORD=            # unset ⇒ /portal denies everyone
+SAVE_CAPTURES=0             # local .captures/ files; DEFAULTS TO ON if unset
+```
+
+To enable the layer, apply the SQL in `supabase/` in order and create a `captures` storage bucket.
 
 | Command | Purpose |
 |---|---|
@@ -422,7 +572,8 @@ GROQ_API_KEY=gsk_...        # free at console.groq.com
 | `npm run build` / `npm start` | Production build |
 | `npm run dev:tunnel` | **Phone testing** — production build + public HTTPS tunnel + QR code |
 | `npm run dev:tunnel:hot` | Same, but hot reload instead of a build |
-| `node --experimental-strip-types scripts/journal.test.ts` | Run the test suite |
+| `node --experimental-strip-types scripts/journal.test.ts` | The data-layer test suite |
+| `node --env-file=.env.local --experimental-strip-types scripts/observe.smoke.ts` | Round-trips one pipeline's rows through Supabase, then deletes them |
 | `start-vaanitrack.bat` | Windows one-click: clears stale processes, checks deps and API key, builds, tunnels |
 
 ### Why a tunnel is needed for phone testing
@@ -431,28 +582,48 @@ Browsers only grant microphone access on a **secure context**. A self-signed cer
 
 ---
 
-## 16. Current state (6 September 2026)
+## 18. Current state (18 September 2026)
 
 **Working:**
 - Voice capture with the two-stage cascade
 - Typed capture as a first-class path
+- Device-side signal guards: warm-up wait and silence refusal
 - Confidence gating, review cards, undo
 - The journal: day grouping, month subtotals, time semantics, date picker
 - Transaction detail with provenance display, editing, deletion
 - Recording onto a chosen past day from the journal
+- **Full pipeline observability** — every stage recorded, rejections included
+- **Durable transaction mirror**, device-scoped
+- **Consent-gated audio retention**, 90-day expiry
+- **`/portal`** with per-capture pipeline reconstruction and failure heuristics
+- **`/diag/mic`** for handset-level microphone diagnosis
 - 34 passing data-layer assertions; TypeScript clean
 
-**Repository:** `github.com/PranavChhajed/VaaniTrack` (private). One commit, `0a6c17e`. `.env.local` is gitignored and verified absent from the remote.
+**Repository:** `github.com/PranavChhajed/VaaniTrack` (private). **12 commits**, HEAD `a84cdd8`. `.env.local` is gitignored and verified absent from the remote.
 
 **Not yet done:**
-- The formal Phase A acceptance pass (A1–A9) on a real phone
+- The formal Phase A acceptance pass on a real phone — the 36 bullets in `VAANITRACK_PHASE_A_JOURNAL_CONTEXT.md` §33. **One of them has to be adjudicated before it can be signed off:** the spec asks that *"Today opens as the current journal context"*, but the journal ships opening on the browse state — every populated day, newest first. The spirit of the bullet (the latest transactions are immediately visible) is satisfied; its letter is not. Decide which was meant before running the pass, not during it
+- **Vercel deployment.** The environment is prepared in `.env.vercel` and `DATABASE_URL` already points at the pooler for it, but nothing is deployed
 - Sustained real-world usage by the author
+- Phase B — spoken dates
+
+**The iQOO hackathon has ended.** It ran in Chennai on 12–13 September and is no longer a driver of this codebase. `IQOO-HACKATHON.md` is kept as the record of that plan — note that it targeted a **separate native Android application**, so none of the features it lists were ever scoped to this repo. One finding from it does carry forward, and is recorded in §20.
+
+**No code has changed since 6 September**, and the last capture on disk is from that morning — so the "sustained real-world usage" item above is still genuinely untested.
 
 ---
 
-## 17. Known limitations and gotchas
+## 19. Known limitations and gotchas
 
-**Data is `localStorage`-only.** Per-browser, per-device. Clearing browser data destroys it; phone and laptop keep entirely separate records; nothing syncs. Any serious version needs a real datastore. **This is the single biggest architectural limitation.**
+**The 90-day audio deletion is promised but not enforced.** The consent dialog tells the user, in as many words, *"Recordings are deleted after 90 days"* (`AudioConsent.tsx:60`). `AUDIO_RETENTION_DAYS = 90` is set, `audio_expires_at` is written onto every stored capture, and the column is indexed for exactly this purpose — **but nothing reads it.** There is no purge job, no cron, no scheduled function anywhere in the repo. The first consented recording was stored on 6 September 2026, so the promise comes due around **5 December 2026**. Until a purge exists this is an unkept commitment to a user about their own voice, which puts it in a different category from the other items on this list.
+
+**`localStorage` is still the working store.** The UI reads and writes it; Postgres is a mirror, not a source. The mirror gives durability against a cleared browser — but it is **keyed by an anonymous device id that clearing site data also destroys**, so recovery is not automatic, and a second device is simply a different id. **There is still no sync and no accounts.**
+
+**The observability layer is optional by design, which cuts both ways.** With `DATABASE_URL` unset everything still works and nothing is recorded — including the diagnostics you would want the moment something goes wrong. Silence from the layer is not evidence of health.
+
+**`SAVE_CAPTURES` defaults to ON.** Unset, the transcribe route writes a `.webm` and a `.json` per capture to `.captures/` on local disk. It predates consent and is **not consent-gated**. Set it to `0` anywhere deployed; on Vercel it silently no-ops against the ephemeral filesystem.
+
+**A microphone can report success and deliver silence.** Some Android handsets deliver digital zeros for up to 1.44 s after `getUserMedia` resolves, and on some the platform voice-communication path delivers a flat noise floor throughout. **Opus's fixed bitrate means byte count, duration and bytes-per-ms all look healthy.** The warm-up wait and the −55 dBFS refusal address this; `/diag/mic` diagnoses what remains.
 
 **Cloudflare quick tunnels are a coin flip.** Each run gets a random hostname, and some ISP DNS resolvers (Airtel observed) return `NXDOMAIN` for them — the link then fails on every device on that network while appearing fine elsewhere. Two real bugs in `dev-tunnel.mjs`:
 1. The `printed` flag latches on the first hostname, so if `cloudflared` reconnects with a new one, the script never tells you
@@ -462,17 +633,17 @@ The durable fix is deploying to Vercel, which removes tunnels entirely.
 
 **Verifying a URL from a different network path proves nothing.** A tool whose network egress differs from the user's machine will happily report HTTP 200 for a hostname the user's browser cannot resolve. Always verify from the same resolver the user's browser uses.
 
-**No auth, no multi-user, no sync.** Single-user by design at this stage.
+**No auth, no multi-user.** The portal password is one shared operator secret, not an account system.
 
-**English only in v1.** Hindi-English amount words (*"dhai sau"*, *"ek lakh"*) are handled in the extraction prompt, but the interface and general speech handling are English.
+**English only in v1.** Hindi-English amount words (*"dhai sau"*, *"ek lakh"*) are handled in the extraction prompt, but the interface and general speech handling are English. Tamil is scoped for the hackathon build, not for this codebase.
 
 ---
 
-## 18. Roadmap
+## 20. Roadmap
 
-### Phase B — Spoken dates (next)
+### Phase B — spoken dates (next)
 
-Teach the interpreter to understand temporal language:
+The next work on this codebase. Phase C displaced it; it did not replace it.
 
 ```
 "I paid 400 for dinner on 2 September"
@@ -489,18 +660,29 @@ The trust rule carries over unchanged:
 
 A decision already made: **a spoken date more than 14 days back must be confirmed first.**
 
-The Phase A journal semantics are the contract Phase B must satisfy.
+The Phase A journal semantics are the contract Phase B must satisfy — and the observability layer now means Phase B's accuracy can actually be measured rather than estimated.
+
+### Also outstanding
+
+- **Enforce the 90-day audio retention.** The app promises deletion; nothing deletes. See §19 — this is a commitment, not a feature, and it comes due around 5 December 2026
+- **Run the Phase A acceptance pass** — §33's 36 bullets, never formally run. One of them needs adjudicating first; see §18
+- **Run the 100-case accuracy corpus** — prepared, never executed. Its date cases are Phase B's acceptance harness
 
 ### Beyond
 
-- **Deploy to Vercel** — permanent HTTPS URL, no tunnel, no laptop dependency
-- **Real persistence** — replace `localStorage` so data survives and syncs
+- **Deploy to Vercel** (Phase C6) — permanent HTTPS URL, no tunnel, no laptop dependency. Environment already prepared
 - **PWA** — manifest + service worker makes it installable (days of work)
 - **Native wrapper** — Capacitor for app stores (weeks, not months) if warranted
 
+**One finding worth keeping from the hackathon work**, because it outlives the event and would otherwise be lost when `IQOO-HACKATHON.md` is read as history:
+
+> **Bank-SMS reconciliation cannot be delivered from this codebase.** Reading the bank and UPI message feed needs native SMS permissions, which a web app and a PWA cannot obtain. If that capability is ever wanted — and the argument for it is strong, since the UPI feed is the one record of spending the user never has to type — it requires a native Android shell. That makes the PWA and native-wrapper items above a real fork rather than two routes to the same place.
+
+A related note: Capacitor-wrapping this app was considered during that planning and rejected — but rejected **only** because carrying in an existing app would have failed the hackathon's originality rule. That reason expired with the event. Technically it remains open.
+
 ---
 
-## 19. Other documents
+## 21. Other documents
 
 This file is meant to be sufficient. These hold the deeper detail:
 
@@ -508,9 +690,13 @@ This file is meant to be sufficient. These hold the deeper detail:
 |---|---|
 | `PRD-VaaniTrack.md` | Full product requirements, FR-numbered, with claims tagged FACT / OBSERVATION / ASSUMPTION / DECISION |
 | `RESEARCH.md` | ASR accuracy evidence, model comparisons, the numbers in §5 |
-| `VAANITRACK_PHASE_A_JOURNAL_CONTEXT.md` | The journal specification — §33 holds the A1–A9 acceptance criteria |
-| `DESIGN.md` | Full design token reference and component specs |
-| `EXECUTION.md` | Build log |
+| `TechStack.md` | Running inventory of what the project actually uses, with a change log and the reasoning for what is deliberately *not* used |
+| `vaanitrack_persistence_observability.md` | The brief behind §14 — why observability, what to record, what it must not become |
+| `IQOO-HACKATHON.md` | The Chennai plan: positioning, stack decision, disclosure, what gets cut |
+| `VAANITRACK_PHASE_A_JOURNAL_CONTEXT.md` | The journal specification, written before the build. §32 is the A1–A7 implementation breakdown; **§33 is the 36-bullet acceptance checklist**, never formally run |
+| `DESIGN.md` | VaaniTrack's design language — tokens, the nine components, recorder states, provenance styling |
+| `WISPR-FLOW-REFERENCE.md` | The outside style reference the early design borrowed from. Not a VaaniTrack document; kept because `globals.css` cites it when recording where the app deliberately departed |
+| `EXECUTION.md` | Build log. Append-only; the silent-microphone arc is the most instructive entry |
 | `IDEA.md`, `ITERATION-1.md`, `ITERATION-2.md` | Concept evolution |
 | `transaction-journal-product-document.md` | Journal product thinking |
 | `voice_transaction_100_test_cases.md` | 100 utterances for accuracy testing |
@@ -518,7 +704,7 @@ This file is meant to be sufficient. These hold the deeper detail:
 
 ---
 
-## 20. If you change this code, preserve these
+## 22. If you change this code, preserve these
 
 1. **Never record a wrong transaction.** Ask rather than guess.
 2. **A blank beats a guess.** `null` + `"unknown"` is a correct, honest outcome.
@@ -530,3 +716,9 @@ This file is meant to be sufficient. These hold the deeper detail:
 8. **Auto-save only stays acceptable while undo is trivial.**
 9. **Provenance belongs in the detail view** — on a row it's noise; on the detail it answers the question a financial record must answer.
 10. **Both capture paths must share `useCapture`** so they cannot drift apart.
+11. **Diagnostics must never take down the capture path.** Every observability call swallows its own errors. A missing row costs a data point; a thrown error costs the user their transaction.
+12. **Record which gate condition failed, not that one did.** A score cannot be acted on; a named condition can.
+13. **Write `before_state` before destroying it.** Undo, edit and delete each erase the only copy of what the model proposed.
+14. **Never trust byte count as evidence that audio contains sound.** Under a fixed-bitrate codec, silence and speech cost the same. Measure the signal, in the browser, where the PCM exists.
+15. **Never let a suspended `AudioContext` speak for the microphone.** Zeros from a meter that isn't running say nothing about what was recorded.
+16. **The portal fails closed.** An unset password denies everyone. It shows transcripts and amounts.

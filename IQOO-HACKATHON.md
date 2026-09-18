@@ -1,5 +1,17 @@
 # VaaniTrack at the iQOO Hackathon — Chennai City Battle
 
+> ## 🏁 The event has passed — this is a record, not a plan
+>
+> **Status as of 18 September 2026.** Chennai ran on 12–13 September. Every date, deadline, instruction and unchecked box below is in the past; the checklists in §12 are **not** live TODOs. The document is preserved as written rather than re-tensed, because its value is the reasoning, not the schedule.
+>
+> **Read §5 as a plan for a different application.** As §2 states outright, the hackathon build was a native, on-device Android app — *"almost nothing ports as code."* **None of the features in §5 exist in this repo, and none were ever scoped to it:** no bank-SMS reconciliation, no udhaar ledger, no Tamil, no camera capture, no voice query, no streaming transcription, no offline inference. This file is not a backlog for the web app.
+>
+> **One conclusion outlives the event** and has been promoted into `CONTEXT.md` §20 so it is not lost here: **bank-SMS reconciliation needs native SMS permissions, which a web app and a PWA cannot get.** That makes the native route a genuine fork rather than a packaging choice.
+>
+> **A rejection that expired with the event:** §7 rules out Capacitor-wrapping the existing app, but only because carrying in prior work would have failed the originality rule. That reason no longer applies. Technically the option is open.
+>
+> **Two corrections, since they were wrong at the time of writing too** — see §10: the prototype URL `vaanitrack.vercel.app` has never existed, and the repo is still private.
+
 Team **Devise** (`6XWSD7`) · Yash (leader) · Mouriyan Gandhi · Pranav Chhajed
 Track: **FinTech and Commerce** · Chennai, Sat 12 – Sun 13 Sept 2026
 
@@ -302,9 +314,14 @@ screenshots through the same pipeline. Voice queries answer "how much on food
 this month" and "who owes me money" — because udhaar is money too.
 ```
 
-**Prototype URL** — `https://vaanitrack.vercel.app`
+**Prototype URL** — ~~`https://vaanitrack.vercel.app`~~
 The repo is currently private. **Make it public before submitting**, or the link
 proves nothing to a screener.
+
+> **▸ Correction (18 Sept).** That URL was never live — no Vercel deployment of
+> VaaniTrack has ever existed, then or now. Only a local `.env.vercel` was ever
+> prepared. The repo also remains private. Anything that went out citing this
+> link pointed at nothing.
 
 **Deck** — required. The only mandatory attachment.
 
@@ -333,10 +350,9 @@ the ledger no bank app can see.
 
 ```
 Pre-existing component disclosed: a web prototype of this idea
-(github.com/PranavChhajed/VaaniTrack, live at vaanitrack.vercel.app), built
-before the event using cloud APIs. The Chennai build is a new native Android
-application with on-device inference; the prior work contributes the product
-specification and design, not code.
+(github.com/PranavChhajed/VaaniTrack), built before the event using cloud APIs.
+The Chennai build is a new native Android application with on-device inference;
+the prior work contributes the product specification and design, not code.
 ```
 
 ---
@@ -361,6 +377,13 @@ someone who has not watched you get there.
 ---
 
 ## 12. Before the 8th
+
+> **▸ Closed out (18 Sept).** Both checklists below are past. The unticked boxes
+> record what the plan called for, not work still outstanding — nothing here is
+> actionable now. Two of them were never done and are worth naming: the repo was
+> never made public, and no on-device model was ever run in this repo. No Android
+> code was committed here at any point, which is consistent with the Chennai build
+> happening entirely outside this codebase, as §2 intended.
 
 - [ ] **Decide the stack** (§7). Everything depends on it.
 - [ ] Make the GitHub repo **public**

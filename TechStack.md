@@ -4,7 +4,7 @@
 
 > **Maintenance rule:** whenever a new technology, service, library or model is introduced, add it here in the same turn. This file is meant to always answer "what are we actually running?" without reading `package.json` or grepping the codebase.
 
-Last updated: **6 September 2026** · Status legend: **IN USE** · **PLANNED** · **REMOVED**
+Last updated: **10 September 2026** · Status legend: **IN USE** · **PLANNED** · **REMOVED**
 
 ---
 
@@ -106,11 +106,13 @@ Converts a transcript into structured transactions with per-field provenance. **
 |---|---|---|
 | `MediaRecorder` | Audio capture (`audio/webm;codecs=opus`) | Requires a **secure context** — HTTPS or localhost |
 | `getUserMedia` | Microphone access | Blocked on invalid certificates, even after clicking through |
-| `AudioContext` | Live level metering for the waveform button | — |
-| `localStorage` | Transaction persistence, key `vaanitrack.transactions` | Per-browser, per-device, no sync |
-| `crypto.randomUUID()` | Transaction IDs | Secure-context only |
+| `AudioContext` | Level metering — **load-bearing, not decorative** | Must be `running`; a suspended context reports zeros about itself, not about the microphone |
+| `localStorage` | Transactions (`vaanitrack.transactions`), device id (`vaanitrack.device`), audio consent (`vaanitrack.audioConsent`) | Per-browser, per-device, no sync |
+| `crypto.randomUUID()` | Transaction IDs and the anonymous device id | Secure-context only |
 
 **The secure-context requirement is why a tunnel exists.** A self-signed certificate is not enough: Chrome refuses `getUserMedia` on an origin whose certificate failed validation, even after the user accepts the warning.
+
+**Why the level meter became load-bearing.** It was added to animate the record button. It now also decides whether a recording contains sound at all — because it reads the PCM, and the PCM only exists in the browser. The server sees Opus, which is encoded here at a fixed target bitrate, so silence costs exactly as many bytes as speech and a dead capture arrives looking healthy. `getFloatTimeDomainData` replaced `getByteTimeDomainData` for this: the 8-bit form's quantisation floor sits near −48 dB, which cannot tell a quiet room from digital silence.
 
 ---
 
@@ -126,21 +128,23 @@ Single key, `vaanitrack.transactions`, holding a JSON array of `Transaction`. Re
 
 `.captures/` holds a `.webm` and a `.json` per capture (verdict, transcript, confidence, `no_speech_prob`, full Whisper segments). Gitignored.
 
-Controlled by `SAVE_CAPTURES`. **Being changed from default-on to consent-gated**, and being migrated to Supabase — local disk writes fail silently on Vercel's ephemeral filesystem.
+Controlled by `SAVE_CAPTURES`, which **defaults to on**. Superseded by Supabase Storage but not yet removed from the code, so it still writes whenever the variable is unset. Set it to `0` in any deployed environment: local disk writes fail silently on Vercel's ephemeral filesystem, and unlike the Supabase path this one is not consent-gated.
 
-### Supabase — PLANNED (Phase C)
+### Supabase — IN USE (Phase C1–C5)
 
-**Postgres** for the observability tables (`captures`, `capture_transactions`, `capture_events`) and durable transaction storage.
-**Supabase Storage** for consent-gated audio blobs.
+**Postgres** holds four tables: the observability trio (`captures`, `capture_transactions`, `capture_events`) plus `transactions`, the durable device-scoped mirror of the journal.
+**Supabase Storage** holds consent-gated audio blobs in the `captures` bucket, on a 90-day expiry.
 
 Chosen because it provides both the database and the blob storage behind one service and one client library, avoiding a second vendor purely for audio.
 
-**Client library:** `postgres` ^3 (raw SQL) — IN USE. Chosen over `@supabase/supabase-js` because the portal reconstructs a pipeline across three tables with joins and aggregation, which is clearer as SQL than as nested PostgREST selects — and it matches the no-ORM stance below. Audio uploads (C4) will go to Supabase Storage over plain `fetch`, so no second client library is needed.
+**Client library:** `postgres` ^3 (raw SQL) — IN USE. Chosen over `@supabase/supabase-js` because the portal reconstructs a pipeline across three tables with joins and aggregation, which is clearer as SQL than as nested PostgREST selects — and it matches the no-ORM stance below. Audio uploads go to Supabase Storage over plain `fetch`, so no second client library is needed.
 
 | Env var | Scope | Notes |
 |---|---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | Public | Project URL |
-| `SUPABASE_SERVICE_ROLE_KEY` | **Server only** | Full access — must never reach the client bundle |
+| `SUPABASE_SECRET_KEY` | **Server only** | Full access — must never reach the client bundle. New-format secret key, not the legacy service-role JWT |
+| `DATABASE_URL` | **Server only** | Supavisor **transaction pooler** connection. The direct host is IPv6-only and unreachable from Vercel |
+| `DIRECT_URL` | Local only | Direct connection, for running migrations by hand. Nothing in the app reads it |
 
 ---
 
@@ -233,3 +237,4 @@ Three runtime dependencies total. That is deliberate: fewer moving parts, faster
 | 2026-09-06 | File created. Supabase and Vercel recorded as PLANNED for Phase C |
 | 2026-09-06 | C2–C5 done: pipeline instrumented, consent gate, transaction mirror, Supabase Storage bucket, `/portal`. Switched `DATABASE_URL` to the Supavisor pooler (the direct host is IPv6-only and unreachable from Vercel) |
 | 2026-09-06 | C1 done: added `postgres@^3`; three observability tables live in Supabase. Chose raw SQL over `@supabase/supabase-js` |
+| 2026-09-10 | Accuracy pass against the code. Supabase moved PLANNED → IN USE; the key was named `SUPABASE_SERVICE_ROLE_KEY` here but is `SUPABASE_SECRET_KEY` everywhere else; `DATABASE_URL` and `DIRECT_URL` documented; `.captures/` corrected — it is still default-on, not yet retired. Vercel stays PLANNED: the environment is prepared (`.env.vercel`) but nothing is deployed |
