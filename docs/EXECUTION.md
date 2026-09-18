@@ -494,7 +494,7 @@ Two reasons it was prioritised above polish:
 
 Verified through the tunnel: `"250 lunch"` → ₹250 lunch [food] · UPI.
 
-Plan for the rest of day 2 in [`ITERATION-2.md`](ITERATION-2.md).
+Plan for the rest of day 2 was in `ITERATION-2.md`, since removed as superseded scaffolding (see git history).
 
 ### Day 2 — correction: the phone was never confirmed working
 

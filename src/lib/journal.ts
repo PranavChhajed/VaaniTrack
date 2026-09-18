@@ -6,7 +6,7 @@
  * agree. A row that shows one thing and sorts by another is how a journal
  * quietly starts lying about chronology.
  *
- * See VAANITRACK_PHASE_A_JOURNAL_CONTEXT.md §9, §11-§13, §31.
+ * See docs/VAANITRACK_PHASE_A_JOURNAL_CONTEXT.md §9, §11-§13, §31.
  */
 
 import type { Transaction } from "./types";

@@ -684,23 +684,23 @@ A related note: Capacitor-wrapping this app was considered during that planning 
 
 ## 21. Other documents
 
-This file is meant to be sufficient. These hold the deeper detail:
+This file is meant to be sufficient. These hold the deeper detail. All of them live alongside this file in `docs/`, except `README.md`, which stays at the repo root by convention.
 
 | File | Contains |
 |---|---|
-| `PRD-VaaniTrack.md` | Full product requirements, FR-numbered, with claims tagged FACT / OBSERVATION / ASSUMPTION / DECISION |
+| `PRD-VaaniTrack.md` | Full product requirements, FR-numbered, with claims tagged FACT / OBSERVATION / ASSUMPTION / DECISION. Frozen as the pre-build record |
 | `RESEARCH.md` | ASR accuracy evidence, model comparisons, the numbers in §5 |
 | `TechStack.md` | Running inventory of what the project actually uses, with a change log and the reasoning for what is deliberately *not* used |
-| `vaanitrack_persistence_observability.md` | The brief behind §14 — why observability, what to record, what it must not become |
-| `IQOO-HACKATHON.md` | The Chennai plan: positioning, stack decision, disclosure, what gets cut |
+| `vaanitrack_persistence_observability.md` | The brief §14 was built from — why observability, what to record, what it must not become |
+| `IQOO-HACKATHON.md` | The Chennai hackathon plan, now a closed-out historical record — see §18 and §20 |
 | `VAANITRACK_PHASE_A_JOURNAL_CONTEXT.md` | The journal specification, written before the build. §32 is the A1–A7 implementation breakdown; **§33 is the 36-bullet acceptance checklist**, never formally run |
 | `DESIGN.md` | VaaniTrack's design language — tokens, the nine components, recorder states, provenance styling |
 | `WISPR-FLOW-REFERENCE.md` | The outside style reference the early design borrowed from. Not a VaaniTrack document; kept because `globals.css` cites it when recording where the app deliberately departed |
 | `EXECUTION.md` | Build log. Append-only; the silent-microphone arc is the most instructive entry |
-| `IDEA.md`, `ITERATION-1.md`, `ITERATION-2.md` | Concept evolution |
-| `transaction-journal-product-document.md` | Journal product thinking |
-| `voice_transaction_100_test_cases.md` | 100 utterances for accuracy testing |
-| `README.md` | Setup and run instructions |
+| `voice_transaction_100_test_cases.md` | The accuracy test corpus — 120 cases, 92 currently executable |
+| `README.md` | Setup and run instructions. At the repo root, not in `docs/` |
+
+**Retired, 18 September 2026:** `IDEA.md`, `ITERATION-1.md`, `ITERATION-2.md`, `Product Idea Context for Claude.md`, and `transaction-journal-product-document.md` — early ideation and planning docs whose thinking is fully carried forward into the PRD and the formal specs above. Nothing in them was load-bearing; they remain in git history if the original phrasing is ever needed.
 
 ---
 

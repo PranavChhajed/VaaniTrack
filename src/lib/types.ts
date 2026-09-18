@@ -7,7 +7,7 @@
  * the review card has to show the user which numbers they actually
  * said and which ones the system supplied.
  *
- * See PRD-VaaniTrack.md §7.4.
+ * See docs/PRD-VaaniTrack.md §7.4.
  */
 
 /** Where a field's value came from. Order matters: explicit beats

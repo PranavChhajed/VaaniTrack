@@ -7,12 +7,12 @@ yourself — *"250 lunch"* — and it becomes a structured transaction, with eve
 field showing whether it was heard, worked out, or filled from a default.
 Nothing saves until you've looked at it.
 
-**Start with [`CONTEXT.md`](CONTEXT.md)** — the whole product, architecture and
+**Start with [`CONTEXT.md`](docs/CONTEXT.md)** — the whole product, architecture and
 current state in one file. Product thinking lives in
-[`PRD-VaaniTrack.md`](PRD-VaaniTrack.md), evidence in
-[`RESEARCH.md`](RESEARCH.md), what the project runs on in
-[`TechStack.md`](TechStack.md), and the build log in
-[`EXECUTION.md`](EXECUTION.md).
+[`PRD-VaaniTrack.md`](docs/PRD-VaaniTrack.md), evidence in
+[`RESEARCH.md`](docs/RESEARCH.md), what the project runs on in
+[`TechStack.md`](docs/TechStack.md), and the build log in
+[`EXECUTION.md`](docs/EXECUTION.md).
 
 ---
 
@@ -176,7 +176,7 @@ where that is read back.
 speech recognition does — 36.3% accuracy at baseline, the lowest of any numeric
 category measured. The amount is also the one field that must never be wrong.
 Showing every transaction before it commits is what makes that survivable.
-See [`RESEARCH.md`](RESEARCH.md) §1.1.
+See [`RESEARCH.md`](docs/RESEARCH.md) §1.1.
 
 **Provenance.** Every field records where its value came from — *said*,
 *inferred*, *default*, or *unknown*. Values the system worked out rather than

@@ -9,7 +9,7 @@ import { DEFAULTS, type Field, type Provenance, type Transaction } from "@/lib/t
  * The one screen that carries the product. Nothing commits without passing
  * through here, which is what makes "never record a wrong transaction"
  * survivable given that currency amounts are the weakest thing ASR does
- * (36.3% baseline — RESEARCH.md §1.1).
+ * (36.3% baseline — docs/RESEARCH.md §1.1).
  *
  * Provenance (FR-10) is rendered using the Wispr Flow reference's hand-drawn underline
  * accent, which the reference system uses for editorial emphasis. Here it

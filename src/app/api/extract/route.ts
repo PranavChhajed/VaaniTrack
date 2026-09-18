@@ -8,12 +8,12 @@ const MODEL = process.env.GROQ_MODEL ?? "openai/gpt-oss-120b";
 /**
  * Stage 2: text → structured transaction(s).
  *
- * This prompt is the product. The research (RESEARCH.md §1.1) found that a
+ * This prompt is the product. The research (docs/RESEARCH.md §1.1) found that a
  * transcribe-then-interpret cascade reaches 95.6% on currency amounts against
  * 36.3% for raw ASR, so the reasoning that happens here is what makes the
  * amount trustworthy — not the transcription alone.
  *
- * Every rule below traces to a decision in PRD-VaaniTrack.md §7.2.
+ * Every rule below traces to a decision in docs/PRD-VaaniTrack.md §7.2.
  */
 function buildSystemPrompt(today: string): string {
   return `Convert spoken expense notes (Indian English, rupees) into JSON.
