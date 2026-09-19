@@ -1,7 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { audioConsent, setAudioConsent, type AudioConsent } from "@/lib/device";
+import {
+  audioConsent,
+  hasOnboarded,
+  setAudioConsent,
+  type AudioConsent,
+} from "@/lib/device";
 
 /**
  * The one question asked before the first recording.
@@ -17,6 +22,14 @@ import { audioConsent, setAudioConsent, type AudioConsent } from "@/lib/device";
  * Answering "no" is not a degraded mode. The app works identically — VaaniTrack
  * still records expenses, still shows transcripts, still logs what the pipeline
  * did. The only difference is whether the recording itself is kept.
+ *
+ * Deferred to `Onboarding.tsx` for a genuinely new browser: its own step 4
+ * asks this exact question. Without the `hasOnboarded()` check below, both
+ * components would mount their dialog at once — the higher z-index one
+ * would visually win, but the other stays live underneath, fully
+ * functional and reachable by keyboard or a screen reader despite being
+ * invisible. Two "No, don't" buttons answering the same question is a
+ * real bug, not a cosmetic one; this line is the fix, not an optimisation.
  */
 export function AudioConsentGate() {
   // Rendered only after mount: localStorage doesn't exist on the server, and
@@ -28,7 +41,7 @@ export function AudioConsentGate() {
     setConsent(audioConsent());
   }, []);
 
-  if (consent === null || consent !== "unknown") return null;
+  if (consent === null || consent !== "unknown" || !hasOnboarded()) return null;
 
   const answer = (value: "granted" | "denied") => {
     setAudioConsent(value);

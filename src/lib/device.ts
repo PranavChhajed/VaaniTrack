@@ -12,6 +12,7 @@
 
 const DEVICE_KEY = "vaanitrack.device";
 const CONSENT_KEY = "vaanitrack.audioConsent";
+const ONBOARDED_KEY = "vaanitrack.onboarded";
 
 export type AudioConsent = "unknown" | "granted" | "denied";
 
@@ -59,5 +60,55 @@ export function setAudioConsent(value: Exclude<AudioConsent, "unknown">): void {
     window.localStorage.setItem(CONSENT_KEY, value);
   } catch {
     /* a consent we cannot store is a consent we must not assume */
+  }
+}
+
+/**
+ * Whether this browser has been through the first-run flow.
+ *
+ * Fails toward `true` on a blocked store — the opposite direction from
+ * `audioConsent()`, deliberately. Consent is a decision that must not be
+ * silently assumed; onboarding is a welcome tour that grants nothing. A
+ * browser that can never persist "done" should not be trapped behind an
+ * overlay it can never dismiss for good — the consent question itself is
+ * asked independently by `AudioConsentGate` regardless of this flag.
+ *
+ * Also true for any browser that already holds a device id — this flag
+ * postdates real usage of the app, so its mere absence must not be read as
+ * "never used this before." A returning browser sees nothing new; only a
+ * genuinely fresh one runs the flow. See `hasExistingDevice()`.
+ */
+export function hasOnboarded(): boolean {
+  if (typeof window === "undefined") return true;
+  try {
+    if (window.localStorage.getItem(ONBOARDED_KEY) === "true") return true;
+    return hasExistingDevice();
+  } catch {
+    return true;
+  }
+}
+
+/**
+ * Whether a device id already exists, without creating one.
+ *
+ * `deviceId()` mints an id on first read, so it can't answer "is this
+ * browser new?" — by the time it returns, the answer would always be yes.
+ * This is read-only, purely for that question.
+ */
+function hasExistingDevice(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return window.localStorage.getItem(DEVICE_KEY) !== null;
+  } catch {
+    return false;
+  }
+}
+
+export function setOnboarded(): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(ONBOARDED_KEY, "true");
+  } catch {
+    /* see hasOnboarded()'s fail-safe direction — nothing to do here */
   }
 }

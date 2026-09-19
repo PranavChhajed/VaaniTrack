@@ -2,9 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { Logo } from "@/components/Logo";
 import { ReviewCard } from "@/components/ReviewCard";
 import { TransactionList } from "@/components/TransactionList";
 import { WaveformButton } from "@/components/WaveformButton";
+import { currentSession } from "@/lib/auth";
 import { useCapture } from "@/lib/useCapture";
 import { reportDelete, reportEvent } from "@/lib/report";
 import { todayISO } from "@/lib/journal";
@@ -17,7 +19,14 @@ import {
 export default function Home() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [hydrated, setHydrated] = useState(false);
+  const [signedIn, setSignedIn] = useState(false);
   const reviewRef = useRef<HTMLElement | null>(null);
+
+  // Read after mount, same reason as the transaction hydration below: a
+  // stub session lives in localStorage, which doesn't exist on the server.
+  useEffect(() => {
+    setSignedIn(currentSession() !== null);
+  }, []);
 
   const handleLogged = useCallback((saved: Transaction[]) => {
     setTransactions((prev) => [...saved, ...prev]);
@@ -66,27 +75,35 @@ export default function Home() {
 
   return (
     <main className="mx-auto flex w-full max-w-[900px] flex-col gap-16 px-5 py-8 sm:gap-24 sm:px-8 sm:py-12">
-      <header className="flex items-center justify-between rounded-[9999px] border-2 border-vast-ink bg-paper-raised px-6 py-4">
+      <header className="flex items-center justify-between rounded-[var(--radius-pill)] border-2 border-vast-ink bg-paper-raised px-6 py-4">
         <span className="flex items-center gap-3">
-          <span className="flex items-end gap-[3px]" aria-hidden="true">
-            <span className="block h-[10px] w-[3px] rounded-full bg-vast-ink" />
-            <span className="block h-[16px] w-[3px] rounded-full bg-vast-ink" />
-            <span className="block h-[22px] w-[3px] rounded-full bg-forest-ink" />
-            <span className="block h-[14px] w-[3px] rounded-full bg-vast-ink" />
-          </span>
+          <Logo size={24} />
           <span className="font-figtree text-body-sm font-semibold tracking-tight">
             VaaniTrack
           </span>
         </span>
-        {/* Quiet on purpose. Speaking is the app; the journal is where what
-            you said ends up. The easier way in is the link under Today's
-            list, which sits within thumb reach. */}
-        <Link
-          href="/journal"
-          className="font-figtree text-body-sm text-charcoal underline underline-offset-4 hover:text-vast-ink"
-        >
-          Journal &rsaquo;
-        </Link>
+        <span className="flex items-center gap-4">
+          {/* Only when signed out — there's nowhere for a signed-in link to
+              go yet (no settings screen), so showing one would promise a
+              destination that doesn't exist. */}
+          {!signedIn && (
+            <Link
+              href="/signin"
+              className="font-figtree text-body-sm text-fog underline underline-offset-4 hover:text-vast-ink"
+            >
+              Sign in
+            </Link>
+          )}
+          {/* Quiet on purpose. Speaking is the app; the journal is where what
+              you said ends up. The easier way in is the link under Today's
+              list, which sits within thumb reach. */}
+          <Link
+            href="/journal"
+            className="font-figtree text-body-sm text-charcoal underline underline-offset-4 hover:text-vast-ink"
+          >
+            Journal &rsaquo;
+          </Link>
+        </span>
       </header>
 
       <section className="flex flex-col items-start">

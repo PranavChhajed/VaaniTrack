@@ -4,8 +4,10 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { DatePicker } from "@/components/DatePicker";
 import { DayCapture } from "@/components/DayCapture";
+import { Logo } from "@/components/Logo";
 import { TransactionDetail } from "@/components/TransactionDetail";
 import { TransactionRow } from "@/components/TransactionRow";
+import { currentSession } from "@/lib/auth";
 import {
   dayLabel,
   deleteTransaction,
@@ -217,10 +219,12 @@ export default function Journal() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [open, setOpen] = useState<Transaction | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [signedIn, setSignedIn] = useState(false);
 
   useEffect(() => {
     setTransactions(loadTransactions());
     setHydrated(true);
+    setSignedIn(currentSession() !== null);
   }, []);
 
   useEffect(() => {
@@ -270,17 +274,30 @@ export default function Journal() {
   return (
     <main className="mx-auto flex w-full max-w-[900px] flex-col gap-8 px-5 py-8 sm:px-8 sm:py-12">
       <header className="flex items-center justify-between rounded-[var(--radius-pill)] border-2 border-vast-ink bg-paper-raised px-6 py-4">
-        <span className="font-figtree text-body-sm font-semibold tracking-tight">
-          VaaniTrack
+        <span className="flex items-center gap-3">
+          <Logo size={24} />
+          <span className="font-figtree text-body-sm font-semibold tracking-tight">
+            VaaniTrack
+          </span>
         </span>
-        {/* Capture is the app; this is a room you stepped into. The way back
-            is stated plainly rather than left to the browser's back button. */}
-        <Link
-          href="/"
-          className="font-figtree text-body-sm text-charcoal underline underline-offset-4 hover:text-vast-ink"
-        >
-          &lsaquo; Capture
-        </Link>
+        <span className="flex items-center gap-4">
+          {!signedIn && (
+            <Link
+              href="/signin"
+              className="font-figtree text-body-sm text-fog underline underline-offset-4 hover:text-vast-ink"
+            >
+              Sign in
+            </Link>
+          )}
+          {/* Capture is the app; this is a room you stepped into. The way back
+              is stated plainly rather than left to the browser's back button. */}
+          <Link
+            href="/"
+            className="font-figtree text-body-sm text-charcoal underline underline-offset-4 hover:text-vast-ink"
+          >
+            &lsaquo; Capture
+          </Link>
+        </span>
       </header>
 
       <div>

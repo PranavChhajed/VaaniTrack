@@ -33,6 +33,17 @@
   --color-charcoal: #222222;
   --color-pure-white: #ffffff;
 
+  /* Onboarding tints — docs/design/THEME-ONBOARDING.md.
+     Full-bleed screen backgrounds only, for the first-run flow.
+     Screen 1 reuses --color-mint-whisper above rather than a
+     duplicate token; these two carry it onward, then screen 4
+     and both auth screens land on --color-paper — mint → sage →
+     clay → paper, so arriving at the app feels like reaching a
+     destination rather than a jump. Never used on interactive
+     elements; those stay on the core palette above. */
+  --color-tint-sage: #dbe7dc;
+  --color-tint-clay: #eaded1;
+
   /* Typography */
   --font-garamond: var(--font-eb-garamond), Cormorant Garamond, Georgia, serif;
   --font-figtree: var(--font-figtree), Inter, ui-sans-serif, system-ui, sans-serif;
@@ -194,4 +205,23 @@ body {
 .prov-unknown {
   border-bottom: 2px dashed var(--color-fog);
   color: var(--color-fog);
+}
+
+/* ---- Focus ------------------------------------------------
+   docs/design/THEME-ONBOARDING.md §7. The app has no focus
+   treatment anywhere today — every interactive element uses
+   outline-none and signals focus only by a border-colour swap
+   to forest-ink. Survivable on a three-field review card,
+   not on a keyboard-driven auth form.
+
+   An outline rather than a box-shadow, so the "only ink
+   borders, never a shadow" rule holds for this too. Offset so
+   it reads as a second ring around the existing 2px border,
+   not a replacement for it. */
+.focus-ring {
+  outline: none;
+}
+.focus-ring:focus-visible {
+  outline: 2px solid var(--color-forest-ink);
+  outline-offset: 2px;
 }
