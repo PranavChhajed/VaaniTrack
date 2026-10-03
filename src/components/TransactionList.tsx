@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { TransactionRow } from "@/components/TransactionRow";
 import { DEFAULTS, type Transaction } from "@/lib/types";
 
 /**
@@ -9,21 +10,26 @@ import { DEFAULTS, type Transaction } from "@/lib/types";
  * canvas. The alternation is what gives the page its rhythm; a second light
  * panel here would flatten it.
  *
- * This shows one day, so it is a flat list rather than a grouped one. Amounts
- * sit in a right-aligned column using tabular figures, so ₹1,250 stacks
- * directly over ₹250 the way it would in an account book.
+ * Rows are the same `TransactionRow` the journal uses — both chambers are
+ * the same dark surface, so there was never a need for a second row
+ * component. A tap opens the detail view, same as the journal; this screen
+ * previously had its own hand-rolled row with a Delete button that fired
+ * with no confirmation, while the journal's rows could be opened but not
+ * deleted. Routing both through TransactionDetail makes the destructive
+ * action the same two-stage confirm everywhere, and gives this screen an
+ * edit path it never had.
  */
 export function TransactionList({
   transactions,
-  onDelete,
+  onOpen,
 }: {
   transactions: Transaction[];
-  onDelete: (id: string) => void;
+  onOpen: (transaction: Transaction) => void;
 }) {
   const total = transactions.reduce((sum, t) => sum + (t.amount.value ?? 0), 0);
 
   return (
-    <section className="rounded-[40px] bg-vast-ink px-6 py-10 sm:rounded-[80px] sm:px-12 sm:py-14">
+    <section className="rounded-[var(--radius-chamber)] bg-vast-ink px-6 py-10 sm:rounded-[var(--radius-chamber-lg)] sm:px-12 sm:py-14">
       <div className="mb-10 flex flex-wrap items-baseline justify-between gap-4">
         <h2 className="display-type text-heading-sm text-paper sm:text-heading">
           Today
@@ -51,43 +57,7 @@ export function TransactionList({
       ) : (
         <ul className="flex flex-col">
           {transactions.map((t) => (
-            <li
-              key={t.id}
-              className="group flex items-baseline justify-between gap-4 border-b border-charcoal py-5 last:border-b-0"
-            >
-              <div className="min-w-0">
-                <p className="truncate font-figtree text-body text-paper">
-                  {t.description.value ?? "—"}
-                  {t.payee.value ? (
-                    <span className="text-haze"> to {t.payee.value}</span>
-                  ) : null}
-                </p>
-                <p className="mt-1 flex flex-wrap items-center gap-x-3 font-figtree text-caption text-haze">
-                  {t.category.value ? (
-                    <span className="rounded-[9999px] bg-forest-ink px-3 py-1 font-medium text-paper">
-                      {t.category.value}
-                    </span>
-                  ) : null}
-                  {t.paymentMethod.value ? (
-                    <span>{t.paymentMethod.value}</span>
-                  ) : null}
-                </p>
-              </div>
-              <div className="flex shrink-0 items-baseline gap-4">
-                <span className="money text-subheading text-paper">
-                  {DEFAULTS.currency}
-                  {(t.amount.value ?? 0).toLocaleString("en-IN")}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => onDelete(t.id)}
-                  aria-label={`Delete ${t.description.value ?? "transaction"}`}
-                  className="font-figtree text-caption text-haze underline underline-offset-4 transition-opacity hover:text-paper focus:opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
-                >
-                  Delete
-                </button>
-              </div>
-            </li>
+            <TransactionRow key={t.id} transaction={t} onOpen={onOpen} />
           ))}
         </ul>
       )}
@@ -96,7 +66,7 @@ export function TransactionList({
           otherwise a corrected date looks like a deleted transaction. */}
       <Link
         href="/journal"
-        className="mt-8 inline-block font-figtree text-body-sm text-haze underline underline-offset-4 hover:text-paper"
+        className="focus-ring mt-8 inline-block font-figtree text-body-sm text-haze underline underline-offset-4 hover:text-paper"
       >
         See earlier days in the journal
       </Link>

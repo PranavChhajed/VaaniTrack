@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AppHeader } from "@/components/AppHeader";
 import { HeroDemo } from "@/components/HeroDemo";
 import { Logo } from "@/components/Logo";
 import { Reveal } from "@/components/Reveal";
@@ -62,20 +63,11 @@ const LIMITS = [
 export default function Landing() {
   return (
     <main className="mx-auto flex w-full max-w-[900px] flex-col gap-16 px-5 py-8 sm:gap-24 sm:px-8 sm:py-12">
-      <header className="flex items-center justify-between rounded-[var(--radius-pill)] border-2 border-vast-ink bg-paper-raised px-6 py-4">
-        <span className="flex items-center gap-3">
-          <Logo size={32} />
-          <span className="display-type text-body-sm text-vast-ink">
-            VaaniTrack
-          </span>
-        </span>
-        <Link
-          href="/app"
-          className="focus-ring font-figtree text-body-sm text-charcoal underline underline-offset-4 hover:text-vast-ink"
-        >
-          Open the app &rsaquo;
-        </Link>
-      </header>
+      {/* `signedIn` is passed as `true` unconditionally: this page is a
+          server component that reads no storage by design (see the file
+          comment above), and the CTA below already leads to the screen
+          that offers sign-in, so a second one here would be redundant. */}
+      <AppHeader navHref="/app" navLabel="Open the app &rsaquo;" signedIn={true} />
 
       <section className="rise flex flex-col items-start">
         <span className="flex items-center gap-4">

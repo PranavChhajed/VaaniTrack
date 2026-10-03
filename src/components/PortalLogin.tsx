@@ -47,7 +47,7 @@ export function PortalLogin() {
         placeholder="Password"
         aria-label="Portal password"
         autoFocus
-        className="mt-6 w-full rounded-[var(--radius-input)] border-2 border-vast-ink bg-paper px-4 py-3 font-figtree text-body-sm text-vast-ink outline-none placeholder:text-fog focus:border-forest-ink"
+        className="focus-ring mt-6 w-full rounded-[var(--radius-input)] border-2 border-vast-ink bg-paper px-4 py-3 font-figtree text-body-sm text-vast-ink outline-none placeholder:text-fog focus:border-forest-ink"
       />
 
       {error ? (
@@ -60,7 +60,7 @@ export function PortalLogin() {
         type="submit"
         disabled={busy || !password}
         className={[
-          "mt-5 w-full rounded-[var(--radius-button)] border-2 border-vast-ink px-5 py-3",
+          "focus-ring mt-5 w-full rounded-[var(--radius-button)] border-2 border-vast-ink px-5 py-3",
           "font-figtree text-body-sm font-medium text-vast-ink",
           busy || !password
             ? "cursor-not-allowed bg-paper-edge opacity-60"

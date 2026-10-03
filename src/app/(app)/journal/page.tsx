@@ -1,16 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { AppHeader } from "@/components/AppHeader";
 import { DatePicker } from "@/components/DatePicker";
 import { DayCapture } from "@/components/DayCapture";
-import { Logo } from "@/components/Logo";
 import { TransactionDetail } from "@/components/TransactionDetail";
 import { TransactionRow } from "@/components/TransactionRow";
 import { currentSession } from "@/lib/auth";
 import {
   dayLabel,
-  deleteTransaction,
   forDate,
   groupByDay,
   groupByMonth,
@@ -18,7 +17,6 @@ import {
   monthTotal,
   populatedDates,
   todayISO,
-  updateTransaction,
   type DayGroup,
   type MonthGroup,
 } from "@/lib/journal";
@@ -29,12 +27,8 @@ import {
   reportEvent,
   reportTransactions,
 } from "@/lib/report";
-import {
-  DEFAULTS,
-  loadTransactions,
-  saveTransactions,
-  type Transaction,
-} from "@/lib/types";
+import { useTransactions } from "@/lib/useTransactions";
+import { DEFAULTS, type Transaction } from "@/lib/types";
 
 /**
  * The journal: Phase A.
@@ -80,7 +74,7 @@ function CaptureAction({ count }: { count: number }) {
     return (
       <Link
         href="/app"
-        className="mt-6 inline-block font-figtree text-body-sm text-haze underline underline-offset-4 hover:text-paper"
+        className="focus-ring-dark mt-6 inline-block font-figtree text-body-sm text-haze underline underline-offset-4 hover:text-paper"
       >
         Record an expense
       </Link>
@@ -91,7 +85,7 @@ function CaptureAction({ count }: { count: number }) {
     <Link
       href="/app"
       className={[
-        "mt-6 inline-block rounded-[var(--radius-pill)] border-2 border-vast-ink",
+        "focus-ring-dark mt-6 inline-block rounded-[var(--radius-pill)] border-2 border-vast-ink",
         "font-figtree font-medium text-vast-ink active:bg-mint-deep",
         level === "primary"
           ? "bg-mint-whisper px-8 py-4 text-body"
@@ -116,7 +110,7 @@ function LogOntoDay({ onOpen }: { onOpen: () => void }) {
     <button
       type="button"
       onClick={onOpen}
-      className="mt-8 rounded-[var(--radius-pill)] border-2 border-charcoal px-5 py-2.5 font-figtree text-body-sm text-paper transition-colors active:bg-charcoal"
+      className="focus-ring-dark mt-8 rounded-[var(--radius-pill)] border-2 border-charcoal px-5 py-2.5 font-figtree text-body-sm text-paper transition-colors active:bg-charcoal"
     >
       + Log an expense
     </button>
@@ -213,39 +207,27 @@ function DaySection({
 }
 
 export default function Journal() {
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [hydrated, setHydrated] = useState(false);
+  const { transactions, hydrated, add, update, remove, undo } = useTransactions();
   const [selected, setSelected] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
+  // Owned here, not inside DatePicker: see the comment on DatePicker's
+  // `month` prop. The picker is conditionally rendered, so if it owned this
+  // itself, closing and reopening it would reset wherever you'd browsed to.
+  const [month, setMonth] = useState<string>(() => selected ?? todayISO());
   const [open, setOpen] = useState<Transaction | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [signedIn, setSignedIn] = useState(false);
 
   useEffect(() => {
-    setTransactions(loadTransactions());
-    setHydrated(true);
     setSignedIn(currentSession() !== null);
-  }, []);
-
-  useEffect(() => {
-    if (hydrated) saveTransactions(transactions);
-  }, [transactions, hydrated]);
-
-  const handleLogged = useCallback((saved: Transaction[]) => {
-    setTransactions((prev) => [...saved, ...prev]);
-  }, []);
-
-  const handleUndo = useCallback((ids: string[]) => {
-    const drop = new Set(ids);
-    setTransactions((prev) => prev.filter((t) => !drop.has(t.id)));
   }, []);
 
   // The day being viewed is the day a capture lands on. Null while browsing,
   // which falls back to today, the same behaviour as the capture screen.
   const capture = useCapture({
     captureDate: selected,
-    onLogged: handleLogged,
-    onUndo: handleUndo,
+    onLogged: add,
+    onUndo: undo,
   });
 
   const groups = useMemo(() => groupByDay(transactions), [transactions]);
@@ -273,32 +255,9 @@ export default function Journal() {
 
   return (
     <main className="mx-auto flex w-full max-w-[900px] flex-col gap-8 px-5 py-8 sm:px-8 sm:py-12">
-      <header className="flex items-center justify-between rounded-[var(--radius-pill)] border-2 border-vast-ink bg-paper-raised px-6 py-4">
-        <span className="flex items-center gap-3">
-          <Logo size={32} />
-          <span className="display-type text-body-sm text-vast-ink">
-            VaaniTrack
-          </span>
-        </span>
-        <span className="flex items-center gap-4">
-          {!signedIn && (
-            <Link
-              href="/signin"
-              className="font-figtree text-body-sm text-fog underline underline-offset-4 hover:text-vast-ink"
-            >
-              Sign in
-            </Link>
-          )}
-          {/* Capture is the app; this is a room you stepped into. The way back
-              is stated plainly rather than left to the browser's back button. */}
-          <Link
-            href="/app"
-            className="font-figtree text-body-sm text-charcoal underline underline-offset-4 hover:text-vast-ink"
-          >
-            &lsaquo; Capture
-          </Link>
-        </span>
-      </header>
+      {/* Capture is the app; this is a room you stepped into. The way back
+          is stated plainly rather than left to the browser's back button. */}
+      <AppHeader navHref="/app" navLabel="&lsaquo; Capture" signedIn={signedIn} />
 
       <div>
         <h1 className="display-type text-heading text-vast-ink">Expenses</h1>
@@ -321,7 +280,7 @@ export default function Journal() {
           type="button"
           onClick={() => setPickerOpen((v) => !v)}
           aria-expanded={pickerOpen}
-          className="rounded-[var(--radius-pill)] border-2 border-vast-ink bg-paper-raised px-5 py-3 font-figtree text-body-sm text-vast-ink active:bg-mint-whisper"
+          className="focus-ring rounded-[var(--radius-pill)] border-2 border-vast-ink bg-paper-raised px-5 py-3 font-figtree text-body-sm text-vast-ink active:bg-mint-whisper"
         >
           {pickerOpen ? "Close dates" : "Pick a date"}
         </button>
@@ -336,7 +295,7 @@ export default function Journal() {
               setPickerOpen(false);
               setSheetOpen(false);
             }}
-            className="rounded-[var(--radius-pill)] border-2 border-vast-ink bg-mint-whisper px-5 py-3 font-figtree text-body-sm font-medium text-vast-ink active:bg-mint-deep"
+            className="focus-ring rounded-[var(--radius-pill)] border-2 border-vast-ink bg-mint-whisper px-5 py-3 font-figtree text-body-sm font-medium text-vast-ink active:bg-mint-deep"
           >
             All days
           </button>
@@ -347,6 +306,8 @@ export default function Journal() {
         <DatePicker
           selected={selected}
           populated={populated}
+          month={month}
+          onMonthChange={setMonth}
           onSelect={(iso) => {
             setSelected(iso);
             setPickerOpen(false);
@@ -426,13 +387,13 @@ export default function Journal() {
               changedFields: changedFields(openLive, next),
             });
             reportTransactions([next]);
-            setTransactions((prev) => updateTransaction(prev, next.id, next));
+            update(next);
             setOpen(null);
           }}
           onDelete={(id) => {
             reportEvent("deleted", { transactionId: id, before: openLive });
             reportDelete(id);
-            setTransactions((prev) => deleteTransaction(prev, id));
+            remove(id);
             setOpen(null);
           }}
         />

@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import {
   fromISO,
   isFuture,
@@ -23,17 +22,27 @@ const WEEKDAYS = ["S", "M", "T", "W", "T", "F", "S"];
  * Future dates are disabled. Expenses happen in the past, capture always dates
  * to today, and editing refuses a future date (§29), so a future day could
  * never hold anything, and offering it would only lead somewhere empty.
+ *
+ * `month` is owned by the caller rather than this component. It previously
+ * lived here as `useState(() => selected ?? todayISO())`, a lazy initialiser
+ * that only runs once per mount -- and this component is conditionally
+ * rendered, so closing and reopening the picker remounted it and reset
+ * wherever you had browsed to. Lifting it means the picker remembers your
+ * place across opens.
  */
 export function DatePicker({
   selected,
   populated,
+  month,
+  onMonthChange,
   onSelect,
 }: {
   selected: string | null;
   populated: Set<string>;
+  month: string;
+  onMonthChange: (iso: string) => void;
   onSelect: (iso: string) => void;
 }) {
-  const [month, setMonth] = useState(() => selected ?? todayISO());
   const today = todayISO();
 
   return (
@@ -41,9 +50,9 @@ export function DatePicker({
       <div className="mb-4 flex items-center justify-between gap-3">
         <button
           type="button"
-          onClick={() => setMonth(shiftMonth(month, -1))}
+          onClick={() => onMonthChange(shiftMonth(month, -1))}
           aria-label="Previous month"
-          className="flex h-10 w-10 items-center justify-center rounded-[var(--radius-button)] border-2 border-vast-ink bg-paper font-figtree text-body-sm active:bg-mint-whisper"
+          className="focus-ring flex h-10 w-10 items-center justify-center rounded-[var(--radius-button)] border-2 border-vast-ink bg-paper font-figtree text-body-sm active:bg-mint-whisper"
         >
           &lsaquo;
         </button>
@@ -54,9 +63,9 @@ export function DatePicker({
 
         <button
           type="button"
-          onClick={() => setMonth(shiftMonth(month, 1))}
+          onClick={() => onMonthChange(shiftMonth(month, 1))}
           aria-label="Next month"
-          className="flex h-10 w-10 items-center justify-center rounded-[var(--radius-button)] border-2 border-vast-ink bg-paper font-figtree text-body-sm active:bg-mint-whisper"
+          className="focus-ring flex h-10 w-10 items-center justify-center rounded-[var(--radius-button)] border-2 border-vast-ink bg-paper font-figtree text-body-sm active:bg-mint-whisper"
         >
           &rsaquo;
         </button>
@@ -89,7 +98,7 @@ export function DatePicker({
               aria-label={`${fromISO(iso).getDate()} ${monthLabel(month)}${hasRows ? ", has transactions" : ""}`}
               aria-current={isToday ? "date" : undefined}
               className={[
-                "relative flex aspect-square items-center justify-center rounded-[var(--radius-button)]",
+                "focus-ring relative flex aspect-square items-center justify-center rounded-[var(--radius-button)]",
                 "font-figtree text-body-sm transition-colors",
                 disabled
                   ? "cursor-not-allowed text-paper-edge"

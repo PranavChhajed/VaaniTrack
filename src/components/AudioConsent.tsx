@@ -78,14 +78,14 @@ export function AudioConsentGate() {
           <button
             type="button"
             onClick={() => answer("granted")}
-            className="flex-1 rounded-[var(--radius-button)] border-2 border-vast-ink bg-mint-whisper px-5 py-3 font-figtree text-body-sm font-medium text-vast-ink active:bg-mint-deep"
+            className="focus-ring flex-1 rounded-[var(--radius-button)] border-2 border-vast-ink bg-mint-whisper px-5 py-3 font-figtree text-body-sm font-medium text-vast-ink active:bg-mint-deep"
           >
             Yes, keep them
           </button>
           <button
             type="button"
             onClick={() => answer("denied")}
-            className="flex-1 rounded-[var(--radius-button)] border-2 border-vast-ink bg-paper-raised px-5 py-3 font-figtree text-body-sm text-vast-ink active:bg-paper-edge"
+            className="focus-ring flex-1 rounded-[var(--radius-button)] border-2 border-vast-ink bg-paper-raised px-5 py-3 font-figtree text-body-sm text-vast-ink active:bg-paper-edge"
           >
             No, don&rsquo;t
           </button>

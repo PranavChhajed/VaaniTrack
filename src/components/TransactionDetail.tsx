@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   DEFAULTS,
   type Field,
@@ -107,7 +107,7 @@ function EditField({
         inputMode={inputMode}
         placeholder={placeholder}
         onChange={(e) => onChange(e.target.value)}
-        className="mt-2 w-full rounded-[var(--radius-input)] border-2 border-vast-ink bg-paper px-4 py-3 font-figtree text-body-sm text-vast-ink outline-none placeholder:text-fog focus:border-forest-ink"
+        className="focus-ring mt-2 w-full rounded-[var(--radius-input)] border-2 border-vast-ink bg-paper px-4 py-3 font-figtree text-body-sm text-vast-ink outline-none placeholder:text-fog focus:border-forest-ink"
       />
     </label>
   );
@@ -136,6 +136,23 @@ export function TransactionDetail({
   const [paymentMethod, setPaymentMethod] = useState(t.paymentMethod.value ?? "");
   const [date, setDate] = useState(t.date.value ?? "");
   const [time, setTime] = useState(toTimeInput(t.time.value));
+
+  // Same treatment as DayCapture's sheet: Escape closes, and the page behind
+  // stops scrolling while this is open. This is a full-screen overlay like
+  // that one, but previously had none of this -- no role, no Escape, no
+  // scroll lock.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = previous;
+    };
+  }, [onClose]);
 
   /**
    * A value the user typed is a value the user said (FR-10's first state:
@@ -178,13 +195,18 @@ export function TransactionDetail({
   }
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-paper">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={t.description.value ?? t.payee.value ?? "Transaction detail"}
+      className="fixed inset-0 z-50 overflow-y-auto bg-paper"
+    >
       <div className="mx-auto flex w-full max-w-[560px] flex-col gap-6 px-5 py-8">
         <div className="flex items-center justify-between">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-[var(--radius-pill)] border-2 border-vast-ink bg-paper-raised px-5 py-2 font-figtree text-body-sm text-vast-ink active:bg-mint-whisper"
+            className="focus-ring rounded-[var(--radius-pill)] border-2 border-vast-ink bg-paper-raised px-5 py-2 font-figtree text-body-sm text-vast-ink active:bg-mint-whisper"
           >
             &lsaquo; Journal
           </button>
@@ -192,7 +214,7 @@ export function TransactionDetail({
             <button
               type="button"
               onClick={() => setEditing(true)}
-              className="rounded-[var(--radius-pill)] border-2 border-vast-ink bg-mint-whisper px-5 py-2 font-figtree text-body-sm font-medium text-vast-ink active:bg-mint-deep"
+              className="focus-ring rounded-[var(--radius-pill)] border-2 border-vast-ink bg-mint-whisper px-5 py-2 font-figtree text-body-sm font-medium text-vast-ink active:bg-mint-deep"
             >
               Edit
             </button>
@@ -302,7 +324,7 @@ export function TransactionDetail({
                 <button
                   type="button"
                   onClick={save}
-                  className="flex-1 rounded-[var(--radius-button)] border-2 border-vast-ink bg-mint-whisper px-5 py-3 font-figtree text-body-sm font-medium text-vast-ink active:bg-mint-deep"
+                  className="focus-ring flex-1 rounded-[var(--radius-button)] border-2 border-vast-ink bg-mint-whisper px-5 py-3 font-figtree text-body-sm font-medium text-vast-ink active:bg-mint-deep"
                 >
                   Save
                 </button>
@@ -312,7 +334,7 @@ export function TransactionDetail({
                     setEditing(false);
                     setError(null);
                   }}
-                  className="rounded-[var(--radius-button)] border-2 border-vast-ink bg-paper px-5 py-3 font-figtree text-body-sm text-vast-ink active:bg-paper-edge"
+                  className="focus-ring rounded-[var(--radius-button)] border-2 border-vast-ink bg-paper px-5 py-3 font-figtree text-body-sm text-vast-ink active:bg-paper-edge"
                 >
                   Cancel
                 </button>
@@ -326,7 +348,7 @@ export function TransactionDetail({
           <button
             type="button"
             onClick={() => setConfirmingDelete(true)}
-            className="self-start font-figtree text-body-sm text-fog underline underline-offset-4"
+            className="focus-ring self-start font-figtree text-body-sm text-fog underline underline-offset-4"
           >
             Delete this transaction
           </button>
@@ -342,14 +364,14 @@ export function TransactionDetail({
               <button
                 type="button"
                 onClick={() => setConfirmingDelete(false)}
-                className="rounded-[var(--radius-button)] border-2 border-vast-ink bg-paper px-5 py-3 font-figtree text-body-sm text-vast-ink"
+                className="focus-ring rounded-[var(--radius-button)] border-2 border-vast-ink bg-paper px-5 py-3 font-figtree text-body-sm text-vast-ink"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={() => onDelete(t.id)}
-                className="rounded-[var(--radius-button)] border-2 border-alert bg-alert px-5 py-3 font-figtree text-body-sm font-medium text-paper"
+                className="focus-ring rounded-[var(--radius-button)] border-2 border-alert bg-alert px-5 py-3 font-figtree text-body-sm font-medium text-paper"
               >
                 Delete
               </button>

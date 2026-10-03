@@ -51,8 +51,8 @@ export function WaveformButton({
       }
       aria-live="polite"
       className={[
-        "group relative inline-flex items-center justify-center gap-[6px]",
-        "h-[88px] w-full max-w-[340px] rounded-[9999px] border-2 border-vast-ink",
+        "focus-ring group relative inline-flex items-center justify-center gap-[6px]",
+        "h-[88px] w-full max-w-[340px] rounded-[var(--radius-pill)] border-2 border-vast-ink",
         "transition-colors duration-200",
         recording || warming ? "bg-ember-glow" : "bg-mint-whisper",
         // Dimmed while warming, but not to the flat disabled grey: the mic is

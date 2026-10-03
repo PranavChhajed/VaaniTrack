@@ -74,7 +74,7 @@ function Row({
 }
 
 const inputClass =
-  "w-full rounded-[12px] border-2 border-vast-ink bg-paper px-4 py-3 font-figtree text-body-sm text-vast-ink outline-none focus:border-forest-ink";
+  "focus-ring w-full rounded-[var(--radius-input)] border-2 border-vast-ink bg-paper px-4 py-3 font-figtree text-body-sm text-vast-ink outline-none focus:border-forest-ink";
 
 export function ReviewCard({
   transaction,
@@ -113,13 +113,13 @@ export function ReviewCard({
   const amountMissing = draft.amount.value === null;
 
   return (
-    <article className="rise rounded-[32px] border-2 border-vast-ink bg-paper-raised p-6 sm:p-8">
+    <article className="rise rounded-[var(--radius-card)] border-2 border-vast-ink bg-paper-raised p-6 sm:p-8">
       {needsConfirmation && confirmationReason ? (
         // Deliberately ember, not alert: the app being unsure is normal
         // operation here, not a failure. See the --color-alert comment in
         // globals.css — alert is for errors and destructive actions, and
         // "please check this" belongs in the provenance vocabulary instead.
-        <p className="mb-6 rounded-[12px] border-2 border-vast-ink bg-ember-glow px-4 py-3 font-figtree text-body-sm text-vast-ink">
+        <p className="mb-6 rounded-[var(--radius-input)] border-2 border-vast-ink bg-ember-glow px-4 py-3 font-figtree text-body-sm text-vast-ink">
           {confirmationReason}
         </p>
       ) : null}
@@ -232,7 +232,7 @@ export function ReviewCard({
           onClick={() => onSave(draft)}
           disabled={amountMissing}
           className={[
-            "rounded-[12px] border-2 border-vast-ink px-6 py-4",
+            "focus-ring rounded-[var(--radius-button)] border-2 border-vast-ink px-6 py-4",
             "font-figtree text-body-sm font-medium text-vast-ink",
             amountMissing
               ? "cursor-not-allowed bg-paper-edge opacity-60"
@@ -244,14 +244,14 @@ export function ReviewCard({
         <button
           type="button"
           onClick={() => setEditing((v) => !v)}
-          className="rounded-[12px] border-2 border-vast-ink bg-paper-raised px-6 py-4 font-figtree text-body-sm font-medium text-vast-ink hover:bg-paper-edge"
+          className="focus-ring rounded-[var(--radius-button)] border-2 border-vast-ink bg-paper-raised px-6 py-4 font-figtree text-body-sm font-medium text-vast-ink hover:bg-paper-edge"
         >
           {editing ? "Done editing" : "Edit"}
         </button>
         <button
           type="button"
           onClick={onDiscard}
-          className="px-2 py-4 font-figtree text-body-sm text-fog underline underline-offset-4 hover:text-vast-ink"
+          className="focus-ring px-2 py-4 font-figtree text-body-sm text-fog underline underline-offset-4 hover:text-vast-ink"
         >
           Discard
         </button>

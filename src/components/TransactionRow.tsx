@@ -44,7 +44,7 @@ export function TransactionRow({
       <button
         type="button"
         onClick={() => onOpen(t)}
-        className="group flex w-full items-start justify-between gap-4 border-b border-charcoal py-5 text-left last:border-b-0"
+        className="focus-ring-dark group flex w-full items-start justify-between gap-4 border-b border-charcoal py-5 text-left last:border-b-0"
       >
         <span className="min-w-0 flex-1">
           <span className="block truncate font-figtree text-body text-paper">
