@@ -265,10 +265,23 @@ body {
    borders, never a shadow" rule holds for this too. Offset so
    it reads as a second ring around the existing 2px border,
    not a replacement for it. */
-.focus-ring {
+.focus-ring,
+.focus-ring-dark {
   outline: none;
 }
 .focus-ring:focus-visible {
   outline: 2px solid var(--color-forest-ink);
+  outline-offset: 2px;
+}
+/* The dark chamber's counterpart, needed once the ring rolled out past the
+   paper-canvas screens this was written for. Forest Ink and Vast Ink sit at
+   similarly low luminance, and outline-offset places the ring in whatever
+   surrounds the element -- inside a chamber, that is Vast Ink itself,
+   regardless of the element's own fill -- so the paper-canvas ring all but
+   disappears there. Paper is already the chamber's primary text colour and
+   reads clearly against Vast Ink everywhere else in this system, so it is
+   reused here rather than adding a second new hue just for a focus ring. */
+.focus-ring-dark:focus-visible {
+  outline: 2px solid var(--color-paper);
   outline-offset: 2px;
 }

@@ -113,6 +113,21 @@ export function loadTransactions(): Transaction[] {
 export function saveTransactions(transactions: Transaction[]): void {
   if (typeof window === "undefined") return;
   try {
+    // A whole-journal wipe is the worst available bug here, and the one
+    // shape a race between two components writing this same key would
+    // actually produce: one hydrates, one hasn't yet, the empty one saves
+    // last. Refuse rather than silently erase; TransactionsProvider removes
+    // the race itself, but this stays as the backstop.
+    if (transactions.length === 0) {
+      const existing = window.localStorage.getItem(STORAGE_KEY);
+      if (existing && existing !== "[]") {
+        console.error(
+          "[types] saveTransactions refused to overwrite a non-empty journal " +
+            "with an empty one.",
+        );
+        return;
+      }
+    }
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(transactions));
   } catch {
     // Storage can be unavailable (private mode, blocked site data).

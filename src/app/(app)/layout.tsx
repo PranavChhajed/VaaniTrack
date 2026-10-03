@@ -1,5 +1,6 @@
 import { AudioConsentGate } from "@/components/AudioConsent";
 import { Onboarding } from "@/components/Onboarding";
+import { TransactionsProvider } from "@/lib/useTransactions";
 
 /**
  * The shell for the product screens, capture and journal.
@@ -14,10 +15,14 @@ import { Onboarding } from "@/components/Onboarding";
  * Consent is mounted here, not on the capture screen, because the journal
  * records too; asking in one place and not the other would mean a recording
  * could be kept without anyone having agreed to it.
+ *
+ * `TransactionsProvider` is mounted here for the same reason: capture and
+ * journal both read and write the same journal, and used to do so through
+ * two independent copies of the same state.
  */
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
-    <>
+    <TransactionsProvider>
       {children}
       <AudioConsentGate />
       {/* First-run flow, above the consent gate (z-[70] > z-[60]). Its own
@@ -25,6 +30,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           browser only ever sees one of the two overlays at a time, see
           Onboarding.tsx and hasOnboarded()'s existing-device check. */}
       <Onboarding />
-    </>
+    </TransactionsProvider>
   );
 }
