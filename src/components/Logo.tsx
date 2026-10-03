@@ -1,55 +1,46 @@
+import Image from "next/image";
+import logoMark from "../../public/logo.png";
+
 /**
  * The VaaniTrack mark.
  *
- * One continuous hand-drawn stroke: it opens as a soft, wavering scribble —
- * the same organic bezier technique as `.prov-inferred`'s underline in
- * globals.css, standing in for something spoken and not yet certain — then
- * straightens into a clean checkmark. The path syntax itself carries the
- * idea: curves (`C`) give way to straight lines (`L`) at the exact point the
- * gesture resolves, so "uncertain becoming confirmed" is built into the data,
- * not just the rendered shape. It is the app's own words, drawn: *"Say what
- * you spent. Check it. Done."*
+ * A "V" built from two halves of the product: a profile speaking on the
+ * left, a receipt carrying a rupee on the right. Vaani and track, in one
+ * letter. Supplied as artwork rather than drawn in code, so it lives in
+ * `public/logo.png` and every surface renders that one file.
  *
- * Deliberately not a waveform. Bars-in-a-circle is what every voice app
- * reaches for, and it was this app's own borrowed motif before this
- * component existed (see the four-bar spans this replaces). A checkmark
- * reads correctly at any size, down to a 16px favicon, which a delicate
- * multi-wave squiggle alone would not survive.
+ * Derived from `docs/design/reference/logo-reference.png` by
+ * `docs/design/LOGO.md`'s recipe: the wordmark and tagline cropped away
+ * (the app already sets "VaaniTrack" in type beside the mark, so baking it
+ * into the image would say it twice), the background made transparent, and
+ * the original gold rotated to a green in the app's own family. Ember Glow
+ * is the only warm accent the palette has and it means "the microphone is
+ * live", so the mark may not spend it.
  *
- * `LOGO_PATH` is exported so the PWA icon routes (`src/app/icon.tsx`,
- * `apple-icon.tsx`) render the exact same mark rather than a second,
- * drifting copy of it.
+ * The artwork is wider than it is tall. `size` is its **height**; width
+ * follows from the aspect ratio, so a row of things at the same `size` line
+ * up on their heights the way type does.
  */
 
-export const LOGO_PATH =
-  "M5 16 C7 12.5 8.5 19 10.5 15.5 C11.5 13.8 12.5 17.5 14 18.5 L17 22.5 L27 7";
+/** 661 × 512, `public/logo.png`'s own committed dimensions. */
+const ASPECT = 661 / 512;
 
 type LogoProps = {
-  /** Rendered size in px. The mark is square. */
+  /** Rendered height in px. Width follows the aspect ratio. */
   size?: number;
-  /** Stroke colour. Defaults to Forest Ink, the app's ink-accent colour —
-   *  the same colour the underline it borrows from already uses. */
-  color?: string;
   className?: string;
 };
 
-export function Logo({ size = 28, color = "var(--color-forest-ink)", className }: LogoProps) {
+export function Logo({ size = 28, className }: LogoProps) {
   return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 32 32"
-      fill="none"
+    <Image
+      src={logoMark}
+      alt=""
       aria-hidden="true"
+      height={size}
+      width={Math.round(size * ASPECT)}
       className={className}
-    >
-      <path
-        d={LOGO_PATH}
-        stroke={color}
-        strokeWidth={2.75}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
+      priority
+    />
   );
 }
