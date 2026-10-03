@@ -18,17 +18,18 @@ This is not a new design language. It is the smallest extension to the existing 
 
 **So: take the grammar, not the palette.** New screens use VaaniTrack's own family.
 
-## 2. Colour — three new tints
+## 2. Colour — one new tint
 
 ```css
 --color-tint-mint: #cfead9;  /* = existing --color-mint-whisper. Screen 1 */
 --color-tint-sage: #dbe7dc;  /* cooler, greener. Screen 2 */
---color-tint-clay: #eaded1;  /* warm sand, leaning toward the oat canvas. Screen 3 */
 ```
 
-Screen 4 (consent) and both auth screens use `--color-paper` (`#f0ede7`) unchanged — no new tint needed, since consent and auth are continuous with the app rather than a pitch for it.
+Screen 3, screen 4 (consent), and both auth screens use `--color-paper` (`#f0ede7`) unchanged — no new tint needed, since consent and auth are continuous with the app rather than a pitch for it.
 
-**The progression is deliberate:** mint → sage → clay → paper walks the user's eye toward the actual canvas colour, so arriving at the capture screen feels like reaching a destination rather than being dropped somewhere new.
+**Revised during implementation:** a third tint, `--color-tint-clay` (`#eaded1`), was built and shipped for screen 3, specified as "warm sand." Reviewed against the shipped mint and sage, it read as dusty pink rather than sand, the one colour in the app belonging to no existing family. It was deleted rather than re-tuned. Screen 3 now lands on `--color-paper` a step early.
+
+**The progression is deliberate:** mint → sage → paper walks the user's eye toward the actual canvas colour, so arriving at the capture screen feels like reaching a destination rather than being dropped somewhere new, and consent already feels like it is happening inside the app rather than inside a pitch for it.
 
 **Ember Glow (`--color-ember-glow`) is off-limits here.** `DESIGN.md` reserves it for one meaning — the microphone is live — and onboarding never records audio. (Aside, logged in `docs/design/README.md`: the shipped app already breaks this rule once, using Ember Glow for error banners on the capture screen. Not this phase's problem, but worth fixing when noticed.)
 
@@ -74,9 +75,9 @@ One shape, four fills:
 
 The reference spends most of its visual weight on a custom hand-drawn character per screen. That is the single most expensive thing to reproduce well, and a mediocre version would read worse than nothing.
 
-**Instead: reuse the app's own hand-drawn asset.** `globals.css` already ships one piece of line art — the SVG stroke behind `.prov-inferred`, the underline that marks a value the app worked out rather than heard. Scaled up as a horizontal section rule between the copy and the footer, it gives the screen warmth and a drawn quality without inventing a new visual language or sourcing stock art.
+**First attempt: reuse the app's own hand-drawn asset.** `globals.css` ships one piece of line art, the SVG stroke behind `.prov-inferred`, the underline that marks a value the app worked out rather than heard. Scaled up as a horizontal section rule between the copy and the footer, the idea was to give the screen warmth without inventing a new visual language.
 
-If this reads as too thin once built, the fallback is an abstract geometric mark in the screen's tint family (a circle, an arc, a stack of bars echoing the waveform logomark) — never a character, to keep faces and stock-art licensing out of the product entirely.
+**Revised during implementation: it read as too thin, as this document already anticipated.** A 6px squiggle repeated identically on all three screens was decoration that read as an accident, not a composition. Replaced with three small hand-drawn illustrations (`src/components/OnboardingArt.tsx`), one per screen, in the same monoline ink language as the logo: sound leaving a mouth, a receipt being checked (its middle row still carries the exact `.prov-inferred` squiggle, now placed where checking is actually explained), and a stacked ledger. No characters, no fills beyond the receipt's own paper colour. The illustration is now the screen's focal element, given the layout's `flex-1` band; `Next` moved to a full-width pill and `Skip` moved into the header so the footer holds one action.
 
 ## 6. Buttons and inputs — reuse existing strings exactly
 

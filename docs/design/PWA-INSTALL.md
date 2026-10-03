@@ -32,11 +32,14 @@ This is a known, already-logged gap: `docs/CONTEXT.md`'s "Beyond" section lists 
 }
 ```
 
-**Icons**, produced from the app's own mark rather than sourced — the four-bar waveform logomark already hand-built in `src/app/page.tsx` (three `vast-ink` bars, one `forest-ink`, on a `paper` ground):
+**Icons**, produced from the app's own mark rather than sourced:
 
-- `src/app/icon.png` — 512×512, Next's file convention, auto-generates the sizes the manifest needs
+- `src/app/icon.png` — Next's file convention, the favicon and tab icon
 - `src/app/apple-icon.png` — 180×180, for iOS home-screen
-- A maskable variant (safe-zone padding so Android's circular/squircle mask doesn't clip the bars)
+- `public/icon-192.png`, `public/icon-512.png` — the manifest's "any" sizes
+- `public/icon-512-maskable.png` — safe-zone padding so Android's circular or squircle mask doesn't clip the mark
+
+> **Revised twice since.** These first shipped as `ImageResponse` routes (`icon.tsx`, `icon-192/route.tsx`, …) drawing an SVG mark in code, because the mark *was* code. The supplied "V" artwork is a raster illustration, so drawing it in code is no longer possible or useful: all five are now static PNGs generated from the source art by `scripts/build-logo.mjs`, and the `ImageResponse` routes and their shared `lib/logoIcon.tsx` badge helper were deleted. See `LOGO.md`.
 
 **One viewport addition** — `viewportFit: "cover"` on the existing `viewport` export in `src/app/layout.tsx`, so standalone mode handles the iOS safe area correctly. This matters more here than in most apps: **there is no bottom navigation** — the only way between capture and journal is the header link — so nothing else will pull content out from under a notch.
 
@@ -45,6 +48,8 @@ This is a known, already-logged gap: `docs/CONTEXT.md`'s "Beyond" section lists 
 - **No service worker, no offline support.** Out of scope. A manifest is suf5ficient to fix the start URL; a service worker only becomes necessary if Chrome's install prompt turns out to require one (see caveats).
 - **No push notifications, no background sync.**
 - **No change to routing.** `start_url: "/"` already points at the existing capture route — nothing about the app's structure needs to move.
+
+  > **No longer true.** The landing-page work moved capture to `/app` so that `/` could hold the public page, and `start_url` moved with it. The requirement this section was written to protect (an install opens on capture, never the journal) still holds. See `LANDING-PAGE.md` §1.
 
 ## 4. Caveats to state plainly, not discover in testing
 

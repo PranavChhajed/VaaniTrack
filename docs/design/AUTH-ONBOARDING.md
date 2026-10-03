@@ -40,8 +40,10 @@ Four steps, full-bleed, one colour each. Progress shown as segmented bars. `Next
 |---|---|---|---|
 | 1 | Say what you spent | Speak it the way you'd text yourself. "250 lunch" is a whole entry. | mint |
 | 2 | Check it before it's saved | Every field shows whether it was heard, worked out, or left blank. Nothing is guessed. | sage |
-| 3 | Your money, in your words | The journal keeps the record readable — and correctable when it's wrong. | clay |
-| 4 | *(consent — existing copy, unchanged)* | | paper |
+| 3 | Your money, in your words | The journal keeps the record readable, and correctable when it's wrong. | paper |
+| 4 | *(consent, existing copy, unchanged)* | | paper |
+
+Revised during implementation: step 3 shipped on a third tint, `--color-tint-clay`, that read as pink rather than the intended warm sand once built (`THEME-ONBOARDING.md` §2). It was deleted rather than re-tuned; step 3 now lands on `--color-paper` a step early, so the flow settles onto the app's own canvas before the consent question.
 
 The three explainers map to the product's three pillars: **speed**, **trust**, **the record**. They are not feature announcements; each one states a promise the app actually keeps.
 
@@ -119,6 +121,8 @@ Because the account does nothing yet:
 
 - The auth screens are **reachable**, not forced. Entry point: a header link on capture and journal, shown only when signed out.
   > **Revised during implementation.** The original plan also offered a link on onboarding's consent step. `Onboarding` mounts in the root layout and stays mounted across any route change while unfinished, so navigating to `/signin` from step 4 would leave the sign-in form hidden behind the still-mounted overlay. The alternative — finishing onboarding first, then navigating — isn't available either, since consent must stay unskippable (§4). The header link, reachable only after onboarding has actually finished, has neither problem.
+  >
+  > **Unblocked since (20 September 2026).** The landing-page work moved both overlays out of the root layout into `src/app/(app)/layout.tsx`, so they no longer render over `/signin` (`LANDING-PAGE.md` §1). The reason this entry point was dropped is therefore gone. It has not been restored — that is a deliberate open item, not an oversight.
 - Each screen carries one quiet line saying that syncing across devices is coming and that an account does not move data yet.
 - "Continue without an account" is always present and never styled as the lesser choice.
 
