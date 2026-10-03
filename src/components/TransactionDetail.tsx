@@ -10,7 +10,7 @@ import {
 import { isFuture, parseClock, todayISO } from "@/lib/journal";
 
 /**
- * Transaction detail — inspect, correct, delete (§22-§26).
+ * Transaction detail: inspect, correct, delete (§22-§26).
  *
  * The row is built for scanning; this is built for inspection. Every stored
  * field is shown, including the ones that are empty, because "we do not know
@@ -18,7 +18,7 @@ import { isFuture, parseClock, todayISO } from "@/lib/journal";
  *
  * Provenance appears here and only here (§23). On a row it would be noise; on
  * the detail it answers the question a financial record has to be able to
- * answer — where did this value come from, did I say it or did the app decide
+ * answer: where did this value come from, did I say it or did the app decide
  * it?
  */
 
@@ -158,7 +158,7 @@ export function TransactionDetail({
       return;
     }
 
-    // §29 — the product records money already spent. A future date cannot be
+    // §29: the product records money already spent. A future date cannot be
     // a past expense, and scheduled payments are out of scope.
     if (date && isFuture(date)) {
       setError("That date is in the future. Expenses can only be recorded for days that have happened.");
@@ -293,7 +293,7 @@ export function TransactionDetail({
               </div>
 
               {error ? (
-                <p className="mt-4 rounded-[var(--radius-input)] border-2 border-vast-ink bg-ember-glow px-4 py-3 font-figtree text-body-sm text-vast-ink">
+                <p className="mt-4 rounded-[var(--radius-input)] border-2 border-alert bg-paper-raised px-4 py-3 font-figtree text-body-sm text-alert">
                   {error}
                 </p>
               ) : null}
@@ -321,7 +321,7 @@ export function TransactionDetail({
           )}
         </div>
 
-        {/* §26 — deletion is destructive and gets one deliberate confirmation. */}
+        {/* §26: deletion is destructive and gets one deliberate confirmation. */}
         {!confirmingDelete ? (
           <button
             type="button"
@@ -331,8 +331,8 @@ export function TransactionDetail({
             Delete this transaction
           </button>
         ) : (
-          <div className="rounded-[var(--radius-card)] border-2 border-vast-ink bg-ember-glow px-6 py-5">
-            <p className="font-figtree text-body text-vast-ink">
+          <div className="rounded-[var(--radius-card)] border-2 border-alert bg-paper-raised px-6 py-5">
+            <p className="font-figtree text-body font-medium text-alert">
               Delete this transaction?
             </p>
             <p className="mt-1 font-figtree text-body-sm text-vast-ink">
@@ -349,7 +349,7 @@ export function TransactionDetail({
               <button
                 type="button"
                 onClick={() => onDelete(t.id)}
-                className="rounded-[var(--radius-button)] border-2 border-vast-ink bg-vast-ink px-5 py-3 font-figtree text-body-sm font-medium text-paper"
+                className="rounded-[var(--radius-button)] border-2 border-alert bg-alert px-5 py-3 font-figtree text-body-sm font-medium text-paper"
               >
                 Delete
               </button>

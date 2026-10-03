@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 /* ============================================================
-   VaaniTrack — design system
+   VaaniTrack: design system
 
    Structure follows the Wispr Flow reference in
    docs/WISPR-FLOW-REFERENCE.md:
@@ -10,12 +10,12 @@
 
    Departures from the reference palette:
    1. Canvas moved off Wispr's yellow cream #ffffeb to an oat
-      paper — still warm, still light, off the yellow axis.
+      paper, still warm, still light, off the yellow axis.
    2. Primary action rotated lavender → mint, making it a tonal
       sibling of Forest Ink rather than its complement. Reads
       as money rather than dictation.
    3. A raised paper surface added, so cards separate from the
-      canvas by value as well as border — depth without ever
+      canvas by value as well as border, depth without ever
       reaching for a shadow.
    ============================================================ */
 
@@ -25,47 +25,75 @@
   --color-mint-deep: #aeddc6;
   --color-forest-ink: #034f46;
   --color-ember-glow: #ffa946;
+  /* Reserved: the microphone is live. See the invariant in DESIGN.md — do
+     not reach for it below. */
+  --color-alert: #9e3521;
+  /* Errors, warnings, destructive confirmation. Added because Ember Glow was
+     carrying all of those meanings as well as its own, which meant an error
+     banner and "we are listening to you right now" were the same colour.
+     6.58:1 on paper-raised, 6.02:1 on paper — both past the 4.5:1 floor for
+     prose. A banner reporting an error is border-and-text on paper-raised,
+     never a fill, same as every other informational surface in this
+     shadowless system. A dedicated destructive-action button (the actual
+     "Delete" press, not the card asking you to confirm it) may fill with it,
+     exactly as the primary action fills with mint-whisper. */
   --color-vast-ink: #1a1a1a;
   --color-paper: #f0ede7;
   --color-paper-raised: #f9f7f3;
   --color-paper-edge: #ddd7cb;
-  --color-fog: #8a857c;
+  /* Darkened from #8a857c, which measured 2.87:1 on the mint tint and
+     3.14:1 on paper: below the WCAG floor for prose, and fog carries
+     running prose in a dozen places. Now 5.11:1 at worst, and still
+     clearly quieter than charcoal (13.6) and vast-ink (14.9), so the
+     three-step hierarchy survives. */
+  --color-fog: #615d57;
   --color-charcoal: #222222;
   --color-pure-white: #ffffff;
+  /* Fog's counterpart for the dark chamber. One grey cannot pass 4.5:1
+     against both the paper family and vast-ink at once: the luminance
+     ranges don't overlap, they're on opposite sides of the scale. Same
+     hue as fog, lightened until it clears vast-ink (5.19:1) while
+     staying well under text-paper's brightness, so it still reads as
+     the quiet tier inside the chamber. */
+  --color-haze: #908c83;
 
-  /* Onboarding tints — docs/design/THEME-ONBOARDING.md.
-     Full-bleed screen backgrounds only, for the first-run flow.
+  /* Onboarding tint: docs/design/THEME-ONBOARDING.md.
+     Full-bleed screen background only, for the first-run flow.
      Screen 1 reuses --color-mint-whisper above rather than a
-     duplicate token; these two carry it onward, then screen 4
-     and both auth screens land on --color-paper — mint → sage →
-     clay → paper, so arriving at the app feels like reaching a
-     destination rather than a jump. Never used on interactive
-     elements; those stay on the core palette above. */
+     duplicate token; this one carries it onward, then screen 3
+     lands on --color-paper a step early: mint, then sage, then
+     the app's own canvas, so consent already feels like it is
+     happening inside the app rather than inside a pitch for it.
+     Never used on interactive elements; those stay on the core
+     palette above. */
   --color-tint-sage: #dbe7dc;
-  --color-tint-clay: #eaded1;
 
   /* Typography */
   --font-garamond: var(--font-eb-garamond), Cormorant Garamond, Georgia, serif;
   --font-figtree: var(--font-figtree), Inter, ui-sans-serif, system-ui, sans-serif;
 
+  /* Two leadings, on purpose. Prose sizes sit at 1.5 because 1.3 is a
+     display leading and was being applied to paragraphs; display sizes
+     stay tight, because that is what makes them read as display. */
   --text-caption: 14px;
-  --text-caption--line-height: 1.3;
+  --text-caption--line-height: 1.45;
   --text-body-sm: 16px;
-  --text-body-sm--line-height: 1.3;
-  --text-body: 20px;
-  --text-body--line-height: 1.3;
+  --text-body-sm--line-height: 1.5;
+  --text-body: 18px;
+  --text-body--line-height: 1.5;
   --text-subheading: 24px;
   --text-subheading--line-height: 1.3;
   --text-heading-sm: 32px;
   --text-heading-sm--line-height: 1.3;
   --text-heading-sm--letter-spacing: -0.96px;
-  --text-heading: 48px;
-  --text-heading--line-height: 0.95;
-  --text-heading-lg: 64px;
+  --text-heading: 36px;
+  /* 0.95 was set for 48px. At 36px it collides, so it opens slightly. */
+  --text-heading--line-height: 1.05;
+  --text-heading-lg: 48px;
   --text-heading-lg--line-height: 0.95;
   --text-heading-lg--letter-spacing: -1.92px;
 
-  /* Radii — never below 12px on buttons, never below 32px on cards */
+  /* Radii: never below 12px on buttons, never below 32px on cards */
   --radius-input: 12px;
   --radius-button: 12px;
   --radius-tag: 8px;
@@ -88,7 +116,7 @@ body {
   color: var(--color-vast-ink);
   font-family: var(--font-figtree);
   font-size: var(--text-body-sm);
-  line-height: 1.3;
+  line-height: 1.5;
 }
 
 /* Display type: the serif whispers at weight 400 and commands
@@ -99,7 +127,7 @@ body {
 }
 
 /* Amounts. Same serif as display, but with tabular figures so a
-   column of them stacks the way it would in an account book —
+   column of them stacks the way it would in an account book:
    ₹1,250 sits directly over ₹250 rather than drifting. */
 .money {
   font-family: var(--font-garamond);
@@ -158,6 +186,20 @@ body {
   animation: sheet-rise 260ms cubic-bezier(0.32, 0.72, 0, 1) both;
 }
 
+/* Scroll-triggered entrance, added only by `Reveal.tsx` after mount for
+   below-the-fold content. A page with no JS never sees these classes at
+   all, so it never sees hidden content. */
+.reveal {
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity 500ms ease-out, transform 500ms ease-out;
+}
+
+.reveal.reveal-visible {
+  opacity: 1;
+  transform: none;
+}
+
 @keyframes veil-in {
   from {
     opacity: 0;
@@ -180,6 +222,11 @@ body {
   }
   .wave-bar {
     transform: scaleY(0.7);
+  }
+  .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
   }
 }
 
@@ -209,7 +256,7 @@ body {
 
 /* ---- Focus ------------------------------------------------
    docs/design/THEME-ONBOARDING.md §7. The app has no focus
-   treatment anywhere today — every interactive element uses
+   treatment anywhere today; every interactive element uses
    outline-none and signals focus only by a border-colour swap
    to forest-ink. Survivable on a three-field review card,
    not on a keyboard-driven auth form.

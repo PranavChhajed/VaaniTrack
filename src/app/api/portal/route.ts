@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
-import { expectedToken, tokenFor, PORTAL_COOKIE } from "@/lib/portalAuth";
+import { expectedToken, verifyPassword, PORTAL_COOKIE } from "@/lib/portalAuth";
+
+export const runtime = "nodejs"; // node:crypto
+export const maxDuration = 30;
 
 /** Exchange the portal password for a session cookie. */
 export async function POST(request: Request) {
@@ -19,7 +22,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid request." }, { status: 400 });
   }
 
-  if (tokenFor(password) !== expected) {
+  if (!verifyPassword(password)) {
     return NextResponse.json({ error: "Wrong password." }, { status: 401 });
   }
 

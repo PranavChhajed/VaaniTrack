@@ -51,7 +51,7 @@ export function PortalLogin() {
       />
 
       {error ? (
-        <p className="mt-4 rounded-[var(--radius-input)] border-2 border-vast-ink bg-ember-glow px-4 py-3 font-figtree text-body-sm text-vast-ink">
+        <p className="mt-4 rounded-[var(--radius-input)] border-2 border-alert bg-paper-raised px-4 py-3 font-figtree text-body-sm text-alert">
           {error}
         </p>
       ) : null}

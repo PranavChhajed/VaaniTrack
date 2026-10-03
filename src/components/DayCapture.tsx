@@ -9,7 +9,7 @@ import type { Capture } from "@/lib/useCapture";
  * Recording onto the day you are looking at, as a sheet.
  *
  * The journal exists to be read. An always-open recorder made every day into
- * a form with a list attached, which inverted that — so recording is behind a
+ * a form with a list attached, which inverted that, so recording is behind a
  * deliberate tap, and arrives over the day rather than beside it.
  *
  * The date is stated on the sheet itself rather than left implied. This is the
@@ -25,7 +25,7 @@ export function DayCapture({
   dateLabel: string;
   onClose: () => void;
 }) {
-  // Escape closes, and the page behind stops scrolling while it is open —
+  // Escape closes, and the page behind stops scrolling while it is open;
   // otherwise dragging the sheet's content scrolls the journal underneath it.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -63,7 +63,7 @@ export function DayCapture({
               Record onto {dateLabel}
             </h2>
             <p className="mt-2 max-w-[42ch] font-figtree text-body-sm text-charcoal">
-              It will be filed under {dateLabel} &mdash; unless you name a
+              It will be filed under {dateLabel}, unless you name a
               different day out loud.
             </p>
           </div>
@@ -118,7 +118,7 @@ export function DayCapture({
         </form>
 
         {capture.error ? (
-          <p className="mt-6 max-w-[60ch] rounded-[var(--radius-input)] border-2 border-vast-ink bg-ember-glow px-4 py-3 font-figtree text-body-sm text-vast-ink">
+          <p className="mt-6 max-w-[60ch] rounded-[var(--radius-input)] border-2 border-alert bg-paper-raised px-4 py-3 font-figtree text-body-sm text-alert">
             {capture.error}
           </p>
         ) : null}

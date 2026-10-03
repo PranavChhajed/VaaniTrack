@@ -10,11 +10,14 @@ import {
 } from "@/lib/observe";
 import type { Transaction } from "@/lib/types";
 
+export const runtime = "nodejs"; // `postgres` requires it
+export const maxDuration = 30;
+
 /**
  * Where the client reports the things only the client knows.
  *
  * The gate decision and every user action happen in the browser, after both
- * API calls have returned — so they cannot be captured server-side and have to
+ * API calls have returned, so they cannot be captured server-side and have to
  * be sent back deliberately.
  *
  * **This endpoint always answers 200.** Callers are fire-and-forget: a failure
@@ -93,7 +96,7 @@ export async function POST(request: Request) {
         break;
     }
   } catch {
-    /* never surfaced — see the note above */
+    /* never surfaced, see the note above */
   }
   return NextResponse.json({ ok: true });
 }

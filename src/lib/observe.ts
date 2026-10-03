@@ -1,7 +1,7 @@
 import postgres from "postgres";
 
 /**
- * The observability layer — server side only.
+ * The observability layer: server side only.
  *
  * Its purpose is not storage. It is being able to answer, for one wrong
  * expense: **where in the pipeline did this break?**
@@ -25,7 +25,7 @@ const CONNECTION = process.env.DATABASE_URL;
 /**
  * One pooled client per process, created lazily.
  *
- * `max: 1` because serverless instances are numerous and short-lived — a
+ * `max: 1` because serverless instances are numerous and short-lived; a
  * larger pool per instance multiplies into far more Postgres connections than
  * intended. `prepare: false` is required by Supabase's transaction pooler,
  * which cannot carry prepared statements across pooled connections.
@@ -73,14 +73,14 @@ export type UserAction =
   | "edited"
   | "deleted";
 
-/** A device_id we can't parse is worse than none — it would poison grouping. */
+/** A device_id we can't parse is worse than none: it would poison grouping. */
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export function validDeviceId(value: unknown): string | null {
   return typeof value === "string" && UUID.test(value) ? value : null;
 }
 
 /**
- * Stage 1 — record the utterance and what the transcriber made of it.
+ * Stage 1: record the utterance and what the transcriber made of it.
  *
  * Returns the capture id so the client can thread it through to extraction,
  * or null when logging is unavailable, in which case the pipeline simply runs
@@ -135,7 +135,7 @@ export async function recordCapture(row: {
 }
 
 /**
- * Stage 2 — attach what the extractor made of the transcript.
+ * Stage 2: attach what the extractor made of the transcript.
  *
  * The raw model output is stored verbatim, not just the parsed fields: when
  * extraction is the thing that went wrong, the parsed view is the very thing
@@ -171,7 +171,7 @@ export async function recordExtraction(
  *
  * `gateFailed` is the point of this table. The gate is four independent
  * conditions, and "why did this go to review?" is unanswerable from a single
- * score — it needs to name which condition blocked the save.
+ * score; it needs to name which condition blocked the save.
  */
 export async function recordGate(
   captureId: string,
@@ -209,7 +209,7 @@ export async function recordGate(
  *
  * Undo, edit and delete each destroy evidence in the app's own storage, so
  * this row is written before that happens. `beforeState` preserves the model's
- * original output — without it a correction can be seen but not compared
+ * original output: without it a correction can be seen but not compared
  * against what was proposed, which is the entire value of a correction.
  */
 export async function recordEvent(row: {
@@ -298,7 +298,7 @@ export async function getCapture(id: string) {
  * Transaction mirror
  *
  * localStorage stays the fast local cache; this is the durable copy, keyed by
- * the anonymous device id. No accounts, no cross-device sync — the brief warns
+ * the anonymous device id. No accounts, no cross-device sync; the brief warns
  * against turning this into an authentication project, and durability alone is
  * what was actually missing.
  * ------------------------------------------------------------------ */
@@ -379,7 +379,7 @@ export async function listTransactions(deviceId: string, limit = 1000) {
  * Audio retention
  * ------------------------------------------------------------------ */
 
-/** Consented recordings live 90 days — long enough to span several prompt and
+/** Consented recordings live 90 days: long enough to span several prompt and
  *  model iterations, short enough to remain a policy rather than a hoard. */
 export const AUDIO_RETENTION_DAYS = 90;
 
@@ -390,7 +390,7 @@ const STORAGE_BUCKET = "captures";
  *
  * Uses the storage REST endpoint directly rather than adding a second client
  * library for one upload. Returns the object path, or null if anything at all
- * went wrong — an unstored recording is a lost data point, never a failed
+ * went wrong: an unstored recording is a lost data point, never a failed
  * capture.
  */
 export async function storeAudio(
@@ -405,7 +405,7 @@ export async function storeAudio(
   const path = `${captureId}.${mime.includes("mp4") ? "mp4" : "webm"}`;
   // Browsers report "audio/webm;codecs=opus", but the bucket's allowlist
   // matches on the bare type and rejects the codec parameter outright with a
-  // 415. Every consented recording was being silently dropped because of it —
+  // 415. Every consented recording was being silently dropped because of it,
   // consent recorded as given, audio_stored false, no error anywhere.
   const bucketMime = mime.split(";")[0].trim() || "application/octet-stream";
   try {
@@ -455,6 +455,74 @@ export async function recordAudioDecision(
             ? new Date(Date.now() + AUDIO_RETENTION_DAYS * 86_400_000)
             : null
         }
+      where id = ${captureId}
+    `;
+  } catch {
+    /* diagnostics never break capture */
+  }
+}
+
+/**
+ * Captures whose consented recording has outlived AUDIO_RETENTION_DAYS and is
+ * still marked stored. The purge cron's work list.
+ */
+export async function listExpiredAudio(
+  limit = 200,
+): Promise<{ id: string; path: string }[]> {
+  const s = db();
+  if (!s) return [];
+  try {
+    return await s<{ id: string; path: string }[]>`
+      select id, audio_path as path
+      from captures
+      where audio_stored = true
+        and audio_path is not null
+        and audio_expires_at is not null
+        and audio_expires_at < now()
+      limit ${limit}
+    `;
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Delete a stored recording from Supabase Storage.
+ *
+ * A 404 counts as success: the object is already gone, which is the state
+ * this call is trying to reach either way.
+ */
+export async function deleteStoredAudio(path: string): Promise<boolean> {
+  const base = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/+$/, "");
+  const key = process.env.SUPABASE_SECRET_KEY;
+  if (!base || !key) return false;
+  try {
+    const res = await fetch(
+      `${base}/storage/v1/object/${STORAGE_BUCKET}/${path}`,
+      {
+        method: "DELETE",
+        headers: { apikey: key, Authorization: `Bearer ${key}` },
+        signal: AbortSignal.timeout(10_000),
+      },
+    );
+    if (!res.ok && res.status !== 404) {
+      console.warn(`[deleteStoredAudio] ${res.status} for ${path}`);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.warn(`[deleteStoredAudio] threw for ${path}: ${String(err)}`);
+    return false;
+  }
+}
+
+/** Record that a capture's audio has been purged. The row itself persists. */
+export async function markAudioPurged(captureId: string): Promise<void> {
+  const s = db();
+  if (!s) return;
+  try {
+    await s`
+      update captures set audio_stored = false, audio_path = null
       where id = ${captureId}
     `;
   } catch {

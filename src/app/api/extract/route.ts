@@ -5,13 +5,16 @@ import { recordCapture, recordExtraction, validDeviceId } from "@/lib/observe";
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 const MODEL = process.env.GROQ_MODEL ?? "openai/gpt-oss-120b";
 
+export const runtime = "nodejs"; // `postgres` requires it
+export const maxDuration = 30;
+
 /**
  * Stage 2: text → structured transaction(s).
  *
  * This prompt is the product. The research (docs/RESEARCH.md §1.1) found that a
  * transcribe-then-interpret cascade reaches 95.6% on currency amounts against
  * 36.3% for raw ASR, so the reasoning that happens here is what makes the
- * amount trustworthy — not the transcription alone.
+ * amount trustworthy, not the transcription alone.
  *
  * Every rule below traces to a decision in docs/PRD-VaaniTrack.md §7.2.
  */
@@ -31,8 +34,8 @@ RULES
 5. Several expenses -> several array entries. Never merge or group.
 6. Self-correction in one utterance -> ONE entry with the final value. "250, no wait 280" -> 280 only.
 7. Explicit payment verb + person (paid/gave/sent/transferred) -> record normally: payee=person, category null+"unknown", needsConfirmation false. "Paid 500 to Rahul" -> 500, payee Rahul.
-8. needsConfirmation true ONLY for genuine ambiguity that could record a wrong transaction — chiefly a bare amount+person with NO verb ("250 to Pushpa": paid? lent? owed?). Give a short confirmationReason. A missing category is NOT a reason. An unreadable amount IS.
-9. Amounts: "two fifty"=250, "dhai sau"=250, "fifteen hundred"=1500, "1.5k"=1500, "ek lakh"=100000. This field must not be wrong — if unreadable, null+"unknown"+needsConfirmation true.
+8. needsConfirmation true ONLY for genuine ambiguity that could record a wrong transaction: chiefly a bare amount+person with NO verb ("250 to Pushpa": paid? lent? owed?). Give a short confirmationReason. A missing category is NOT a reason. An unreadable amount IS.
+9. Amounts: "two fifty"=250, "dhai sau"=250, "fifteen hundred"=1500, "1.5k"=1500, "ek lakh"=100000. This field must not be wrong: if unreadable, null+"unknown"+needsConfirmation true.
 10. CURRENCY ARTIFACTS. Everything here is Indian rupees. A "$" in the text is ALWAYS a transcription error, never dollars. Speech-to-text writes spoken Indian amounts in dollar form, so read $N.MM as the digits that were actually spoken: "$2.50"->250 ("two fifty"), "$1.20"->120 ("one twenty"), "$15.00"->1500 ("fifteen hundred"), "$3.00"->300. Paise are not used in practice, so a trailing .50 or .20 is a misheard "fifty"/"twenty", not a fraction. Plain "$300" is simply 300.
 
 No expense in the text -> {"transactions":[]}`;
@@ -89,6 +92,7 @@ export async function POST(request: Request) {
           { role: "user", content: text },
         ],
       }),
+      signal: AbortSignal.timeout(20_000),
     });
 
     if (!response.ok) {
@@ -144,7 +148,7 @@ export async function POST(request: Request) {
       : [];
 
     // A typed capture never went through transcription, so it has no row yet.
-    // It still belongs in the record — the extractor can be just as wrong
+    // It still belongs in the record; the extractor can be just as wrong
     // about text the user typed perfectly.
     if (!captureId) {
       captureId = await recordCapture({

@@ -11,6 +11,9 @@ import {
 
 const GROQ_URL = "https://api.groq.com/openai/v1/audio/transcriptions";
 
+export const runtime = "nodejs"; // node:fs and `postgres` both require it
+export const maxDuration = 30;
+
 /**
  * Keep a copy of every capture, with what came back for it.
  *
@@ -18,12 +21,16 @@ const GROQ_URL = "https://api.groq.com/openai/v1/audio/transcriptions";
  * distribution: a text-to-speech "two fifty lunch" is clean, evenly paced and
  * accent-free, which is exactly what the real failures are not. Real captures
  * from a real phone in a real room are the only corpus that can answer whether
- * a prompt, model or threshold change actually helps — and once saved they can
+ * a prompt, model or threshold change actually helps, and once saved they can
  * be replayed offline as many times as needed, with no device in the loop.
  *
- * Local disk only, gitignored, off by setting SAVE_CAPTURES=0.
+ * Local disk only, dev-only, opt-in via SAVE_CAPTURES=1. Structurally off in
+ * production regardless of that flag: Vercel's filesystem is read-only, so
+ * this used to fail silently into the catch{} below on every request there.
+ * Off by default locally too now, so a forgotten env var can't retain audio.
  */
-const SAVE_CAPTURES = process.env.SAVE_CAPTURES !== "0";
+const SAVE_CAPTURES =
+  process.env.NODE_ENV !== "production" && process.env.SAVE_CAPTURES === "1";
 const CAPTURE_DIR = join(process.cwd(), ".captures");
 
 async function keepCapture(
@@ -53,7 +60,7 @@ async function keepCapture(
  * single-digit WER on the Svarah Indian-accent benchmark, and Indian-accented
  * English is a v1 requirement (PRD §8.3).
  *
- * Two guards here exist because of Principle 0 — never record a wrong
+ * Two guards here exist because of Principle 0: never record a wrong
  * transaction:
  *
  * 1. The decoder prompt is vocabulary only, never example sentences. Given
@@ -77,7 +84,7 @@ async function keepCapture(
  *
  * Showing the model what an Indian amount looks like is what stops it
  * formatting spoken "two fifty" as a decimal currency value. The digits here
- * were a hallucination risk worth re-testing — on silence this prompt yields
+ * were a hallucination risk worth re-testing: on silence this prompt yields
  * "Subtitles by the Amara.org community", not a fabricated amount, and that
  * phrase is already on the denylist below.
  */
@@ -90,7 +97,7 @@ const AVG_LOGPROB_MIN = -1.0;
 /**
  * Whisper's stock hallucinations.
  *
- * Given quiet, clipped or unclear audio the model does not return nothing — it
+ * Given quiet, clipped or unclear audio the model does not return nothing; it
  * returns one of a small set of confident-looking stock phrases, often with a
  * perfectly healthy no_speech_prob. Observed on a real device: three seconds of
  * someone saying "two fifty lunch" came back as "Hello, how are you?".
@@ -152,7 +159,7 @@ function extensionFor(type: string): string {
 }
 
 /**
- * Mean avg_logprob across segments — the same figure the accepted path
+ * Mean avg_logprob across segments, the same figure the accepted path
  * reports as "confidence". Negative by nature: about -0.27 for a clean
  * capture, against a gate threshold of -0.9.
  */
@@ -224,7 +231,7 @@ export async function POST(request: Request) {
 
   // Too little data can mean two different things, and they need different
   // messages. A brief tap and a normal-length recording of near-silence both
-  // land under 2000 bytes, but only one of them is fixed by "hold it longer" —
+  // land under 2000 bytes, but only one of them is fixed by "hold it longer";
   // telling someone whose mic is muted to record for longer just gets the
   // identical message on every retry, which is indistinguishable from the app
   // being broken.
@@ -276,6 +283,7 @@ export async function POST(request: Request) {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}` },
       body: upstream,
+      signal: AbortSignal.timeout(20_000),
     });
 
     if (!response.ok) {
@@ -366,7 +374,7 @@ export async function POST(request: Request) {
           error: stock
             ? "That didn’t come through clearly. Try again, closer to the mic."
             : noNumber
-              ? `Heard “${text}” — but no amount in it. Say the number too, like “250 lunch”.`
+              ? `Heard “${text}”, but no amount in it. Say the number too, like “250 lunch”.`
               : "Didn’t catch any speech there. Try again, a bit closer to the mic.",
           debug: {
             bytes: audio.size,
@@ -381,7 +389,7 @@ export async function POST(request: Request) {
     }
 
     // How sure the model is of the words themselves. Passed downstream so a
-    // shaky transcript earns a review instead of being logged silently —
+    // shaky transcript earns a review instead of being logged silently;
     // "Hello, hi, so I want 50 rupees for lunch now" is a real observed
     // transcript of a clean recording, and auto-logging that would put a wrong
     // amount in the ledger without ever showing it to anyone.

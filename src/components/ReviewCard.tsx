@@ -4,16 +4,16 @@ import { useState } from "react";
 import { DEFAULTS, type Field, type Provenance, type Transaction } from "@/lib/types";
 
 /**
- * FR-12 — review before save.
+ * FR-12: review before save.
  *
  * The one screen that carries the product. Nothing commits without passing
  * through here, which is what makes "never record a wrong transaction"
  * survivable given that currency amounts are the weakest thing ASR does
- * (36.3% baseline — docs/RESEARCH.md §1.1).
+ * (36.3% baseline, docs/RESEARCH.md §1.1).
  *
  * Provenance (FR-10) is rendered using the Wispr Flow reference's hand-drawn underline
  * accent, which the reference system uses for editorial emphasis. Here it
- * marks values the system supplied rather than heard — emphasis repurposed
+ * marks values the system supplied rather than heard: emphasis repurposed
  * as honesty.
  */
 
@@ -115,6 +115,10 @@ export function ReviewCard({
   return (
     <article className="rise rounded-[32px] border-2 border-vast-ink bg-paper-raised p-6 sm:p-8">
       {needsConfirmation && confirmationReason ? (
+        // Deliberately ember, not alert: the app being unsure is normal
+        // operation here, not a failure. See the --color-alert comment in
+        // globals.css — alert is for errors and destructive actions, and
+        // "please check this" belongs in the provenance vocabulary instead.
         <p className="mb-6 rounded-[12px] border-2 border-vast-ink bg-ember-glow px-4 py-3 font-figtree text-body-sm text-vast-ink">
           {confirmationReason}
         </p>
@@ -155,7 +159,7 @@ export function ReviewCard({
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <label className="flex flex-col gap-2">
               <span className="font-figtree text-caption font-medium text-fog">
-                Category <span className="font-normal">— fine to leave blank</span>
+                Category <span className="font-normal">(fine to leave blank)</span>
               </span>
               <input
                 className={inputClass}

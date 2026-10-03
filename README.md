@@ -4,8 +4,10 @@ Say what you spent. Check it. Done.
 
 Voice-first expense capture. You speak an expense the way you'd text it to
 yourself — *"250 lunch"* — and it becomes a structured transaction, with every
-field showing whether it was heard, worked out, or filled from a default.
-Nothing saves until you've looked at it.
+field showing whether it was heard, worked out, filled from a default, or left
+blank because it's genuinely unknown. A confident capture saves itself, with
+an Undo that's there for exactly as long as it takes you to notice something's
+wrong; anything less certain stops on a review card first.
 
 **Start with [`CONTEXT.md`](docs/CONTEXT.md)** — the whole product, architecture and
 current state in one file. Product thinking lives in
@@ -44,7 +46,8 @@ DATABASE_URL=              # Supavisor TRANSACTION pooler, not the direct host
 NEXT_PUBLIC_SUPABASE_URL=
 SUPABASE_SECRET_KEY=       # sb_secret_... — server only, bypasses RLS
 PORTAL_PASSWORD=           # unset means /portal denies everyone
-SAVE_CAPTURES=0            # local .captures/ files; defaults to ON if unset
+SAVE_CAPTURES=1            # local .captures/ files; off unless set, and
+                           # structurally off in production regardless
 ```
 
 ---
@@ -160,12 +163,14 @@ Two things that bite on this path:
     │                          (never invents; leaves blanks blank)
     ▼
   confidence gate             four conditions; all must hold to save silently
-    │
-    ▼
-  review card                 you check the amount, then Save
-    │
-    ▼
-  journal                     localStorage, mirrored to Postgres if configured
+    │              ┌───────────────────┴───────────────────┐
+    │              ▼                                       ▼
+    │        all four hold                      any condition fails
+    │        auto-saved, with Undo              review card — you check it,
+    │                                            then Save
+    ▼                                                       │
+  journal ◄──────────────────────────────────────────────────┘
+           localStorage, mirrored to Postgres if configured
 ```
 
 Every stage above writes a row describing what it did, so a wrong expense can
@@ -189,8 +194,10 @@ stays blank rather than being guessed.
 
 | Route | What it is |
 |---|---|
-| `/` | Capture. Today's transactions only. |
+| `/` | The public landing page. No capture, no overlays. |
+| `/app` | Capture. Today's transactions only. The PWA's install target. |
 | `/journal` | The record — all populated days, month subtotals, edit and delete. |
+| `/signin`, `/signup` | Stubbed auth screens. The account is a UI concept only — nothing syncs yet, and these never touch the anonymous device id capture relies on. |
 | `/portal` | **Diagnostic portal.** Every capture, its pipeline stages, and a heuristic naming the likely point of failure. Password-gated; denies everyone when `PORTAL_PASSWORD` is unset. |
 | `/diag` | General diagnostics. |
 | `/diag/mic` | **Microphone signal test.** Runs the same utterance through three `getUserMedia` configurations and prints the dBFS that actually arrived. Built because Android routes capture through the platform voice path on some handsets, and whether that path works is a property of the handset. |
@@ -205,11 +212,13 @@ This is a two-day demo, deliberately scoped.
   as a separate recording won't update anything — edit on the review card
   instead. Self-correction *within* one utterance does work: *"250, no wait,
   280 on lunch"* records ₹280 once.
-- **No accounts, no cross-device sync.** `localStorage` on the device that
-  recorded it is the working copy. When Supabase is configured, transactions
-  also mirror to Postgres keyed by an anonymous per-browser device id — that is
-  durability, not sync: a second device is a different id and sees nothing.
-  Clearing site data still resets the id and orphans the mirrored rows.
+- **Sign-in exists; accounts don't yet.** `/signin` and `/signup` are real
+  screens, but the session is a UI concept only. `localStorage` on the device
+  that recorded it is still the working copy. When Supabase is configured,
+  transactions also mirror to Postgres keyed by an anonymous per-browser
+  device id — that is durability, not sync: a second device is a different id
+  and sees nothing. Clearing site data still resets the id and orphans the
+  mirrored rows.
 - **Defaults are hard-coded** — UPI, today's date. No settings screen.
 - **English only.**
 - **The free Groq tier throttles.** Rapid-fire captures will hit a rate limit;

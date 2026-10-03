@@ -88,18 +88,18 @@ export default function Diag() {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
       const track = stream.getAudioTracks()[0];
-      say(`✓ permission granted — track: "${track?.label || "unnamed"}"`);
+      say(`✓ permission granted, track: "${track?.label || "unnamed"}"`);
       say(`  track state: ${track?.readyState}, enabled: ${track?.enabled}`);
     } catch (e) {
       const err = e as Error;
-      say(`✗ FAILED: ${err.name} — ${err.message}`);
+      say(`✗ FAILED: ${err.name}: ${err.message}`);
     }
   };
 
   const step2 = async () => {
     const stream = streamRef.current;
     if (!stream) return say("✗ run step 1 first");
-    say("② recording for 3 seconds — say “two fifty lunch” now…");
+    say("② recording for 3 seconds, say “two fifty lunch” now…");
     try {
       const types = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4"];
       const mime = types.find((t) => MediaRecorder.isTypeSupported(t));
@@ -120,9 +120,9 @@ export default function Diag() {
         blobRef.current = blob;
         setRecording(false);
         say(
-          `✓ stopped after ${Date.now() - started}ms — ${blob.size} bytes, type ${blob.type || "?"}`,
+          `✓ stopped after ${Date.now() - started}ms, ${blob.size} bytes, type ${blob.type || "?"}`,
         );
-        if (blob.size === 0) say("✗ ZERO BYTES — this is the failure.");
+        if (blob.size === 0) say("✗ ZERO BYTES: this is the failure.");
       };
 
       rec.start(200);
@@ -192,7 +192,7 @@ export default function Diag() {
             <span
               className={[
                 "break-all font-figtree text-body-sm",
-                line.ok === false ? "text-ember-glow" : "text-vast-ink",
+                line.ok === false ? "text-alert" : "text-vast-ink",
               ].join(" ")}
             >
               {line.ok === true ? "✓ " : line.ok === false ? "✗ " : ""}
@@ -215,11 +215,11 @@ export default function Diag() {
       </div>
 
       <section className="rounded-[32px] bg-vast-ink p-5">
-        <p className="mb-3 font-figtree text-caption font-medium text-fog">
+        <p className="mb-3 font-figtree text-caption font-medium text-haze">
           Output
         </p>
         {log.length === 0 ? (
-          <p className="font-figtree text-body-sm text-fog">
+          <p className="font-figtree text-body-sm text-haze">
             Tap the buttons in order.
           </p>
         ) : (
@@ -230,7 +230,7 @@ export default function Diag() {
       </section>
 
       <a
-        href="/"
+        href="/app"
         className="text-center font-figtree text-body-sm text-fog underline underline-offset-4"
       >
         back to VaaniTrack
