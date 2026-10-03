@@ -1,7 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import { EB_Garamond, Figtree } from "next/font/google";
-import { AudioConsentGate } from "@/components/AudioConsent";
-import { Onboarding } from "@/components/Onboarding";
 import "./globals.css";
 
 const ebGaramond = EB_Garamond({
@@ -26,7 +24,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   // Standalone install (manifest.ts) has no browser chrome to fall back
-  // on, and this app has no bottom nav either — the header link is the
+  // on, and this app has no bottom nav either; the header link is the
   // only way between screens. Without this, an iOS notch or home
   // indicator can sit on top of that header instead of beside it.
   viewportFit: "cover",
@@ -42,18 +40,10 @@ export default function RootLayout({
       lang="en"
       className={`${ebGaramond.variable} ${figtree.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">
-        {children}
-        {/* Mounted here, not on the capture screen: the journal records too,
-            and asking in only one place would let a recording be kept that
-            nobody agreed to. */}
-        <AudioConsentGate />
-        {/* First-run flow, above the consent gate (z-[70] > z-[60]). Its own
-            last step asks the same consent question, so a genuinely new
-            browser only ever sees one of the two overlays at a time — see
-            Onboarding.tsx and hasOnboarded()'s existing-device check. */}
-        <Onboarding />
-      </body>
+      {/* The consent gate and the first-run flow are deliberately NOT mounted
+          here. They belong to the app screens and live in (app)/layout.tsx,
+          so that the landing page at `/` is not covered by either. */}
+      <body className="min-h-full flex flex-col">{children}</body>
     </html>
   );
 }

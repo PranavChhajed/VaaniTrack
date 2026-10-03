@@ -4,7 +4,7 @@ import Link from "next/link";
 import { DEFAULTS, type Transaction } from "@/lib/types";
 
 /**
- * Today's spending, rendered as one of the reference's "dark chambers" — a
+ * Today's spending, rendered as one of the reference's "dark chambers": a
  * near-black inset room with an oversized corner radius, bookended by paper
  * canvas. The alternation is what gives the page its rhythm; a second light
  * panel here would flatten it.
@@ -34,7 +34,7 @@ export function TransactionList({
               {DEFAULTS.currency}
               {total.toLocaleString("en-IN")}
             </span>
-            <span className="ml-2 text-fog">
+            <span className="ml-2 text-haze">
               across {transactions.length}{" "}
               {transactions.length === 1 ? "entry" : "entries"}
             </span>
@@ -43,7 +43,7 @@ export function TransactionList({
       </div>
 
       {transactions.length === 0 ? (
-        <p className="max-w-[52ch] font-figtree text-body text-fog">
+        <p className="max-w-[52ch] font-figtree text-body text-haze">
           Nothing today yet. Say something like{" "}
           <span className="text-paper">&ldquo;two fifty, lunch&rdquo;</span> and
           it will show up here once you&rsquo;ve checked it.
@@ -59,10 +59,10 @@ export function TransactionList({
                 <p className="truncate font-figtree text-body text-paper">
                   {t.description.value ?? "—"}
                   {t.payee.value ? (
-                    <span className="text-fog"> to {t.payee.value}</span>
+                    <span className="text-haze"> to {t.payee.value}</span>
                   ) : null}
                 </p>
-                <p className="mt-1 flex flex-wrap items-center gap-x-3 font-figtree text-caption text-fog">
+                <p className="mt-1 flex flex-wrap items-center gap-x-3 font-figtree text-caption text-haze">
                   {t.category.value ? (
                     <span className="rounded-[9999px] bg-forest-ink px-3 py-1 font-medium text-paper">
                       {t.category.value}
@@ -82,7 +82,7 @@ export function TransactionList({
                   type="button"
                   onClick={() => onDelete(t.id)}
                   aria-label={`Delete ${t.description.value ?? "transaction"}`}
-                  className="font-figtree text-caption text-fog underline underline-offset-4 transition-opacity hover:text-paper focus:opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
+                  className="font-figtree text-caption text-haze underline underline-offset-4 transition-opacity hover:text-paper focus:opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
                 >
                   Delete
                 </button>
@@ -92,11 +92,11 @@ export function TransactionList({
         </ul>
       )}
 
-      {/* Earlier days are no longer shown here, so say where they went —
+      {/* Earlier days are no longer shown here, so say where they went;
           otherwise a corrected date looks like a deleted transaction. */}
       <Link
         href="/journal"
-        className="mt-8 inline-block font-figtree text-body-sm text-fog underline underline-offset-4 hover:text-paper"
+        className="mt-8 inline-block font-figtree text-body-sm text-haze underline underline-offset-4 hover:text-paper"
       >
         See earlier days in the journal
       </Link>

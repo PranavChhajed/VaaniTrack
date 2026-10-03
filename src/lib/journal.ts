@@ -1,5 +1,5 @@
 /**
- * Journal data layer — Phase A.
+ * Journal data layer: Phase A.
  *
  * Everything the journal knows about grouping, totalling, ordering and time
  * lives here rather than in a component, because display and sort order have to
@@ -42,7 +42,7 @@ export function deleteTransaction(
  * A spoken time in minutes since midnight, or null when it cannot be read.
  *
  * The extractor is told to store a clock time only when one was actually
- * spoken, and it is not told what shape to write it in — so "10:42 AM",
+ * spoken, and it is not told what shape to write it in, so "10:42 AM",
  * "22:15" and "1 PM" all reach here. Anything unparseable is treated as
  * *unknown* for ordering while still being shown as written: better to
  * display a value we cannot sort by than to sort by a value we invented.
@@ -69,7 +69,7 @@ export function parseClock(raw: string | null): number | null {
 }
 
 /* ------------------------------------------------------------------ *
- * Time display — §11, §12
+ * Time display: §11, §12
  * ------------------------------------------------------------------ */
 
 export type TimeDisplay =
@@ -128,7 +128,7 @@ export function timeDisplay(t: Transaction): TimeDisplay {
 }
 
 /* ------------------------------------------------------------------ *
- * Grouping and ordering — §8, §13
+ * Grouping and ordering: §8, §13
  * ------------------------------------------------------------------ */
 
 export interface DayGroup {
@@ -143,7 +143,7 @@ export interface DayGroup {
 }
 
 /**
- * Group by *transaction* date — the day the spending happened — never by the
+ * Group by *transaction* date, the day the spending happened, never by the
  * day the record was created (§9, §30).
  *
  * Within a day the two sets are kept apart deliberately. Sorting a
@@ -192,7 +192,7 @@ export function groupByDay(transactions: Transaction[]): DayGroup[] {
   }
 
   // Newest day first. Undated transactions sink to the bottom rather than
-  // being dropped — they are still real records.
+  // being dropped; they are still real records.
   groups.sort((a, b) => {
     if (a.date === null) return 1;
     if (b.date === null) return -1;
@@ -216,8 +216,8 @@ export interface MonthGroup {
  * Gather days into the months they belong to, preserving day order.
  *
  * A running all-time figure answers a question nobody asks. A month is the
- * unit people actually budget in — rent, salary and bills all land on that
- * cycle — so the totals worth showing are monthly ones.
+ * unit people actually budget in: rent, salary and bills all land on that
+ * cycle, so the totals worth showing are monthly ones.
  *
  * Days keep the order `groupByDay` put them in, so the continuous scroll
  * through history is unchanged; this only adds a rule and a subtotal each
@@ -338,7 +338,7 @@ export function shiftMonth(iso: string, by: number): string {
  * A month laid out as calendar weeks, Sunday first, padded with nulls.
  *
  * Pure date arithmetic through the Date constructor, which rolls over month
- * and year boundaries on its own — so December to January needs no special
+ * and year boundaries on its own, so December to January needs no special
  * case (§28).
  */
 export function monthGrid(iso: string): (string | null)[][] {
@@ -360,7 +360,7 @@ export function monthGrid(iso: string): (string | null)[][] {
   return weeks;
 }
 
-/** Dates that actually have transactions — the picker marks these. */
+/** Dates that actually have transactions; the picker marks these. */
 export function populatedDates(transactions: Transaction[]): Set<string> {
   const dates = new Set<string>();
   for (const t of transactions) if (t.date.value) dates.add(t.date.value);

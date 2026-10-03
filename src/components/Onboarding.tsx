@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Logo } from "@/components/Logo";
+import { LedgerArt, ReceiptArt, SpeechArt } from "@/components/OnboardingArt";
 import {
   audioConsent,
   hasOnboarded,
@@ -14,8 +15,8 @@ import {
  *
  * Three explainers, then the consent question as a fourth step rather than
  * an unexplained modal. Built as an overlay in the same shape as
- * `AudioConsentGate` — state starts `null`, storage is read in an effect —
- * so server and first client render agree and nothing flashes.
+ * `AudioConsentGate`: state starts `null`, storage is read in an effect, so
+ * server and first client render agree and nothing flashes.
  *
  * This does not replace `AudioConsentGate`. That component keeps working
  * unchanged for every browser that has already onboarded but never
@@ -25,13 +26,15 @@ import {
  * The consent step is deliberately not a "Next" step: it keeps two
  * equal-weight buttons, because a Next that also means "I agree" is a dark
  * pattern the existing consent component goes out of its way to avoid.
- * Skip is offered on steps 1–3; it jumps to consent, never past it.
+ * Skip is offered on steps 1-3, in the header, and jumps straight to
+ * consent; it never skips past it.
  */
 
 type Step = {
   heading: string;
   body: string;
   tint: string;
+  Art: () => React.JSX.Element;
 };
 
 const STEPS: Step[] = [
@@ -39,61 +42,58 @@ const STEPS: Step[] = [
     heading: "Say what you spent",
     body: "Speak it the way you'd text yourself. “250 lunch” is a whole entry.",
     tint: "bg-mint-whisper",
+    Art: SpeechArt,
   },
   {
     heading: "Check it before it's saved",
     body: "Every field shows whether it was heard, worked out, or left blank. Nothing is guessed.",
     tint: "bg-tint-sage",
+    Art: ReceiptArt,
   },
   {
     heading: "Your money, in your words",
-    body: "The journal keeps the record readable — and correctable when it's wrong.",
-    tint: "bg-tint-clay",
+    body: "The journal keeps the record readable, and correctable when it's wrong.",
+    tint: "bg-paper",
+    Art: LedgerArt,
   },
 ];
 
 const CONSENT_STEP = STEPS.length; // index 3
+const TOTAL_STEPS = STEPS.length + 1;
 
-/** The same flat squiggle behind `.prov-inferred` in globals.css, reused
- *  here as a section rule rather than a character illustration — the
- *  app's one hand-drawn asset, not a second visual language. */
-function DrawnRule() {
+/** The wordmark row, on every step, with an optional Skip in the same row so
+ *  the footer can stay down to a single action. Consent passes no `onSkip`:
+ *  it is the one step that is never skippable. */
+function FlowHeader({ onSkip }: { onSkip?: () => void }) {
   return (
-    <svg
-      viewBox="0 0 60 6"
-      preserveAspectRatio="none"
-      className="mt-8 h-[6px] w-24"
-      aria-hidden="true"
-    >
-      <path
-        d="M1 4.2c8-2.4 15 1.4 22-.6s14-2.6 20 .4"
-        stroke="var(--color-forest-ink)"
-        strokeWidth={2.4}
-        fill="none"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
-/** The wordmark row, identical on all four steps so the flow reads as one
- *  continuous piece rather than three explainer screens plus a bare modal
- *  bolted on. This and `Progress` below are the once-per-flow Garamond
- *  appearance the theme spec asks for on the wordmark, alongside the
- *  consent step's own already-Garamond heading. */
-function FlowHeader() {
-  return (
-    <span className="flex items-center gap-2">
-      <Logo size={20} />
-      <span className="display-type text-body-sm text-vast-ink">VaaniTrack</span>
-    </span>
+    <div className="flex items-center justify-between">
+      <span className="flex items-center gap-2">
+        <Logo size={32} />
+        <span className="display-type text-body-sm text-vast-ink">VaaniTrack</span>
+      </span>
+      {onSkip && (
+        <button
+          type="button"
+          onClick={onSkip}
+          className="focus-ring font-figtree text-body-sm text-fog underline underline-offset-4 hover:text-vast-ink"
+        >
+          Skip
+        </button>
+      )}
+    </div>
   );
 }
 
 function Progress({ step }: { step: number }) {
   return (
-    <div className="flex gap-2" role="progressbar" aria-valuenow={step + 1} aria-valuemin={1} aria-valuemax={4}>
-      {Array.from({ length: 4 }, (_, i) => (
+    <div
+      className="flex gap-2"
+      role="progressbar"
+      aria-valuenow={step + 1}
+      aria-valuemin={1}
+      aria-valuemax={TOTAL_STEPS}
+    >
+      {Array.from({ length: TOTAL_STEPS }, (_, i) => (
         <span
           key={i}
           className={`h-[4px] flex-1 rounded-full ${i <= step ? "bg-vast-ink" : "bg-vast-ink/20"}`}
@@ -104,7 +104,7 @@ function Progress({ step }: { step: number }) {
 }
 
 export function Onboarding() {
-  // Three states: null (not yet mounted — render nothing, matching
+  // Three states: null (not yet mounted, render nothing, matching
   // AudioConsentGate's approach to avoiding a hydration mismatch),
   // true (done, render nothing), false (run the flow).
   const [onboarded, setOnboardedState] = useState<boolean | null>(null);
@@ -117,7 +117,7 @@ export function Onboarding() {
   if (onboarded === null || onboarded === true) return null;
 
   const finish = (consent: "granted" | "denied") => {
-    // Only step 4 ever calls this — see the consent-step buttons below.
+    // Only step 4 ever calls this, see the consent-step buttons below.
     // Only write consent if it's genuinely still unknown: someone who
     // reached onboarding after already answering (an edge case, not the
     // common path) must not have that answer silently overwritten.
@@ -130,18 +130,14 @@ export function Onboarding() {
     return (
       <div className="fixed inset-0 z-[70] flex min-h-dvh flex-col bg-paper px-6 py-8">
         <FlowHeader />
-        <div className="mt-8">
-          <Progress step={step} />
-        </div>
-        <div className="flex flex-1 flex-col items-start justify-center">
+        <div className="mt-10 flex flex-1 flex-col items-start justify-center">
           <p className="display-type text-subheading text-fog">Welcome to VaaniTrack.</p>
           <h2 className="display-type mt-2 text-heading-sm text-vast-ink">
             Can we keep your recordings?
           </h2>
           <p className="mt-4 max-w-[46ch] font-figtree text-body-sm text-charcoal">
-            VaaniTrack sometimes hears an amount wrong. Keeping the audio lets us
-            replay a mistake and find out whether it was the listening or the
-            understanding that failed &mdash; which is the only way it gets better.
+            VaaniTrack sometimes mishears an amount. Keeping the recording helps
+            us tell whether it was misheard or misunderstood, so it can improve.
           </p>
           <ul className="mt-4 flex flex-col gap-2 font-figtree text-body-sm text-charcoal">
             <li>&middot; Recordings are deleted after 90 days.</li>
@@ -149,58 +145,60 @@ export function Onboarding() {
             <li>&middot; You can say no and everything still works.</li>
           </ul>
         </div>
-        <div className="flex flex-col gap-3 sm:flex-row">
-          <button
-            type="button"
-            onClick={() => finish("granted")}
-            className="focus-ring flex-1 rounded-[var(--radius-button)] border-2 border-vast-ink bg-mint-whisper px-5 py-3 font-figtree text-body-sm font-medium text-vast-ink active:bg-mint-deep"
-          >
-            Yes, keep them
-          </button>
-          <button
-            type="button"
-            onClick={() => finish("denied")}
-            className="focus-ring flex-1 rounded-[var(--radius-button)] border-2 border-vast-ink bg-paper-raised px-5 py-3 font-figtree text-body-sm text-vast-ink active:bg-paper-edge"
-          >
-            No, don&rsquo;t
-          </button>
+        <div className="flex flex-col gap-3">
+          <Progress step={step} />
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <button
+              type="button"
+              onClick={() => finish("granted")}
+              className="focus-ring flex-1 rounded-[var(--radius-button)] border-2 border-vast-ink bg-mint-whisper px-5 py-3 font-figtree text-body-sm font-medium text-vast-ink active:bg-mint-deep"
+            >
+              Yes, keep them
+            </button>
+            <button
+              type="button"
+              onClick={() => finish("denied")}
+              className="focus-ring flex-1 rounded-[var(--radius-button)] border-2 border-vast-ink bg-paper-raised px-5 py-3 font-figtree text-body-sm text-vast-ink active:bg-paper-edge"
+            >
+              No, don&rsquo;t
+            </button>
+          </div>
         </div>
       </div>
     );
   }
 
   const current = STEPS[step];
+  const Art = current.Art;
 
   return (
     <div className={`fixed inset-0 z-[70] flex min-h-dvh flex-col px-6 py-8 ${current.tint}`}>
-      <FlowHeader />
+      <FlowHeader onSkip={() => setStep(CONSENT_STEP)} />
 
-      <div className="mt-8">
-        <Progress step={step} />
-      </div>
-
-      <div key={step} className="rise flex flex-1 flex-col items-start justify-center">
-        <h1 className="max-w-[16ch] font-figtree text-heading-sm font-bold text-vast-ink sm:text-heading">
+      <div key={step} className="rise mt-10">
+        <p className="font-figtree text-caption font-semibold uppercase tracking-[0.08em] text-fog">
+          {String(step + 1).padStart(2, "0")} / {String(STEPS.length).padStart(2, "0")}
+        </p>
+        <h1 className="mt-3 max-w-[16ch] font-figtree text-heading-sm font-bold text-vast-ink sm:text-heading">
           {current.heading}
         </h1>
         <p className="mt-4 max-w-[38ch] font-figtree text-body text-fog">{current.body}</p>
-        <DrawnRule />
       </div>
 
-      <div className="flex flex-col items-center gap-4">
+      <div className="flex flex-1 items-center justify-center py-6">
+        <div className="h-[160px] w-full max-w-[220px] sm:h-[200px]">
+          <Art />
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-4">
+        <Progress step={step} />
         <button
           type="button"
           onClick={() => setStep((s) => s + 1)}
-          className="focus-ring w-full rounded-[var(--radius-button)] border-2 border-vast-ink bg-mint-whisper px-6 py-4 font-figtree text-body-sm font-medium text-vast-ink active:bg-mint-deep"
+          className="focus-ring w-full rounded-[var(--radius-pill)] border-2 border-vast-ink bg-mint-whisper px-6 py-4 font-figtree text-body-sm font-medium text-vast-ink active:bg-mint-deep"
         >
           Next
-        </button>
-        <button
-          type="button"
-          onClick={() => setStep(CONSENT_STEP)}
-          className="focus-ring font-figtree text-body-sm text-fog underline underline-offset-4 hover:text-vast-ink"
-        >
-          Skip
         </button>
       </div>
     </div>

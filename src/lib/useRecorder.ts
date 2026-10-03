@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 /**
  * `warming` is the gap between the browser handing over a microphone track and
  * that track carrying any sound. On the handset this was found on it ran from
- * 0.06s to 1.44s, and once for the whole of a 1.34s take — the audio hardware
+ * 0.06s to 1.44s, and once for the whole of a 1.34s take: the audio hardware
  * emits digital zeros until it has actually started. The app used to say "Tap
  * to finish" the instant getUserMedia resolved, so the first words were spoken
  * into a dead stream and short ones vanished entirely. Nothing downstream could
@@ -88,7 +88,7 @@ const LIVE_RMS = 5e-4;
 /**
  * How long to wait for that first sample before starting anyway.
  *
- * A ceiling, not a target — the wait normally ends in a few frames. It exists
+ * A ceiling, not a target: the wait normally ends in a few frames. It exists
  * because a microphone that never delivers anything must not leave the button
  * stuck: better to record a take the level meter cannot vouch for than to
  * refuse to record at all.
@@ -121,7 +121,7 @@ export function useRecorder() {
   const liveRef = useRef(false);
   const warmupMsRef = useRef<number | null>(null);
   // Whether the level numbers mean anything. False when the meter never got a
-  // running AudioContext — iOS in particular can leave one suspended — in which
+  // running AudioContext; iOS in particular can leave one suspended, in which
   // case its readings are zeros about the meter, not about the microphone, and
   // must not be allowed to condemn a perfectly good recording as silence.
   const meterTrustedRef = useRef(false);
@@ -143,7 +143,7 @@ export function useRecorder() {
 
     // getUserMedia exists only in a secure context: HTTPS with a certificate
     // the browser actually trusts, or localhost. Note that tapping through a
-    // certificate warning does NOT produce a secure context in Chrome — the
+    // certificate warning does NOT produce a secure context in Chrome; the
     // page loads and this stays undefined.
     if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
       const insecure =
@@ -153,7 +153,7 @@ export function useRecorder() {
       setState("denied");
       setError(
         insecure
-          ? `Microphone needs HTTPS. This page is on ${window.location.protocol}//${window.location.hostname} — open the https:// link instead.`
+          ? `Microphone needs HTTPS. This page is on ${window.location.protocol}//${window.location.hostname}; open the https:// link instead.`
           : "This browser will not give the page a microphone. Try Chrome or Safari.",
       );
       return;
@@ -170,8 +170,8 @@ export function useRecorder() {
       // Plain `audio: true`, not { echoCancellation, noiseSuppression,
       // autoGainControl }. Those constraints were the difference between this
       // path and the diagnostics page's bare getUserMedia call, and the
-      // combination — layered with a second live consumer of the same track
-      // below — reproduced recordings that ran for a normal duration while
+      // combination, layered with a second live consumer of the same track
+      // below, reproduced recordings that ran for a normal duration while
       // carrying almost no audio data, on a real device, while the diag page's
       // plain call captured full-volume speech every time. Duration lied about
       // nothing being wrong; the byte count told the truth.
@@ -227,7 +227,7 @@ export function useRecorder() {
         } else if (ms < MIN_MS) {
           resolve({
             ok: false,
-            reason: "That was too quick — hold on a moment while you speak.",
+            reason: "That was too quick; hold on a moment while you speak.",
           });
         } else if (peakDb !== null && peakDb < SILENT_DB) {
           // Caught here rather than at the server because the server sees only
@@ -236,7 +236,7 @@ export function useRecorder() {
           resolve({
             ok: false,
             reason:
-              "The microphone sent silence — the recording ran, but no sound reached this page. " +
+              "The microphone sent silence; the recording ran, but no sound reached this page. " +
               "Close any other app using the mic (a call, a voice note), disconnect Bluetooth earphones, " +
               "and make sure nothing is covering the bottom edge of the phone.",
           });
@@ -245,7 +245,7 @@ export function useRecorder() {
         }
       };
 
-      // Started before the level meter touches the stream at all — see the
+      // Started before the level meter touches the stream at all; see the
       // note above the getUserMedia call. A timeslice matters too: without
       // one, Safari may deliver nothing until the recorder is torn down, and
       // on some builds nothing at all. Asking for data every 200ms makes
@@ -255,7 +255,7 @@ export function useRecorder() {
       recorderRef.current = recorder;
       // Not "recording" yet. The recorder is running and will keep whatever
       // arrives, but the user is not invited to speak until sound is actually
-      // reaching it — see the note on RecorderState. The dead lead-in stays in
+      // reaching it; see the note on RecorderState. The dead lead-in stays in
       // the blob, where it is harmless; what matters is that nobody spoke into
       // it. If the meter cannot start, the tick below never runs and the catch
       // falls through to "recording" immediately.
@@ -265,7 +265,7 @@ export function useRecorder() {
       // uncontested first claim on the stream. It is a second live consumer of
       // the same track, and on the device this bug was reproduced on, that
       // second consumer existing before the recorder started was enough to
-      // starve the encoder while the clock kept running normally — a
+      // starve the encoder while the clock kept running normally: a
       // recording of a completely normal length carrying almost no audio. The
       // meter is cosmetic; it can attach a beat later with no visible cost.
       try {
@@ -276,7 +276,7 @@ export function useRecorder() {
         const ctx = new Ctx();
         // iOS starts contexts suspended. Do NOT await resume() here: the user
         // gesture has already been spent on getUserMedia, and on iOS the
-        // promise can then hang forever — which would leave start() pending
+        // promise can then hang forever, which would leave start() pending
         // and the button stuck in "requesting" with no error and no recording.
         // The meter is cosmetic; recording must not wait on it.
         if (ctx.state === "suspended") void ctx.resume().catch(() => {});
@@ -286,7 +286,7 @@ export function useRecorder() {
         ctx.createMediaStreamSource(stream).connect(analyser);
         // Float, not byte. getByteTimeDomainData quantises to 8 bits, so its
         // floor is around -48 dBFS and it cannot tell a very quiet room from
-        // true silence — which is precisely the distinction that matters here.
+        // true silence, which is precisely the distinction that matters here.
         const data = new Float32Array(analyser.fftSize);
 
         const goLive = (trusted: boolean) => {
@@ -327,7 +327,7 @@ export function useRecorder() {
         };
         tick();
       } catch {
-        // Visualisation is a nicety; recording works without it — but the
+        // Visualisation is a nicety; recording works without it, but the
         // warm-up wait is gated on the meter, so without one there is nothing
         // to wait for and the button must not be left saying "getting ready".
         liveRef.current = true;
@@ -356,7 +356,7 @@ export function useRecorder() {
     return new Promise((resolve) => {
       resolveRef.current = resolve;
 
-      // If onstop never fires — which happens on some mobile builds — resolve
+      // If onstop never fires, which happens on some mobile builds, resolve
       // anyway rather than leaving the caller awaiting forever behind a
       // "Working…" button.
       const guard = setTimeout(() => {

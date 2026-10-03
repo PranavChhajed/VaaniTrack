@@ -52,18 +52,21 @@ export function TransactionRow({
           </span>
 
           {meta.length > 0 ? (
-            <span className="mt-1 block truncate font-figtree text-caption text-fog">
+            <span className="mt-1 block truncate font-figtree text-caption text-haze">
               {meta.join(" · ")}
             </span>
           ) : null}
 
-          {/* The logging stamp. Deliberately the quietest thing on the row —
-              it says when this was written down, never when it was spent. */}
+          {/* The logging stamp. Deliberately the quietest thing on the row:
+              it says when this was written down, never when it was spent.
+              Quieter than the meta line above by tone alone (paper-edge vs
+              haze), not by opacity: an opacity multiplier on haze pushed a
+              real timestamp below 4.5:1 against vast-ink. */}
           {time.kind !== "none" ? (
             <span
               className={[
                 "mt-1 block font-figtree text-caption",
-                time.kind === "transaction" ? "text-paper-edge" : "text-fog opacity-70",
+                time.kind === "transaction" ? "text-paper-edge" : "text-haze",
               ].join(" ")}
             >
               {time.text}

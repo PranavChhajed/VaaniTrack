@@ -24,7 +24,7 @@ export interface Transaction {
   amount: Field<number>;
   description: Field<string>;
   /** Nullable by decision. An empty category is acceptable and must
-   *  never be guessed to avoid a blank — PRD FR-1, FR-11. */
+   *  never be guessed to avoid a blank; PRD FR-1, FR-11. */
   category: Field<string>;
   /** A person, when the utterance names one ("Paid 500 to Rahul"). */
   payee: Field<string>;
@@ -32,7 +32,7 @@ export interface Transaction {
   /** ISO date, YYYY-MM-DD. */
   date: Field<string>;
   /** Not a v1 capture requirement. Stored only if explicitly said,
-   *  never inferred, never fabricated — PRD §7.4. */
+   *  never inferred, never fabricated; PRD §7.4. */
   time: Field<string>;
   createdAt: string;
   source: "voice" | "manual";
@@ -57,7 +57,7 @@ export interface ExtractedTransaction {
   time: string | null;
   timeProvenance: Provenance;
   /** True when the utterance is too ambiguous to record without
-   *  asking — e.g. a bare amount and a person, with no verb.
+   *  asking, e.g. a bare amount and a person, with no verb.
    *  PRD FR-1: "250 to Pushpa" confirms, "Paid 500 to Rahul" does not. */
   needsConfirmation: boolean;
   confirmationReason: string | null;
@@ -68,7 +68,7 @@ export interface ExtractionResult {
   transcript: string;
 }
 
-/** Hard-coded for the demo. No settings screen in v1 — PRD FR-3. */
+/** Hard-coded for the demo. No settings screen in v1; PRD FR-3. */
 export const DEFAULTS = {
   paymentMethod: "UPI",
   currency: "₹",

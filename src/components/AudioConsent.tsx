@@ -12,20 +12,20 @@ import {
  * The one question asked before the first recording.
  *
  * Mounted in the root layout rather than on the capture screen, because the
- * journal can record too — asking in one place and not the other would mean a
+ * journal can record too; asking in one place and not the other would mean a
  * recording could be kept without anyone having agreed to it.
  *
  * What it deliberately does not do is decide anything for the user. There is no
  * pre-ticked box and no default: the recorder stays behind this until one of
  * the two buttons is pressed, and "No" is as easy to press as "Yes".
  *
- * Answering "no" is not a degraded mode. The app works identically — VaaniTrack
+ * Answering "no" is not a degraded mode. The app works identically: VaaniTrack
  * still records expenses, still shows transcripts, still logs what the pipeline
  * did. The only difference is whether the recording itself is kept.
  *
  * Deferred to `Onboarding.tsx` for a genuinely new browser: its own step 4
  * asks this exact question. Without the `hasOnboarded()` check below, both
- * components would mount their dialog at once — the higher z-index one
+ * components would mount their dialog at once: the higher z-index one
  * would visually win, but the other stays live underneath, fully
  * functional and reachable by keyboard or a screen reader despite being
  * invisible. Two "No, don't" buttons answering the same question is a
@@ -64,9 +64,8 @@ export function AudioConsentGate() {
         </h2>
 
         <p className="mt-4 font-figtree text-body-sm text-charcoal">
-          VaaniTrack sometimes hears an amount wrong. Keeping the audio lets us
-          replay a mistake and find out whether it was the listening or the
-          understanding that failed &mdash; which is the only way it gets better.
+          VaaniTrack sometimes mishears an amount. Keeping the recording helps
+          us tell whether it was misheard or misunderstood, so it can improve.
         </p>
 
         <ul className="mt-4 flex flex-col gap-2 font-figtree text-body-sm text-charcoal">

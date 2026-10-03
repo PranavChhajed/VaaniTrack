@@ -39,7 +39,7 @@ type CaptureRow = {
 /**
  * Where the pipeline most likely broke.
  *
- * A heuristic, and labelled as one on screen — it narrows the search, it does
+ * A heuristic, and labelled as one on screen: it narrows the search, it does
  * not close the case. The ordering matters: a stage can only be blamed once
  * everything upstream of it is known to have worked.
  */
@@ -55,35 +55,35 @@ function likelyFailure(row: {
 }): { label: string; tone: "ok" | "warn" | "bad" } {
   // Checked before anything downstream, because when the microphone sent
   // nothing every later stage is reporting on silence. The byte count cannot
-  // reveal this — Opus spends the same bitrate on silence as on speech, so a
-  // dead capture arrives looking entirely healthy — which is why this number
+  // reveal this: Opus spends the same bitrate on silence as on speech, so a
+  // dead capture arrives looking entirely healthy, which is why this number
   // is measured in the browser and carried along with the audio.
   const peak = row.audio_peak_db;
   if (peak !== null && peak !== undefined) {
     if (peak < -55)
-      return { label: "Mic sent silence — nothing reached the page", tone: "bad" };
+      return { label: "Mic sent silence: nothing reached the page", tone: "bad" };
     if (peak < -40)
       return { label: `Mic far too quiet (peak ${Number(peak).toFixed(0)} dB)`, tone: "bad" };
   }
   if (row.asr_verdict === "rejected_too_small") {
     // Distinguishes a brief tap from a normal-length recording of
-    // near-silence — the two look identical as a byte count but point at
+    // near-silence: the two look identical as a byte count but point at
     // completely different fixes (nothing to do vs. a muted or misrouted mic).
     const rate =
       row.audio_bytes && row.audio_ms ? row.audio_bytes / row.audio_ms : null;
     if (rate !== null && rate < 1 && (row.audio_ms ?? 0) > 1200) {
-      return { label: "Mic hardware — recorded silence, not a short tap", tone: "bad" };
+      return { label: "Mic hardware: recorded silence, not a short tap", tone: "bad" };
     }
-    return { label: "Recording too short — mis-tap", tone: "warn" };
+    return { label: "Recording too short: mis-tap", tone: "warn" };
   }
   if (row.asr_verdict === "rejected_no_speech")
-    return { label: "Audio — no speech detected", tone: "warn" };
+    return { label: "Audio: no speech detected", tone: "warn" };
   if (row.asr_verdict === "rejected_denylist")
-    return { label: "ASR — returned a stock hallucination", tone: "bad" };
+    return { label: "ASR: returned a stock hallucination", tone: "bad" };
   if (row.asr_verdict === "rejected_no_amount")
-    return { label: "ASR or speaker — no amount in the transcript", tone: "warn" };
+    return { label: "ASR or speaker: no amount in the transcript", tone: "warn" };
   if (row.extract_error)
-    return { label: `Extraction — ${row.extract_error}`, tone: "bad" };
+    return { label: `Extraction: ${row.extract_error}`, tone: "bad" };
 
   const undone = row.events?.some((e) => e.action === "undone");
   const discarded = row.events?.some((e) => e.action === "review_discarded");
@@ -91,9 +91,9 @@ function likelyFailure(row: {
 
   // An auto-save the user immediately undid is the worst outcome the product
   // has: the gate was confident and wrong.
-  if (undone) return { label: "Gate — auto-saved something wrong", tone: "bad" };
-  if (discarded) return { label: "Extraction — proposal rejected", tone: "bad" };
-  if (edited) return { label: "Extraction — user corrected a field", tone: "warn" };
+  if (undone) return { label: "Gate: auto-saved something wrong", tone: "bad" };
+  if (discarded) return { label: "Extraction: proposal rejected", tone: "bad" };
+  if (edited) return { label: "Extraction: user corrected a field", tone: "warn" };
 
   const reviewed = row.transactions.some((t) => t.outcome === "review");
   if (reviewed) return { label: "Sent to review", tone: "warn" };

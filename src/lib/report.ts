@@ -71,7 +71,7 @@ export function reportTransactions(
  * What the user did about a transaction.
  *
  * Undo, edit and delete all destroy the evidence in localStorage, so this must
- * be called *before* the local state changes — `before` is the only surviving
+ * be called *before* the local state changes; `before` is the only surviving
  * record of what the model originally proposed.
  */
 export function reportEvent(

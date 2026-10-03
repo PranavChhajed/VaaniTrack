@@ -37,12 +37,12 @@ import {
 } from "@/lib/types";
 
 /**
- * The journal — Phase A.
+ * The journal: Phase A.
  *
  * Two states of one screen, which is how §8 and §18 reconcile:
  *
- *   browse  — every populated day, newest first. The default.
- *   day     — one chosen date, and only that date. Entered from the picker.
+ *   browse  : every populated day, newest first. The default.
+ *   day     : one chosen date, and only that date. Entered from the picker.
  *
  * Day-by-day scrolling is deliberately not built (§18). The requirement is
  * that history is reachable, not that it is an infinite feed, and committing
@@ -79,8 +79,8 @@ function CaptureAction({ count }: { count: number }) {
   if (level === "quiet") {
     return (
       <Link
-        href="/"
-        className="mt-6 inline-block font-figtree text-body-sm text-fog underline underline-offset-4 hover:text-paper"
+        href="/app"
+        className="mt-6 inline-block font-figtree text-body-sm text-haze underline underline-offset-4 hover:text-paper"
       >
         Record an expense
       </Link>
@@ -89,7 +89,7 @@ function CaptureAction({ count }: { count: number }) {
 
   return (
     <Link
-      href="/"
+      href="/app"
       className={[
         "mt-6 inline-block rounded-[var(--radius-pill)] border-2 border-vast-ink",
         "font-figtree font-medium text-vast-ink active:bg-mint-deep",
@@ -126,8 +126,8 @@ function LogOntoDay({ onOpen }: { onOpen: () => void }) {
 /**
  * The rule that marks a change of month in the scroll.
  *
- * Heavier than a day rule — bright against the chamber where a day gets a
- * muted line — because it is the larger division. The scroll itself stays
+ * Heavier than a day rule (bright against the chamber where a day gets a
+ * muted line) because it is the larger division. The scroll itself stays
  * continuous; this is a marker in it, not a boundary that hides anything.
  */
 function MonthSection({
@@ -143,7 +143,7 @@ function MonthSection({
         <span className="font-figtree text-caption font-semibold uppercase tracking-[0.08em] text-paper">
           {group.label}
         </span>
-        <span className="font-figtree text-caption text-fog">
+        <span className="font-figtree text-caption text-haze">
           <span className="money text-body-sm text-paper">
             {DEFAULTS.currency}
             {group.total.toLocaleString("en-IN")}
@@ -171,7 +171,7 @@ function DaySection({
         <span className="display-type text-subheading text-paper">
           {dayLabel(group.date)}
         </span>
-        <span className="font-figtree text-caption text-fog">
+        <span className="font-figtree text-caption text-haze">
           <span className="money text-body-sm text-paper">
             {DEFAULTS.currency}
             {group.total.toLocaleString("en-IN")}
@@ -195,9 +195,9 @@ function DaySection({
           {/* Kept visibly apart from the timed rows above. Sliding these into
               the same list would place them somewhere in the day's chronology,
               and their position would read as a claim about when they
-              happened — which is exactly what is not known (§13). */}
+              happened, which is exactly what is not known (§13). */}
           {group.timed.length > 0 ? (
-            <p className="pt-5 font-figtree text-caption uppercase tracking-[0.08em] text-fog">
+            <p className="pt-5 font-figtree text-caption uppercase tracking-[0.08em] text-haze">
               Time not recorded
             </p>
           ) : null}
@@ -241,7 +241,7 @@ export default function Journal() {
   }, []);
 
   // The day being viewed is the day a capture lands on. Null while browsing,
-  // which falls back to today — the same behaviour as the capture screen.
+  // which falls back to today, the same behaviour as the capture screen.
   const capture = useCapture({
     captureDate: selected,
     onLogged: handleLogged,
@@ -275,8 +275,8 @@ export default function Journal() {
     <main className="mx-auto flex w-full max-w-[900px] flex-col gap-8 px-5 py-8 sm:px-8 sm:py-12">
       <header className="flex items-center justify-between rounded-[var(--radius-pill)] border-2 border-vast-ink bg-paper-raised px-6 py-4">
         <span className="flex items-center gap-3">
-          <Logo size={24} />
-          <span className="font-figtree text-body-sm font-semibold tracking-tight">
+          <Logo size={32} />
+          <span className="display-type text-body-sm text-vast-ink">
             VaaniTrack
           </span>
         </span>
@@ -292,7 +292,7 @@ export default function Journal() {
           {/* Capture is the app; this is a room you stepped into. The way back
               is stated plainly rather than left to the browser's back button. */}
           <Link
-            href="/"
+            href="/app"
             className="font-figtree text-body-sm text-charcoal underline underline-offset-4 hover:text-vast-ink"
           >
             &lsaquo; Capture
@@ -326,7 +326,7 @@ export default function Journal() {
           {pickerOpen ? "Close dates" : "Pick a date"}
         </button>
 
-        {/* Only offered once you have gone somewhere else — otherwise it is a
+        {/* Only offered once you have gone somewhere else; otherwise it is a
             button that does nothing (§18). */}
         {selected ? (
           <button
@@ -357,7 +357,7 @@ export default function Journal() {
 
       <section className="rounded-[var(--radius-chamber)] bg-vast-ink px-6 py-10 sm:rounded-[var(--radius-chamber-lg)] sm:px-12 sm:py-14">
         {!hydrated ? (
-          <p className="font-figtree text-body text-fog">Opening your journal…</p>
+          <p className="font-figtree text-body text-haze">Opening your journal…</p>
         ) : selected ? (
           /* One chosen date, and only that date. */
           day && day.count > 0 ? (
@@ -370,20 +370,20 @@ export default function Journal() {
               <h2 className="display-type text-heading-sm text-paper">
                 {dayLabel(selected)}
               </h2>
-              <p className="mt-3 max-w-[46ch] font-figtree text-body text-fog">
+              <p className="mt-3 max-w-[46ch] font-figtree text-body text-haze">
                 No transactions recorded.
               </p>
               <LogOntoDay onOpen={() => setSheetOpen(true)} />
             </div>
           )
         ) : groups.length === 0 ? (
-          /* §21 — nothing anywhere. Speaks about recording, not "tracking". */
+          /* §21: nothing anywhere. Speaks about recording, not "tracking". */
           <div>
             <h2 className="display-type text-heading-sm text-paper">
               Your journal is empty
             </h2>
-            <p className="mt-3 max-w-[46ch] font-figtree text-body text-fog">
-              Expenses you record will appear here, organised by day.
+            <p className="mt-3 max-w-[46ch] font-figtree text-body text-haze">
+              Expenses you record will appear here.
             </p>
             <CaptureAction count={0} />
           </div>
@@ -402,7 +402,7 @@ export default function Journal() {
       </section>
 
       {/* Recording happens on the day you are looking at, so it only exists
-          once a day has been chosen — and only once asked for. */}
+          once a day has been chosen, and only once asked for. */}
       {selected && sheetOpen ? (
         <DayCapture
           capture={capture}

@@ -35,7 +35,7 @@ type Reply =
  * POST and parse, keeping the failure modes apart.
  *
  * There is no console on a phone, so a single catch-all "something went wrong"
- * is the end of the investigation — it was, once, for a capture that had
+ * is the end of the investigation; it was, once, for a capture that had
  * already recorded 15 KB of perfectly good audio. These three cases need
  * different messages because they call for different actions:
  *
@@ -55,7 +55,7 @@ async function postJson(url: string, init: RequestInit): Promise<Reply> {
     return {
       ok: false,
       message:
-        "Couldn’t reach the server — the connection dropped. If you opened this from a shared link, that link may have expired.",
+        "Couldn’t reach the server; the connection dropped. If you opened this from a shared link, that link may have expired.",
       detail: `network: ${err instanceof Error ? err.message : String(err)}`,
     };
   }
@@ -73,7 +73,7 @@ async function postJson(url: string, init: RequestInit): Promise<Reply> {
 }
 
 /**
- * The capture pipeline — record or type, transcribe, extract, gate, save.
+ * The capture pipeline: record or type, transcribe, extract, gate, save.
  *
  * Lifted out of the capture screen so the journal can record onto a chosen day
  * without cloning any of it. The two callers differ in exactly one way, which
@@ -105,7 +105,7 @@ export function useCapture({
   const [lastCaptureId, setLastCaptureId] = useState<string | null>(null);
 
   /**
-   * Put a capture on the day being viewed — unless the speaker named a day.
+   * Put a capture on the day being viewed, unless the speaker named a day.
    *
    * A spoken date is the one thing that outranks the journal's position. Where
    * you happen to be looking is context; what you actually said is evidence,
@@ -202,7 +202,7 @@ export function useCapture({
 
       // The gate's verdict per row, naming which conditions blocked a save.
       // This is the difference between knowing an expense went to review and
-      // knowing why — the only version of that fact worth recording.
+      // knowing why, the only version of that fact worth recording.
       if (captureId) {
         reportGate(
           captureId,
@@ -227,9 +227,9 @@ export function useCapture({
             confirmationReason:
               row.confirmationReason ??
               (row.amount === null
-                ? "Didn’t catch the amount — what was it?"
+                ? "Didn’t catch the amount. What was it?"
                 : !heardWell
-                  ? "That wasn’t heard cleanly — check the amount."
+                  ? "That wasn’t heard cleanly. Check the amount."
                   : "Check the amount before this is saved."),
           })),
         ]);
@@ -291,7 +291,7 @@ export function useCapture({
         body: form,
       });
       if (!reply.ok) {
-        // The audio was captured fine — say so, so this doesn't read as a
+        // The audio was captured fine, say so, so this doesn't read as a
         // recording failure and send the user hunting for a mic problem.
         setError(reply.message);
         setDebug(
@@ -314,7 +314,7 @@ export function useCapture({
         }
         return;
       }
-      // Whisper's mean avg_logprob, used only as a backstop — the extractor's
+      // Whisper's mean avg_logprob, used only as a backstop; the extractor's
       // own ambiguity flag is the primary gate. Calibrated against a known-good
       // transcript ("250 lunch.") which scores -0.64, so the threshold has to
       // sit below that or correct captures would be sent to review. Deliberately
@@ -331,12 +331,12 @@ export function useCapture({
       }
 
       setDebug(
-        `heard “${heard}”  ·  confidence ${(transcribed.confidence ?? 0).toFixed(2)}${heardWell ? "" : " — will ask you to check"}`,
+        `heard “${heard}”  ·  confidence ${(transcribed.confidence ?? 0).toFixed(2)}${heardWell ? "" : ", will ask you to check"}`,
       );
       await interpret(heard, heardWell, transcribed.captureId ?? null);
     } catch (err) {
       // Anything reaching here is a bug in our own handling, not a transport
-      // failure — postJson already turned those into messages above.
+      // failure; postJson already turned those into messages above.
       setError("Something went wrong handling that recording.");
       setDebug(`unexpected: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
@@ -396,7 +396,7 @@ export function useCapture({
     (index: number) => {
       const item = pending[index];
       // A discard is the strongest possible statement that the pipeline got it
-      // wrong — the user looked at the proposal and rejected it outright.
+      // wrong: the user looked at the proposal and rejected it outright.
       if (item) {
         reportEvent("review_discarded", {
           captureId: item.captureId,

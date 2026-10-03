@@ -21,7 +21,7 @@ const WEEKDAYS = ["S", "M", "T", "W", "T", "F", "S"];
  * date is guesswork.
  *
  * Future dates are disabled. Expenses happen in the past, capture always dates
- * to today, and editing refuses a future date (§29) — so a future day could
+ * to today, and editing refuses a future date (§29), so a future day could
  * never hold anything, and offering it would only lead somewhere empty.
  */
 export function DatePicker({
@@ -101,7 +101,7 @@ export function DatePicker({
               ].join(" ")}
             >
               {fromISO(iso).getDate()}
-              {/* A day with something on it. Presence only — never how much. */}
+              {/* A day with something on it. Presence only, never how much. */}
               {hasRows && !isSelected ? (
                 <span className="absolute bottom-1 block h-[5px] w-[5px] rounded-full bg-forest-ink" />
               ) : null}

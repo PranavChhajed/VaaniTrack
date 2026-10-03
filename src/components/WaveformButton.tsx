@@ -5,7 +5,7 @@ import type { RecorderState } from "@/lib/useRecorder";
 /**
  * The capture affordance.
  *
- * The Wispr Flow reference specifies a "waveform visualizer" — a pill with a 2px ink border
+ * The Wispr Flow reference specifies a "waveform visualizer": a pill with a 2px ink border
  * containing 5–7 pulsing bars, described as the mic-active indicator. Here that
  * component is promoted from decoration to the primary action, which is what it
  * always wanted to be in a voice-first product.

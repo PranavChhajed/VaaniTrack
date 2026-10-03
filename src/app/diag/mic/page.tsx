@@ -25,7 +25,7 @@ type Config = { name: string; note: string; constraints: MediaTrackConstraints }
 const CONFIGS: Config[] = [
   {
     name: "A · browser defaults",
-    note: "audio: true — what the app ships today",
+    note: "audio: true, what the app ships today",
     constraints: {},
   },
   {
@@ -201,13 +201,13 @@ export default function MicTest() {
     try {
       const out: Result[] = [];
       for (const cfg of CONFIGS) {
-        setPhase(`${cfg.name} — get ready`);
+        setPhase(`${cfg.name}: get ready`);
         await new Promise((r) => setTimeout(r, 1200));
-        setPhase(`${cfg.name} — SAY “two fifty for lunch” NOW`);
+        setPhase(`${cfg.name}: SAY “two fifty for lunch” NOW`);
         const r = await runOne(cfg);
         out.push(r);
         setResults([...out]);
-        setPhase(`${cfg.name} — done`);
+        setPhase(`${cfg.name}: done`);
         await new Promise((r) => setTimeout(r, 600));
       }
       // Labels only come back once permission has been granted, which is why
@@ -280,7 +280,7 @@ export default function MicTest() {
               : r.verdict === "weak"
                 ? "△ something, but far too quiet"
                 : r.verdict === "silent"
-                  ? "✗ silence — no voice reached the page"
+                  ? "✗ silence: no voice reached the page"
                   : "✗ could not open the microphone"}
           </p>
           <dl className="mt-3 font-mono text-caption text-vast-ink">
