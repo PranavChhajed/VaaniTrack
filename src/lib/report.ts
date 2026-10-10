@@ -57,6 +57,17 @@ export function reportGate(
   send({ kind: "gate", captureId, rows });
 }
 
+/**
+ * Tap-to-result, as the device experienced it.
+ *
+ * The server can time its own stages but not the wait the user actually sat
+ * through, which also includes the network on either side of them.
+ */
+export function reportTiming(captureId: string | null, totalMs: number): void {
+  if (!captureId) return;
+  send({ kind: "timing", captureId, totalMs: Math.round(totalMs) });
+}
+
 /** Mirror transactions to the durable copy. localStorage stays the cache. */
 export function reportTransactions(
   transactions: Transaction[],

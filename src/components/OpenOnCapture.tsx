@@ -6,21 +6,23 @@
  * journal. Fixing `start_url` cannot reach an icon that already exists, and
  * "remove it and reinstall" is not a fix anyone should be asked to perform.
  *
- * So the journal itself declines to be a front door. When the document was
- * opened here from outside (a shortcut, a bookmark, a typed address) it hands
- * over to capture before anything paints.
+ * So the journal declines to be a front door. When a document is opened on it
+ * from outside (a shortcut, a bookmark, a typed address) this hands over to
+ * capture before anything paints.
  *
  * An inline script rather than an effect, so that it runs while the HTML is
- * still being parsed and the journal never flashes up first. It must not fire
- * when the journal is reached from inside the app, so it checks three things:
+ * still being parsed and the journal never flashes up first. It is mounted in
+ * the root layout, not on the journal page: a layout is rendered into the
+ * document once and never again, whereas a page is re-rendered by client
+ * navigation, where React does not run scripts and logs an error for finding
+ * one. Running once per document is also exactly the condition wanted, since
+ * following the header link to the journal loads no new document.
  *
- *   the document was loaded at this address   following the header link from
- *                                             capture is not a cold open
- *   type === "navigate"                       a reload or back/forward stays
- *   no same-origin referrer                   a full-page link from inside the
- *                                             site stays too
+ *   pathname === "/journal"   the only page that redirects
+ *   type === "navigate"       a reload or back/forward stays on the journal
+ *   no same-origin referrer   a full-page link from inside the site stays too
  */
-const SCRIPT = `try{var n=performance.getEntriesByType("navigation")[0];if(n&&n.type==="navigate"&&new URL(n.name).pathname===location.pathname&&document.referrer.indexOf(location.origin)!==0){location.replace("/app")}}catch(e){}`;
+const SCRIPT = `try{var n=performance.getEntriesByType("navigation")[0];if(location.pathname==="/journal"&&n&&n.type==="navigate"&&document.referrer.indexOf(location.origin)!==0){location.replace("/app")}}catch(e){}`;
 
 export function OpenOnCapture() {
   return <script dangerouslySetInnerHTML={{ __html: SCRIPT }} />;

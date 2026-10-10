@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { EB_Garamond, Figtree } from "next/font/google";
+import { OpenOnCapture } from "@/components/OpenOnCapture";
 import "./globals.css";
 
 const ebGaramond = EB_Garamond({
@@ -43,7 +44,10 @@ export default function RootLayout({
       {/* The consent gate and the first-run flow are deliberately NOT mounted
           here. They belong to the app screens and live in (app)/layout.tsx,
           so that the landing page at `/` is not covered by either. */}
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <OpenOnCapture />
+        {children}
+      </body>
     </html>
   );
 }

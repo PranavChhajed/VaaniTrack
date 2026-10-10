@@ -36,6 +36,12 @@ const f = <T>(value: T | null, provenance: Provenance = "said"): Field<T> => ({
   provenance,
 });
 
+/** A logging instant given in local time, so these checks mean the same thing
+ *  in any timezone: "logged at 21:40 on the 6th" wherever the tests run. */
+function at(y: number, m: number, d: number, h: number, min = 0): string {
+  return new Date(y, m - 1, d, h, min).toISOString();
+}
+
 function txn(over: {
   id: string;
   amount?: number;
@@ -53,7 +59,7 @@ function txn(over: {
     paymentMethod: f("UPI", "default"),
     date: f(over.date === undefined ? "2026-09-06" : over.date, "default"),
     time: f(over.time ?? null, over.time ? "said" : "unknown"),
-    createdAt: over.createdAt ?? "2026-09-06T21:40:00.000Z",
+    createdAt: over.createdAt ?? at(2026, 9, 6, 21, 40),
     source: "voice",
   };
 }
@@ -75,13 +81,19 @@ check(
   { kind: "transaction", text: "10:42 AM" },
 );
 {
-  const sameDay = timeDisplay(txn({ id: "b", date: "2026-09-06", createdAt: "2026-09-06T16:10:00.000Z" }));
+  const sameDay = timeDisplay(txn({ id: "b", date: "2026-09-06", createdAt: at(2026, 9, 6, 16, 10) }));
   check("same-day logged stamp carries no date", sameDay.kind === "logged" && !/,/.test(sameDay.text), true);
 }
 {
   // The case §30 forbids getting wrong: dated 2 Sept, logged 6 Sept.
-  const moved = timeDisplay(txn({ id: "c", date: "2026-09-02", createdAt: "2026-09-06T16:10:00.000Z" }));
+  const moved = timeDisplay(txn({ id: "c", date: "2026-09-02", createdAt: at(2026, 9, 6, 16, 10) }));
   check("backdated logged stamp carries the date", moved.kind === "logged" && /,/.test(moved.text), true);
+}
+{
+  // Logged just after local midnight. In UTC that instant can still be the
+  // day before, which must not make a same-day entry look backdated.
+  const late = timeDisplay(txn({ id: "d", date: "2026-09-06", createdAt: at(2026, 9, 6, 0, 30) }));
+  check("just after midnight is still the same local day", late.kind === "logged" && !/,/.test(late.text), true);
 }
 
 console.log("\n--- groupByDay: unknown time never implies chronology ---");

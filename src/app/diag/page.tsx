@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { todayISO } from "@/lib/journal";
 
 /**
  * Device diagnostics.
@@ -153,7 +154,7 @@ export default function Diag() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             text: json.text,
-            today: new Date().toISOString().slice(0, 10),
+            today: todayISO(),
           }),
         });
         const ej = await e.json();

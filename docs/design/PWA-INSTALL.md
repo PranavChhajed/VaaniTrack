@@ -54,6 +54,8 @@ This is a known, already-logged gap: `docs/CONTEXT.md`'s "Beyond" section lists 
 ## 4. Caveats to state plainly, not discover in testing
 
 - **An already-installed shortcut keeps its old URL.** Shipping the manifest does not fix an existing install. The user has to **remove and reinstall** to pick up the new `start_url`.
+
+  > **No longer required.** A cold open of `/journal` is now sent to `/app` by `OpenOnCapture`, so a stale shortcut lands on capture anyway. See `SPEED-ACCURACY.md` §3.
 - **A manifest alone may not satisfy Chrome's richer install criteria** on every platform — some versions want an active service worker with a fetch handler before showing the install prompt at all. If the prompt doesn't appear after shipping the manifest, the fallback is a minimal no-op service worker purely to satisfy the criteria, not to add offline behaviour.
 - **Icon rendering should be checked on a real device**, not just assumed from the PNG — mask clipping on Android is easy to get wrong without a safe-zone margin.
 

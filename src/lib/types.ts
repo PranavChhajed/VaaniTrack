@@ -79,6 +79,7 @@ const EMPTY = <T>(): Field<T> => ({ value: null, provenance: "unknown" });
 export function toTransaction(
   e: ExtractedTransaction,
   transcript: string,
+  source: Transaction["source"],
 ): Transaction {
   const field = <T>(value: T | null, provenance: Provenance): Field<T> =>
     value === null || value === undefined ? EMPTY<T>() : { value, provenance };
@@ -93,7 +94,7 @@ export function toTransaction(
     date: field(e.date, e.dateProvenance),
     time: field(e.time, e.timeProvenance),
     createdAt: new Date().toISOString(),
-    source: "voice",
+    source,
     transcript,
   };
 }

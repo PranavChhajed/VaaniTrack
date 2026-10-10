@@ -118,14 +118,21 @@ export function TransactionDetail({
   onSave,
   onDelete,
   onClose,
+  backLabel = "Journal",
+  startEditing = false,
 }: {
   transaction: Transaction;
   onSave: (next: Transaction) => void;
   onDelete: (id: string) => void;
   onClose: () => void;
+  /** The screen this was opened from, named on the way back to it. */
+  backLabel?: string;
+  /** Open straight into the form. For a row opened in order to correct it,
+   *  where reading it first is a wasted tap. */
+  startEditing?: boolean;
 }) {
   const t = transaction;
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useState(startEditing);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -208,7 +215,7 @@ export function TransactionDetail({
             onClick={onClose}
             className="focus-ring rounded-[var(--radius-pill)] border-2 border-vast-ink bg-paper-raised px-5 py-2 font-figtree text-body-sm text-vast-ink active:bg-mint-whisper"
           >
-            &lsaquo; Journal
+            &lsaquo; {backLabel}
           </button>
           {!editing ? (
             <button

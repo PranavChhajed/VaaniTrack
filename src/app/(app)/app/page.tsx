@@ -16,6 +16,9 @@ export default function Home() {
   const { transactions, add, update, remove, undo } = useTransactions();
   const [signedIn, setSignedIn] = useState(false);
   const [open, setOpen] = useState<Transaction | null>(null);
+  // True when the row was opened from the "Logged" confirmation, which is
+  // only ever done to correct it.
+  const [fixing, setFixing] = useState(false);
 
   // Read after mount, same reason as the transaction hydration in
   // TransactionsProvider: a stub session lives in localStorage, which
@@ -50,15 +53,17 @@ export default function Home() {
     [open, transactions],
   );
 
+  const { forget } = capture;
   const handleDelete = useCallback(
     (id: string) => {
       const before = transactions.find((t) => t.id === id) ?? null;
       reportEvent("deleted", { transactionId: id, before });
       reportDelete(id);
       remove(id);
+      forget(id);
       setOpen(null);
     },
-    [transactions, remove],
+    [transactions, remove, forget],
   );
 
   return (
@@ -69,13 +74,28 @@ export default function Home() {
           log ₹250 at a shop counter, not the one that introduces the
           product; that job belongs to the landing page now (`/`). The
           record button is the first thing, every time. */}
-      <CapturePanel capture={capture} scrollToPending />
+      <CapturePanel
+        capture={capture}
+        scrollToPending
+        onEdit={(t) => {
+          setFixing(true);
+          setOpen(t);
+        }}
+      />
 
-      <TransactionList transactions={todays} onOpen={setOpen} />
+      <TransactionList
+        transactions={todays}
+        onOpen={(t) => {
+          setFixing(false);
+          setOpen(t);
+        }}
+      />
 
       {openLive ? (
         <TransactionDetail
           transaction={openLive}
+          backLabel="Capture"
+          startEditing={fixing}
           onClose={() => setOpen(null)}
           onSave={(next) => {
             reportEvent("edited", {
@@ -86,6 +106,7 @@ export default function Home() {
             });
             reportTransactions([next]);
             update(next);
+            capture.amend(next);
             setOpen(null);
           }}
           onDelete={handleDelete}

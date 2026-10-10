@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { ReviewCard } from "@/components/ReviewCard";
 import { WaveformButton } from "@/components/WaveformButton";
+import type { Transaction } from "@/lib/types";
 import type { Capture } from "@/lib/useCapture";
 
 /**
@@ -31,6 +32,7 @@ export function CapturePanel({
   loggedPrefix = "Logged",
   scrollToPending = false,
   pendingClassName = "flex flex-col gap-6 scroll-mt-4",
+  onEdit,
 }: {
   capture: Capture;
   /** `h2` on the capture screen; `h3` inside the day sheet, which already
@@ -48,6 +50,10 @@ export function CapturePanel({
    *  `gap-24` parent (the capture screen); `DayCapture` passes its own
    *  margin-based override. */
   pendingClassName?: string;
+  /** Open a just-logged entry for correction. With it, each entry in the
+   *  "Logged" confirmation is a button: a mishear is fixed by tapping what is
+   *  wrong, where it used to mean Undo and saying the whole thing again. */
+  onEdit?: (transaction: Transaction) => void;
 }) {
   const reviewRef = useRef<HTMLDivElement | null>(null);
 
@@ -71,6 +77,18 @@ export function CapturePanel({
           onStop={capture.stop}
         />
       </div>
+
+      {/* The speaker's own words, back within a moment of stopping, while the
+          expense is still being worked out. Waiting on a blank screen was the
+          complaint; this is also the earliest a mishear can be seen. */}
+      {capture.heard ? (
+        <p
+          aria-live="polite"
+          className="rise mt-4 max-w-[340px] font-figtree text-body-sm text-charcoal"
+        >
+          <span className="text-fog">Heard </span>“{capture.heard}”
+        </p>
+      ) : null}
 
       {/* Typing the same thing you'd say. The behaviour the product was
           modelled on, and the reason a refused mic isn't a dead end. */}
@@ -116,13 +134,31 @@ export function CapturePanel({
         <div className="rise mt-6 flex w-full max-w-[340px] flex-wrap items-center justify-between gap-3 rounded-[var(--radius-input)] border-2 border-vast-ink bg-mint-whisper px-4 py-3">
           <span className="font-figtree text-body-sm text-vast-ink">
             {loggedPrefix}{" "}
-            {capture.justSaved.map((t, i) => (
-              <span key={t.id}>
-                {i > 0 ? " · " : ""}
-                <span className="money">₹{t.amount.value}</span>{" "}
-                {t.description.value ?? ""}
-              </span>
-            ))}
+            {capture.justSaved.map((t, i) => {
+              const entry = (
+                <>
+                  <span className="money">₹{t.amount.value}</span>{" "}
+                  {t.description.value ?? ""}
+                </>
+              );
+              return (
+                <span key={t.id}>
+                  {i > 0 ? " · " : ""}
+                  {onEdit ? (
+                    <button
+                      type="button"
+                      onClick={() => onEdit(t)}
+                      aria-label={`Fix ₹${t.amount.value} ${t.description.value ?? ""}`.trim()}
+                      className="focus-ring underline decoration-dotted underline-offset-4"
+                    >
+                      {entry}
+                    </button>
+                  ) : (
+                    entry
+                  )}
+                </span>
+              );
+            })}
           </span>
           <button
             type="button"

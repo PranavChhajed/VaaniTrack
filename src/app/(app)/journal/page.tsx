@@ -5,7 +5,6 @@ import Link from "next/link";
 import { AppHeader } from "@/components/AppHeader";
 import { DatePicker } from "@/components/DatePicker";
 import { DayCapture } from "@/components/DayCapture";
-import { OpenOnCapture } from "@/components/OpenOnCapture";
 import { TransactionDetail } from "@/components/TransactionDetail";
 import { TransactionRow } from "@/components/TransactionRow";
 import { currentSession } from "@/lib/auth";
@@ -242,7 +241,6 @@ export default function Journal() {
 
   return (
     <main className="mx-auto flex w-full max-w-[900px] flex-col gap-8 px-5 py-8 sm:px-8 sm:py-12">
-      <OpenOnCapture />
       {/* Capture is the app; this is a room you stepped into. The way back
           is stated plainly rather than left to the browser's back button. */}
       <AppHeader navHref="/app" navLabel="&lsaquo; Capture" signedIn={signedIn} />
@@ -360,12 +358,14 @@ export default function Journal() {
             });
             reportTransactions([next]);
             update(next);
+            capture.amend(next);
             setOpen(null);
           }}
           onDelete={(id) => {
             reportEvent("deleted", { transactionId: id, before: openLive });
             reportDelete(id);
             remove(id);
+            capture.forget(id);
             setOpen(null);
           }}
         />

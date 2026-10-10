@@ -116,7 +116,11 @@ export function timeDisplay(t: Transaction): TimeDisplay {
   }
   if (!t.createdAt) return { kind: "none" };
 
-  const loggedOn = t.createdAt.slice(0, 10);
+  // The local calendar day it was logged on. Slicing the ISO string would
+  // give the UTC day, which is still yesterday for the first five and a half
+  // hours of an Indian morning, and a 1 AM entry would then be labelled as if
+  // it had been backdated.
+  const loggedOn = toISO(new Date(t.createdAt));
   const sameDay = t.date.value !== null && t.date.value === loggedOn;
 
   return {

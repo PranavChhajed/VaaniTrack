@@ -24,6 +24,7 @@ Items 1 to 3 below have since shipped, so that paragraph now describes the probl
 | 4 | [`LANDING-PAGE.md`](LANDING-PAGE.md) — the public front door, and the route restructure | **Built** (20 Sept) |
 | 5 | [`LOGO.md`](LOGO.md) — the mark, and what was done to the supplied artwork | **Built** (20 Sept) |
 | 6 | [`JOURNAL-REDESIGN.md`](JOURNAL-REDESIGN.md) — the next piece | **Not started — problem statement only** |
+| 7 | [`SPEED-ACCURACY.md`](SPEED-ACCURACY.md) — what a month of use showed, and what was measured before changing anything | **Built** (10 Oct) |
 
 `reference/` holds the visual references these were designed against.
 

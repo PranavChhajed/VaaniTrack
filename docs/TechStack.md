@@ -41,8 +41,8 @@ App Router with Turbopack. Chosen because the product needs both a client-side U
 | `/` | Static | Capture screen |
 | `/journal` | Static | The transaction record |
 | `/diag` | Static | On-device diagnostics (mic, codecs) |
-| `/api/transcribe` | Dynamic | Stage 1 — audio → text |
-| `/api/extract` | Dynamic | Stage 2 — text → transaction |
+| `/api/transcribe` | Dynamic | A spoken capture: audio → text → transaction, both stages in one streamed reply |
+| `/api/extract` | Dynamic | A typed capture: text → transaction |
 | `/portal` | Dynamic | Diagnostic portal (password-gated) |
 | `/api/observe` | Dynamic | Gate verdicts and user actions from the client |
 | `/api/portal` | Dynamic | Portal password exchange |

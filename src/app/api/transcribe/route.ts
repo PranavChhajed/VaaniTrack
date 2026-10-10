@@ -1,18 +1,39 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { extensionFor, transcribeAudio } from "@/lib/asr";
+import { extractTransactions } from "@/lib/extract";
 import {
   recordCapture,
   recordAudioDecision,
+  recordExtraction,
   storeAudio,
+  updateCapture,
   validDeviceId,
-  type AsrVerdict,
 } from "@/lib/observe";
-
-const GROQ_URL = "https://api.groq.com/openai/v1/audio/transcriptions";
 
 export const runtime = "nodejs"; // node:fs and `postgres` both require it
 export const maxDuration = 30;
+
+/**
+ * A spoken capture, start to finish: audio → text → transaction(s).
+ *
+ * Both stages run here, in one request. They used to be two, with the phone
+ * carrying the transcript back up to a second route, and every write to the
+ * observability tables sat in the reply path of each. A month of real use
+ * called the result slow, so:
+ *
+ *   - the phone makes one round trip, not two;
+ *   - the reply is streamed: what was heard goes back the moment the
+ *     transcriber answers, and the transactions follow on the same response;
+ *   - the capture row is opened alongside the call to the transcriber, not
+ *     after it, so it costs no waiting;
+ *   - everything else that is only record-keeping (stage results, the audio
+ *     upload) runs in `after()`, once the reply is already on its way.
+ *
+ * The rule from lib/observe.ts still governs all of it: diagnostics must never
+ * take down the capture path.
+ */
 
 /**
  * Keep a copy of every capture, with what came back for it.
@@ -54,122 +75,6 @@ async function keepCapture(
 }
 
 /**
- * Stage 1: audio → text.
- *
- * whisper-large-v3 is chosen deliberately: it is the model that scores
- * single-digit WER on the Svarah Indian-accent benchmark, and Indian-accented
- * English is a v1 requirement (PRD §8.3).
- *
- * Two guards here exist because of Principle 0: never record a wrong
- * transaction:
- *
- * 1. The decoder prompt is vocabulary only, never example sentences. Given
- *    low-signal audio Whisper will happily emit its prompt back as if it were
- *    speech. A prompt containing "I spent 700 on groceries, paid in cash"
- *    turned 1.2 seconds of a sine wave into exactly that transaction, which is
- *    the worst failure this product can have.
- * 2. verbose_json gives per-segment no_speech_prob and avg_logprob. Audio the
- *    model itself doubts is rejected rather than passed downstream, where the
- *    extraction stage would dutifully turn noise into a number.
- */
-
-/**
- * Decoder prompt, chosen by experiment rather than intuition.
- *
- * Transcribing the same recording of "two fifty lunch" three ways:
- *
- *   no prompt                     -> " 2.50 lunch."
- *   vocabulary words only         -> " $2.50 lunch"     (worse)
- *   rupee-formatted amounts       -> " 250 lunch."      (correct)
- *
- * Showing the model what an Indian amount looks like is what stops it
- * formatting spoken "two fifty" as a decimal currency value. The digits here
- * were a hallucination risk worth re-testing: on silence this prompt yields
- * "Subtitles by the Amara.org community", not a fabricated amount, and that
- * phrase is already on the denylist below.
- */
-const DECODER_PROMPT = "Amounts in Indian rupees: 250, 120, 1500, 300.";
-
-/** Segments the model doubts this much are treated as silence. */
-const NO_SPEECH_PROB_MAX = 0.6;
-const AVG_LOGPROB_MIN = -1.0;
-
-/**
- * Whisper's stock hallucinations.
- *
- * Given quiet, clipped or unclear audio the model does not return nothing; it
- * returns one of a small set of confident-looking stock phrases, often with a
- * perfectly healthy no_speech_prob. Observed on a real device: three seconds of
- * someone saying "two fifty lunch" came back as "Hello, how are you?".
- *
- * These are matched exactly (after normalising) rather than by substring, so a
- * genuine "250 for a thank you gift" is untouched.
- *
- * Both sides of the comparison go through normalise(). Writing the entries in
- * their natural punctuated form and comparing them raw meant every entry
- * containing a "." or "?" was dead code: "Subtitles by the Amara.org community"
- * normalises to "...amaraorg..." and never matched its own denylist entry. It
- * was still rejected, but only by the no-amount backstop -- which would not
- * have saved us from a stock phrase that happened to contain a digit.
- */
-const HALLUCINATIONS = new Set([
-  "hello how are you",
-  "hello how are you?",
-  "thank you",
-  "thank you.",
-  "thanks for watching",
-  "thank you for watching",
-  "thanks for watching!",
-  "please subscribe",
-  "you",
-  "bye",
-  "bye.",
-  "okay",
-  "so",
-  "i'm sorry",
-  "subtitles by the amara.org community",
-  "transcription by castingwords",
-].map(normalise));
-
-function normalise(text: string): string {
-  return text
-    .toLowerCase()
-    .replace(/[.,!?;:"']/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-/** No digits anywhere means no amount, which means no expense. */
-function hasNumber(text: string): boolean {
-  return /\d/.test(text) || /\b(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand|lakh|crore|k)\b/i.test(text);
-}
-
-type Segment = {
-  no_speech_prob?: number;
-  avg_logprob?: number;
-  text?: string;
-};
-
-function extensionFor(type: string): string {
-  if (type.includes("mp4") || type.includes("m4a")) return "m4a";
-  if (type.includes("mpeg") || type.includes("mp3")) return "mp3";
-  if (type.includes("ogg")) return "ogg";
-  if (type.includes("wav")) return "wav";
-  return "webm";
-}
-
-/**
- * Mean avg_logprob across segments, the same figure the accepted path
- * reports as "confidence". Negative by nature: about -0.27 for a clean
- * capture, against a gate threshold of -0.9.
- */
-function meanLogprob(segments: Segment[]): number | null {
-  if (segments.length === 0) return null;
-  const sum = segments.reduce((acc, s) => acc + (s.avg_logprob ?? 0), 0);
-  return Number((sum / segments.length).toFixed(4));
-}
-
-/**
  * A signal level sent by the client, in dBFS.
  *
  * Rejects anything that is not a finite negative number below full scale. The
@@ -199,6 +104,7 @@ export async function POST(request: Request) {
   let audioPeakDb: number | null = null;
   let audioMeanDb: number | null = null;
   let audioWarmupMs: number | null = null;
+  let today = new Date().toISOString().slice(0, 10);
   try {
     const form = await request.formData();
     const value = form.get("audio");
@@ -218,6 +124,10 @@ export async function POST(request: Request) {
     const warm = Number(form.get("warmupMs"));
     audioWarmupMs =
       Number.isFinite(warm) && warm >= 0 && warm < 60000 ? Math.round(warm) : null;
+    // The speaker's own calendar date. The server's is UTC, which is still
+    // yesterday for the first five and a half hours of an Indian morning.
+    const day = form.get("today");
+    if (typeof day === "string" && /^\d{4}-\d{2}-\d{2}$/.test(day)) today = day;
   } catch {
     return NextResponse.json(
       { error: "Could not read the uploaded audio." },
@@ -229,6 +139,17 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "No audio received." }, { status: 400 });
   }
 
+  const measured = {
+    deviceId,
+    source: "voice" as const,
+    audioMime: audio.type || null,
+    audioBytes: audio.size,
+    audioMs,
+    audioPeakDb,
+    audioMeanDb,
+    audioWarmupMs,
+  };
+
   // Too little data can mean two different things, and they need different
   // messages. A brief tap and a normal-length recording of near-silence both
   // land under 2000 bytes, but only one of them is fixed by "hold it longer";
@@ -238,18 +159,13 @@ export async function POST(request: Request) {
   if (audio.size < 2000) {
     const briefTap = (audioMs ?? 0) < 1200;
     const reason = briefTap ? "brief tap" : "near-silent despite normal duration";
-    await recordCapture({
-      deviceId,
-      source: "voice",
-      audioMime: audio.type || null,
-      audioBytes: audio.size,
-      audioMs,
-      audioPeakDb,
-      audioMeanDb,
-      audioWarmupMs,
-      asrVerdict: "rejected_too_small",
-      asrReason: reason,
-    });
+    after(() =>
+      recordCapture({
+        ...measured,
+        asrVerdict: "rejected_too_small",
+        asrReason: reason,
+      }),
+    );
     return NextResponse.json(
       {
         error: briefTap
@@ -261,195 +177,200 @@ export async function POST(request: Request) {
     );
   }
 
-  // Read once: the same bytes go upstream and to disk, so what gets replayed
-  // later is byte-identical to what Whisper actually heard.
+  // Read once: the same bytes go upstream and to storage, so what gets
+  // replayed later is byte-identical to what Whisper actually heard.
   const bytes = await audio.arrayBuffer();
+  const mime = audio.type || "audio/webm";
+  const file = audio;
 
-  const upstream = new FormData();
-  const filename = `capture.${extensionFor(audio.type || "")}`;
-  upstream.append(
-    "file",
-    new Blob([bytes], { type: audio.type || "application/octet-stream" }),
-    filename,
-  );
-  upstream.append("model", "whisper-large-v3");
-  upstream.append("language", "en");
-  upstream.append("response_format", "verbose_json");
-  upstream.append("temperature", "0");
-  upstream.append("prompt", DECODER_PROMPT);
+  // Opened now, deliberately not awaited: the insert runs while the
+  // transcriber does, and is long finished by the time anything needs its id.
+  const opened = recordCapture({ ...measured, id: crypto.randomUUID() });
 
-  try {
-    const response = await fetch(GROQ_URL, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}` },
-      body: upstream,
-      signal: AbortSignal.timeout(20_000),
-    });
+  /** The audio's fate, written after the reply. Consent decides it, and the
+   *  decision is recorded either way. */
+  const settleAudio = async (captureId: string) => {
+    const path = consent ? await storeAudio(captureId, bytes, mime) : null;
+    await recordAudioDecision(captureId, { consent, path });
+  };
 
-    if (!response.ok) {
-      const detail = await response.text();
-      if (response.status === 429) {
-        return NextResponse.json(
-          { error: "Hit the API rate limit. Wait a few seconds and try again.", detail },
-          { status: 429 },
-        );
-      }
-      return NextResponse.json(
-        { error: `Transcription failed (${response.status})`, detail },
-        { status: 502 },
-      );
-    }
+  const asr = await transcribeAudio(bytes, mime, { apiKey });
 
-    const data = (await response.json()) as {
-      text?: string;
-      segments?: Segment[];
-    };
-    const text = (data.text ?? "").trim();
-    const segments = data.segments ?? [];
-
-    // Reject audio the model itself doesn't believe contains speech, rather
-    // than letting the extraction stage invent a transaction from noise.
-    const speechy = segments.filter(
-      (s) =>
-        (s.no_speech_prob ?? 0) <= NO_SPEECH_PROB_MAX &&
-        (s.avg_logprob ?? 0) >= AVG_LOGPROB_MIN,
-    );
-    const worstNoSpeech = segments.length
-      ? Math.max(...segments.map((s) => s.no_speech_prob ?? 0))
-      : 0;
-
-    const stock = HALLUCINATIONS.has(normalise(text));
-    const noNumber = text.length > 0 && !hasNumber(text);
-
-    if (
-      !text ||
-      (segments.length > 0 && speechy.length === 0) ||
-      stock ||
-      noNumber
-    ) {
-      console.log(
-        `[transcribe] REJECTED ${audio.size}B -> "${text}" ` +
-          `(stock=${stock} noNumber=${noNumber} noSpeech=${worstNoSpeech.toFixed(2)})`,
-      );
-      const reason = stock ? "stock-phrase" : noNumber ? "no-amount" : "no-speech";
-      await keepCapture(audio, bytes, {
-        verdict: "rejected",
-        heard: text,
-        reason,
-        noSpeechProb: Number(worstNoSpeech.toFixed(3)),
-        segments,
+  if (asr.kind === "error") {
+    after(async () => {
+      const captureId = await opened;
+      if (!captureId) return;
+      await updateCapture(captureId, {
+        asrModel: null,
+        asrVerdict: "error",
+        asrReason: asr.error,
+        asrMs: asr.ms,
       });
-      // Rejections are the most informative rows in the table: they mark
-      // exactly where the trust boundary sits, and they are invisible in a
-      // record that only keeps successful transactions.
-      const verdict: AsrVerdict = stock
-        ? "rejected_denylist"
-        : noNumber
-          ? "rejected_no_amount"
-          : "rejected_no_speech";
-      const rejectedId = await recordCapture({
-        deviceId,
-        source: "voice",
-        audioMime: audio.type || null,
-        audioBytes: audio.size,
-        audioMs,
-        audioPeakDb,
-        audioMeanDb,
-        audioWarmupMs,
-        asrModel: "whisper-large-v3",
-        transcript: text || null,
-        asrVerdict: verdict,
-        asrReason: reason,
-        avgLogprob: meanLogprob(segments),
-        noSpeechProb: Number(worstNoSpeech.toFixed(3)),
-      });
-      if (rejectedId) {
-        const path = consent
-          ? await storeAudio(rejectedId, bytes, audio.type || "audio/webm")
-          : null;
-        await recordAudioDecision(rejectedId, { consent, path });
-      }
-      return NextResponse.json(
-        {
-          error: stock
-            ? "That didn’t come through clearly. Try again, closer to the mic."
-            : noNumber
-              ? `Heard “${text}”, but no amount in it. Say the number too, like “250 lunch”.`
-              : "Didn’t catch any speech there. Try again, a bit closer to the mic.",
-          debug: {
-            bytes: audio.size,
-            type: audio.type,
-            heard: text || null,
-            reason: stock ? "stock-phrase" : noNumber ? "no-amount" : "no-speech",
-            noSpeechProb: Number(worstNoSpeech.toFixed(2)),
-          },
-        },
-        { status: 422 },
-      );
-    }
-
-    // How sure the model is of the words themselves. Passed downstream so a
-    // shaky transcript earns a review instead of being logged silently;
-    // "Hello, hi, so I want 50 rupees for lunch now" is a real observed
-    // transcript of a clean recording, and auto-logging that would put a wrong
-    // amount in the ledger without ever showing it to anyone.
-    const confidence = segments.length
-      ? segments.reduce((sum, s) => sum + (s.avg_logprob ?? 0), 0) / segments.length
-      : 0;
-
-    console.log(
-      `[transcribe] ${audio.size}B ${audio.type || "?"} -> "${text}" ` +
-        `(noSpeech ${worstNoSpeech.toFixed(2)} conf ${confidence.toFixed(2)})`,
-    );
-    await keepCapture(audio, bytes, {
-      verdict: "accepted",
-      heard: text,
-      confidence: Number(confidence.toFixed(3)),
-      noSpeechProb: Number(worstNoSpeech.toFixed(3)),
-      segments,
     });
-
-    // The capture id threads through to extraction, so the transcript and what
-    // the extractor made of it end up on the same row and can be blamed
-    // separately when the final transaction is wrong.
-    const captureId = await recordCapture({
-      deviceId,
-      source: "voice",
-      audioMime: audio.type || null,
-      audioBytes: audio.size,
-      audioMs,
-      audioPeakDb,
-      audioMeanDb,
-      audioWarmupMs,
-      asrModel: "whisper-large-v3",
-      transcript: text,
-      asrVerdict: "accepted",
-      avgLogprob: Number(confidence.toFixed(4)),
-      noSpeechProb: Number(worstNoSpeech.toFixed(4)),
-    });
-    if (captureId) {
-      const path = consent
-        ? await storeAudio(captureId, bytes, audio.type || "audio/webm")
-        : null;
-      await recordAudioDecision(captureId, { consent, path });
-    }
-
-    return NextResponse.json({
-      text,
-      confidence,
-      captureId,
-      debug: {
-        bytes: audio.size,
-        type: audio.type,
-        sentAs: filename,
-        noSpeechProb: Number(worstNoSpeech.toFixed(2)),
-        confidence: Number(confidence.toFixed(2)),
-      },
-    });
-  } catch (error) {
     return NextResponse.json(
-      { error: "Could not reach the transcription service.", detail: String(error) },
-      { status: 502 },
+      { error: asr.error, detail: asr.detail },
+      { status: asr.status },
     );
   }
+
+  const stageOne = {
+    asrModel: asr.model,
+    transcript: asr.text || null,
+    avgLogprob: asr.avgLogprob === null ? null : Number(asr.avgLogprob.toFixed(4)),
+    noSpeechProb: Number(asr.noSpeechProb.toFixed(4)),
+    asrMs: asr.ms,
+  };
+
+  if (asr.kind === "rejected") {
+    console.log(
+      `[transcribe] REJECTED ${file.size}B -> "${asr.text}" ` +
+        `(${asr.reason} noSpeech=${asr.noSpeechProb.toFixed(2)} ${asr.ms}ms)`,
+    );
+    // Rejections are the most informative rows in the table: they mark
+    // exactly where the trust boundary sits, and they are invisible in a
+    // record that only keeps successful transactions.
+    after(async () => {
+      await keepCapture(file, bytes, {
+        verdict: "rejected",
+        heard: asr.text,
+        reason: asr.reason,
+        noSpeechProb: Number(asr.noSpeechProb.toFixed(3)),
+        segments: asr.segments,
+      });
+      const captureId = await opened;
+      if (!captureId) return;
+      await updateCapture(captureId, {
+        ...stageOne,
+        asrVerdict: asr.verdict,
+        asrReason: asr.reason,
+      });
+      await settleAudio(captureId);
+    });
+    return NextResponse.json(
+      {
+        error:
+          asr.reason === "stock-phrase"
+            ? "That didn’t come through clearly. Try again, closer to the mic."
+            : asr.reason === "no-amount"
+              ? `Heard “${asr.text}”, but no amount in it. Say the number too, like “250 lunch”.`
+              : "Didn’t catch any speech there. Try again, a bit closer to the mic.",
+        // What was heard, when it is worth correcting by hand: real words
+        // with the number lost. The client offers it back in the text box, so
+        // a mishear costs one edit rather than another take.
+        heard: asr.reason === "no-amount" ? asr.text : null,
+        debug: {
+          bytes: file.size,
+          type: file.type,
+          heard: asr.text || null,
+          reason: asr.reason,
+          noSpeechProb: Number(asr.noSpeechProb.toFixed(2)),
+        },
+      },
+      { status: 422 },
+    );
+  }
+
+  // How sure the model is of the words themselves. Passed back so a shaky
+  // transcript earns a review instead of being logged silently; "Hello, hi,
+  // so I want 50 rupees for lunch now" is a real observed transcript of a
+  // clean recording, and auto-logging that would put a wrong amount in the
+  // ledger without ever showing it to anyone.
+  const confidence = asr.avgLogprob ?? 0;
+
+  // Started, not awaited: the reply below begins with what was heard and
+  // finishes with what was made of it, so the speaker sees their own words
+  // while the slower half is still running.
+  const extracting = extractTransactions(asr.text, today, { apiKey });
+
+  // Registered here, while the request is still being handled, and left to
+  // wait on the extraction itself. It runs once the reply has been sent.
+  after(async () => {
+    const extraction = await extracting;
+    console.log(
+      `[transcribe] ${file.size}B ${file.type || "?"} -> "${asr.text}" ` +
+        `(conf ${confidence.toFixed(2)} asr ${asr.ms}ms extract ${extraction.ms}ms` +
+        (extraction.kind === "ok" ? ` ${extraction.transactions.length} txn)` : ` ${extraction.kind})`),
+    );
+    await keepCapture(file, bytes, {
+      verdict: "accepted",
+      heard: asr.text,
+      confidence: Number(confidence.toFixed(3)),
+      noSpeechProb: Number(asr.noSpeechProb.toFixed(3)),
+      segments: asr.segments,
+    });
+    const captureId = await opened;
+    if (!captureId) return;
+    await updateCapture(captureId, { ...stageOne, asrVerdict: "accepted" });
+    await recordExtraction(captureId, {
+      model: extraction.model,
+      raw: extraction.kind === "ok" ? extraction.raw
+        : extraction.kind === "malformed" ? { content: extraction.content }
+        : { error: extraction.error, detail: extraction.detail },
+      error: extraction.kind === "ok" ? null
+        : extraction.kind === "malformed" ? "malformed JSON"
+        : extraction.error,
+      ms: extraction.ms,
+    });
+    await settleAudio(captureId);
+  });
+
+  // Two lines of JSON, a second or two apart. A client that does not read
+  // the stream as it arrives loses nothing but the early look: the last line
+  // is the whole answer on its own.
+  const encoder = new TextEncoder();
+  const line = (value: unknown) => encoder.encode(`${JSON.stringify(value)}\n`);
+
+  const body = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      controller.enqueue(line({ heard: asr.text, confidence }));
+
+      const extraction = await extracting;
+      // The capture id threads back to the client, which reports the gate's
+      // verdict and the user's actions against it, so the transcript, what
+      // the extractor made of it and what the user did about it end up on one
+      // row and can be blamed separately when the final transaction is wrong.
+      const captureId = await opened;
+
+      const result = {
+        text: asr.text,
+        confidence,
+        captureId,
+        debug: {
+          bytes: file.size,
+          type: file.type,
+          noSpeechProb: Number(asr.noSpeechProb.toFixed(2)),
+          confidence: Number(confidence.toFixed(2)),
+          asrMs: asr.ms,
+          extractMs: extraction.ms,
+        },
+      };
+      controller.enqueue(
+        line(
+          extraction.kind === "ok"
+            ? { ...result, transactions: extraction.transactions }
+            : // The words were heard even if nothing could be made of them.
+              // Saying so, with the transcript, lets the client keep what was
+              // said and offer it back as text instead of asking for the
+              // recording again.
+              {
+                ...result,
+                extractError:
+                  extraction.kind === "malformed"
+                    ? "Heard you, but couldn’t read that as an expense."
+                    : extraction.error,
+              },
+        ),
+      );
+      controller.close();
+    },
+  });
+
+  return new Response(body, {
+    headers: {
+      "Content-Type": "application/x-ndjson; charset=utf-8",
+      "Cache-Control": "no-store",
+      // Asks any proxy in front not to hold the first line back.
+      "X-Accel-Buffering": "no",
+    },
+  });
 }

@@ -3,6 +3,7 @@ import {
   markTransactionDeleted,
   recordEvent,
   recordGate,
+  updateCapture,
   upsertTransaction,
   validDeviceId,
   type GateOutcome,
@@ -53,7 +54,8 @@ type Body =
       captureId?: string | null;
       transactions: Transaction[];
     }
-  | { kind: "delete"; deviceId: string; id: string };
+  | { kind: "delete"; deviceId: string; id: string }
+  | { kind: "timing"; captureId: string; totalMs: number };
 
 export async function POST(request: Request) {
   try {
@@ -93,6 +95,18 @@ export async function POST(request: Request) {
 
       case "delete":
         await markTransactionDeleted(body.id, validDeviceId(body.deviceId));
+        break;
+
+      case "timing":
+        // Bounded: a tab left open mid-capture would otherwise report hours.
+        if (
+          validDeviceId(body.captureId) &&
+          Number.isFinite(body.totalMs) &&
+          body.totalMs > 0 &&
+          body.totalMs < 120_000
+        ) {
+          await updateCapture(body.captureId, { totalMs: Math.round(body.totalMs) });
+        }
         break;
     }
   } catch {

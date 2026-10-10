@@ -1,13 +1,15 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useRecorder } from "./useRecorder";
 import { audioConsent, deviceId } from "./device";
+import { todayISO } from "./journal";
 import {
   changedFields,
   gateFailures,
   reportEvent,
   reportGate,
+  reportTiming,
   reportTransactions,
 } from "./report";
 import {
@@ -73,6 +75,87 @@ async function postJson(url: string, init: RequestInit): Promise<Reply> {
 }
 
 /**
+ * POST a recording and read the reply as it arrives.
+ *
+ * A capture that was heard answers in two lines of JSON on one response: what
+ * was heard, as soon as the transcriber has it, then the result. `onHeard`
+ * fires on the first, so the speaker is looking at their own words while the
+ * extraction is still running. Anything else the route sends (a rejection, an
+ * error) is ordinary JSON, and is handled exactly as `postJson` would.
+ */
+async function postCapture(
+  form: FormData,
+  onHeard: (text: string) => void,
+): Promise<Reply> {
+  let res: Response;
+  try {
+    res = await fetch("/api/transcribe", { method: "POST", body: form });
+  } catch (err) {
+    return {
+      ok: false,
+      message:
+        "Couldn’t reach the server; the connection dropped. If you opened this from a shared link, that link may have expired.",
+      detail: `network: ${err instanceof Error ? err.message : String(err)}`,
+    };
+  }
+
+  const unreadable = (raw: string): Reply => ({
+    ok: false,
+    message: `The server answered with something unreadable (HTTP ${res.status}). It may be restarting.`,
+    detail: `non-JSON ${res.status}: ${raw.slice(0, 140) || "(empty body)"}`,
+  });
+
+  const streamed = res.headers.get("Content-Type")?.includes("ndjson");
+  if (!streamed || !res.body) {
+    const raw = await res.text().catch(() => "");
+    try {
+      return { ok: true, status: res.status, body: JSON.parse(raw) };
+    } catch {
+      return unreadable(raw);
+    }
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffered = "";
+  let last: Record<string, unknown> | null = null;
+  const take = (text: string) => {
+    if (!text.trim()) return;
+    last = JSON.parse(text) as Record<string, unknown>;
+    if (typeof last.heard === "string") onHeard(last.heard);
+  };
+
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffered += decoder.decode(value, { stream: true });
+      let newline: number;
+      while ((newline = buffered.indexOf("\n")) >= 0) {
+        take(buffered.slice(0, newline));
+        buffered = buffered.slice(newline + 1);
+      }
+    }
+    take(buffered + decoder.decode());
+  } catch (err) {
+    // The connection went, or a line was not JSON. Whatever was heard before
+    // that has already been handed to `onHeard`.
+    return {
+      ok: false,
+      message:
+        "The connection dropped before that finished. Check what was heard below, or try again.",
+      detail: `stream: ${err instanceof Error ? err.message : String(err)}`,
+    };
+  }
+
+  return last ? { ok: true, status: res.status, body: last } : unreadable("");
+}
+
+/** `performance.now()` where it exists; only ever used for a difference. */
+const clock = () =>
+  typeof performance === "undefined" ? Date.now() : performance.now();
+
+/**
  * The capture pipeline: record or type, transcribe, extract, gate, save.
  *
  * Lifted out of the capture screen so the journal can record onto a chosen day
@@ -101,6 +184,17 @@ export function useCapture({
   const [error, setError] = useState<string | null>(null);
   const [debug, setDebug] = useState<string | null>(null);
   const [typed, setTyped] = useState("");
+  // What the transcriber made of the take, shown while the rest is worked out.
+  const [heard, setHeard] = useState<string | null>(null);
+  // The last transcript this hook put in the text box by itself, so it can
+  // take it back out. Anything the user typed or changed is theirs to keep.
+  const offeredRef = useRef<string | null>(null);
+
+  /** Hand a transcript back as text, to be corrected rather than re-spoken. */
+  const offer = useCallback((text: string) => {
+    offeredRef.current = text;
+    setTyped(text);
+  }, []);
   const [justSaved, setJustSaved] = useState<Transaction[] | null>(null);
   const [lastCaptureId, setLastCaptureId] = useState<string | null>(null);
 
@@ -122,54 +216,22 @@ export function useCapture({
   );
 
   /**
-   * Shared tail of both capture paths.
+   * Shared tail of both capture paths: gate what was extracted, then save or
+   * ask.
    *
    * `heardWell` is false when the transcript itself is shaky. A disfluent
    * transcript with a plausible-looking number in it is the dangerous case:
    * the extractor will happily produce a confident transaction from words the
    * recogniser was guessing at.
    */
-  const interpret = useCallback(
-    async (text: string, heardWell = true, priorCaptureId: string | null = null) => {
-      const reply = await postJson("/api/extract", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          text,
-          // Always the real today, even when recording onto an earlier day, so
-          // that "yesterday" keeps meaning yesterday rather than being measured
-          // from whichever page happens to be open.
-          today: new Date().toISOString().slice(0, 10),
-          // Threads the spoken capture's row through, so transcript and
-          // extraction land on the same record. Null for typed captures, which
-          // get their row created here instead.
-          captureId: priorCaptureId,
-          deviceId: deviceId(),
-        }),
-      });
-      if (!reply.ok) {
-        setError(reply.message);
-        setDebug(reply.detail);
-        return;
-      }
-
-      const extracted = reply.body as {
-        error?: string;
-        transactions?: ExtractedTransaction[];
-        captureId?: string | null;
-      };
-      const captureId = extracted.captureId ?? priorCaptureId;
-      if (reply.status !== 200) {
-        setError(extracted.error ?? "Could not read that as an expense.");
-        return;
-      }
-
-      const rows = (extracted.transactions ?? []) as ExtractedTransaction[];
-      if (rows.length === 0) {
-        setError(`No expense found in “${text}”. Try including an amount.`);
-        return;
-      }
-
+  const settle = useCallback(
+    (
+      text: string,
+      rows: ExtractedTransaction[],
+      captureId: string | null,
+      heardWell: boolean,
+      source: Transaction["source"],
+    ) => {
       // Confidence gate. Log straight through when the model is sure, and only
       // stop the user when it isn't. Both conditions matter:
       //   - the extractor did not flag the utterance as ambiguous, and
@@ -189,7 +251,7 @@ export function useCapture({
 
       if (auto.length > 0) {
         const saved = auto.map((row) => {
-          const t = placeOnDate(toTransaction(row, text));
+          const t = placeOnDate(toTransaction(row, text, source));
           savedByRow.set(row, t);
           return t;
         });
@@ -221,7 +283,7 @@ export function useCapture({
         setPending((prev) => [
           ...prev,
           ...review.map((row) => ({
-            transaction: placeOnDate(toTransaction(row, text)),
+            transaction: placeOnDate(toTransaction(row, text, source)),
             needsConfirmation: true,
             captureId: captureId ?? null,
             confirmationReason:
@@ -238,7 +300,54 @@ export function useCapture({
     [onLogged, placeOnDate],
   );
 
+  /** The typed path: text straight to the extractor. True if it was read. */
+  const interpret = useCallback(
+    async (text: string): Promise<boolean> => {
+      const started = clock();
+      const reply = await postJson("/api/extract", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text,
+          // Always the real today, even when recording onto an earlier day, so
+          // that "yesterday" keeps meaning yesterday rather than being measured
+          // from whichever page happens to be open. The speaker's own calendar
+          // day, not UTC's.
+          today: todayISO(),
+          deviceId: deviceId(),
+        }),
+      });
+      if (!reply.ok) {
+        setError(reply.message);
+        setDebug(reply.detail);
+        return false;
+      }
+
+      const extracted = reply.body as {
+        error?: string;
+        transactions?: ExtractedTransaction[];
+        captureId?: string | null;
+      };
+      if (reply.status !== 200) {
+        setError(extracted.error ?? "Could not read that as an expense.");
+        return false;
+      }
+
+      const rows = extracted.transactions ?? [];
+      if (rows.length === 0) {
+        setError(`No expense found in “${text}”. Try including an amount.`);
+        return false;
+      }
+
+      settle(text, rows, extracted.captureId ?? null, true, "manual");
+      reportTiming(extracted.captureId ?? null, clock() - started);
+      return true;
+    },
+    [settle],
+  );
+
   const handleStop = useCallback(async () => {
+    const started = clock();
     const result = await stop();
 
     // Every failure path here used to return silently, which on a phone with
@@ -252,6 +361,10 @@ export function useCapture({
     setBusy(true);
     setError(null);
     setJustSaved(null);
+    // A new take replaces the last one's leftover transcript, if it is still
+    // sitting in the text box untouched.
+    setTyped((prev) => (prev === offeredRef.current ? "" : prev));
+    offeredRef.current = null;
     const levels =
       result.peakDb === null
         ? ""
@@ -285,15 +398,19 @@ export function useCapture({
       if (result.warmupMs !== null) {
         form.append("warmupMs", String(result.warmupMs));
       }
+      form.append("today", todayISO());
 
-      const reply = await postJson("/api/transcribe", {
-        method: "POST",
-        body: form,
+      let early = "";
+      const reply = await postCapture(form, (text) => {
+        early = text;
+        setHeard(text);
       });
       if (!reply.ok) {
         // The audio was captured fine, say so, so this doesn't read as a
         // recording failure and send the user hunting for a mic problem.
         setError(reply.message);
+        // Heard, then lost on the way back: keep the words.
+        if (early) offer(early);
         setDebug(
           `${reply.detail} · your ${(result.blob.size / 1024).toFixed(0)} KB recording was fine`,
         );
@@ -306,12 +423,19 @@ export function useCapture({
         error?: string;
         debug?: unknown;
         captureId?: string | null;
+        /** Words that were heard but could not be used as they stand. */
+        heard?: string | null;
+        transactions?: ExtractedTransaction[];
+        extractError?: string;
       };
       if (reply.status !== 200) {
         setError(transcribed.error ?? "Could not transcribe that.");
         if (transcribed.debug) {
           setDebug(`transcribe: ${JSON.stringify(transcribed.debug)}`);
         }
+        // Real words with the number lost. Put them in the text box: fixing
+        // one word there is quicker, and far surer, than saying it all again.
+        if (transcribed.heard) offer(transcribed.heard);
         return;
       }
       // Whisper's mean avg_logprob, used only as a backstop; the extractor's
@@ -333,7 +457,21 @@ export function useCapture({
       setDebug(
         `heard “${heard}”  ·  confidence ${(transcribed.confidence ?? 0).toFixed(2)}${heardWell ? "" : ", will ask you to check"}`,
       );
-      await interpret(heard, heardWell, transcribed.captureId ?? null);
+
+      // Heard, but nothing could be made of it. The words are kept and offered
+      // back as text rather than asking for the recording a second time.
+      const rows = transcribed.transactions ?? [];
+      if (transcribed.extractError || rows.length === 0) {
+        setError(
+          transcribed.extractError ??
+            `No expense found in “${heard}”. Fix it below, or try again.`,
+        );
+        offer(heard);
+        return;
+      }
+
+      settle(heard, rows, transcribed.captureId ?? null, heardWell, "voice");
+      reportTiming(transcribed.captureId ?? null, clock() - started);
     } catch (err) {
       // Anything reaching here is a bug in our own handling, not a transport
       // failure; postJson already turned those into messages above.
@@ -341,8 +479,9 @@ export function useCapture({
       setDebug(`unexpected: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setBusy(false);
+      setHeard(null);
     }
-  }, [stop, interpret]);
+  }, [stop, settle, offer]);
 
   /**
    * Typing the same thing you'd say.
@@ -361,8 +500,9 @@ export function useCapture({
     setJustSaved(null);
     setDebug(`typed “${text}”`);
     try {
-      await interpret(text);
-      setTyped("");
+      // Cleared only once it has been read: text that failed stays in the
+      // box to be corrected, not retyped.
+      if (await interpret(text)) setTyped("");
     } catch {
       setError("Something went wrong on the way to the server.");
     } finally {
@@ -425,10 +565,33 @@ export function useCapture({
     setJustSaved(null);
   }, [justSaved, onUndo, lastCaptureId]);
 
+  /**
+   * Keep the "Logged" confirmation in step with a correction made from it.
+   *
+   * The confirmation is the quickest way to fix a mishear, so its rows can be
+   * opened and edited. Without this it would go on announcing the amount that
+   * was just corrected.
+   */
+  const amend = useCallback((next: Transaction) => {
+    setJustSaved((prev) =>
+      prev ? prev.map((t) => (t.id === next.id ? next : t)) : prev,
+    );
+  }, []);
+
+  /** Drop a row from the confirmation once it has been deleted elsewhere. */
+  const forget = useCallback((id: string) => {
+    setJustSaved((prev) => {
+      if (!prev) return prev;
+      const left = prev.filter((t) => t.id !== id);
+      return left.length > 0 ? left : null;
+    });
+  }, []);
+
   return {
     state,
     level,
     busy,
+    heard,
     error: error ?? recorderError,
     debug,
     typed,
@@ -441,5 +604,7 @@ export function useCapture({
     commit,
     discard,
     undo,
+    amend,
+    forget,
   };
 }

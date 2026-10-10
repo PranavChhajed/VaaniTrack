@@ -87,6 +87,9 @@ export function validDeviceId(value: unknown): string | null {
  * unobserved rather than failing.
  */
 export async function recordCapture(row: {
+  /** Chosen by the caller when the row is opened before the transcriber has
+   *  answered; see `updateCapture`. Omitted, the database picks one. */
+  id?: string;
   deviceId: string | null;
   source: "voice" | "manual";
   audioMime?: string | null;
@@ -105,12 +108,14 @@ export async function recordCapture(row: {
   asrReason?: string | null;
   avgLogprob?: number | null;
   noSpeechProb?: number | null;
+  asrMs?: number | null;
 }): Promise<string | null> {
   const s = db();
   if (!s || !row.deviceId) return null;
   try {
     const [out] = await s`
       insert into captures ${s({
+        ...(row.id ? { id: row.id } : {}),
         device_id: row.deviceId,
         source: row.source,
         audio_mime: row.audioMime ?? null,
@@ -125,12 +130,56 @@ export async function recordCapture(row: {
         asr_reason: row.asrReason ?? null,
         avg_logprob: row.avgLogprob ?? null,
         no_speech_prob: row.noSpeechProb ?? null,
+        asr_ms: row.asrMs ?? null,
       })}
       returning id
     `;
     return out?.id ?? null;
   } catch {
     return null;
+  }
+}
+
+/**
+ * Fill in a capture that was opened before its results were known.
+ *
+ * The spoken path inserts its row the moment the audio arrives, alongside the
+ * call to the transcriber rather than after it, and writes everything learned
+ * since in one statement once the reply has gone out. That ordering is what
+ * lets the row exist by the time the client reports the gate's verdict against
+ * it, without the user waiting on a single database round trip.
+ *
+ * Only the keys present are written; an absent key leaves its column alone.
+ */
+export async function updateCapture(
+  id: string,
+  row: {
+    asrModel?: string | null;
+    transcript?: string | null;
+    asrVerdict?: AsrVerdict | null;
+    asrReason?: string | null;
+    avgLogprob?: number | null;
+    noSpeechProb?: number | null;
+    asrMs?: number | null;
+    totalMs?: number | null;
+  },
+): Promise<void> {
+  const s = db();
+  if (!s) return;
+  const columns: Record<string, string | number | null> = {};
+  if (row.asrModel !== undefined) columns.asr_model = row.asrModel;
+  if (row.transcript !== undefined) columns.transcript = row.transcript;
+  if (row.asrVerdict !== undefined) columns.asr_verdict = row.asrVerdict;
+  if (row.asrReason !== undefined) columns.asr_reason = row.asrReason;
+  if (row.avgLogprob !== undefined) columns.avg_logprob = row.avgLogprob;
+  if (row.noSpeechProb !== undefined) columns.no_speech_prob = row.noSpeechProb;
+  if (row.asrMs !== undefined) columns.asr_ms = row.asrMs;
+  if (row.totalMs !== undefined) columns.total_ms = row.totalMs;
+  if (Object.keys(columns).length === 0) return;
+  try {
+    await s`update captures set ${s(columns)} where id = ${id}`;
+  } catch {
+    /* diagnostics never break capture */
   }
 }
 

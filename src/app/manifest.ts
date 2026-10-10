@@ -11,9 +11,9 @@ import type { MetadataRoute } from "next";
  * It points at `/app`, not `/`, because `/` is the landing page. An
  * install should open the product, not the pitch for it.
  *
- * Caveat that belongs here, not only in the doc: an *already-installed*
- * shortcut keeps its old start URL. This fixes new installs; an existing
- * one has to be removed and reinstalled to pick it up.
+ * An *already-installed* shortcut keeps its old start URL, so this only
+ * fixes new installs. An existing one pinned to the journal is handled by
+ * `OpenOnCapture` instead, which sends a cold open of `/journal` here.
  */
 export default function manifest(): MetadataRoute.Manifest {
   return {

@@ -156,7 +156,7 @@ A quiet `+ Log an expense` button on a chosen day opens a **sheet** with the mic
 └──────────────────────────────────────────────────────────┘
 ```
 
-**Stage 1 (`/api/transcribe`)** turns audio into words and reports how sure it is.
+**Stage 1 (`/api/transcribe`)** turns audio into words and reports how sure it is. Since 10 October it also runs stage 2 itself for a spoken capture, so the phone makes one round trip; `/api/extract` remains the typed path. See `design/SPEED-ACCURACY.md`.
 **Stage 2 (`/api/extract`)** turns words into a transaction. **The prompt in stage 2 is the product** — it is where the 36.3% → 95.6% improvement actually happens.
 
 **`/api/observe`** is the third endpoint, and it is not part of the pipeline. The gate decision and every user action happen in the browser *after* both API calls have returned, so they cannot be captured server-side and are reported back deliberately. It **always answers 200**. Nothing on the capture path awaits it.
