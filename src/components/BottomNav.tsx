@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 /**
- * The way between the app's two screens.
+ * The way between the app's three screens: capture, journal, insights.
  *
  * It used to be one small underlined link in the header: "Journal ›" on one
  * screen, "‹ Capture" on the other. That is a long reach on a phone held in
@@ -35,6 +35,12 @@ const TABS = [
       "M5 17a3 3 0 0 1 3-3h11",
       "M9 8.5h6",
     ],
+  },
+  {
+    href: "/insights",
+    label: "Insights",
+    // Three bars of different heights.
+    paths: ["M6 20v-6", "M12 20V5", "M18 20v-9"],
   },
 ];
 

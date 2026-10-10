@@ -20,6 +20,15 @@ import {
   todayISO,
 } from "../src/lib/journal.ts";
 import { iconFor } from "../src/lib/icon.ts";
+import {
+  addDays,
+  lastNDays,
+  weekSummary,
+  breakdown,
+  whenSummary,
+  facts,
+  pickFact,
+} from "../src/lib/insights.ts";
 import { sinceLine } from "../src/lib/journal.ts";
 import { parseSettings, initialOf, DEFAULT_SETTINGS } from "../src/lib/settings.ts";
 import { toCsv, csvFileName } from "../src/lib/exportCsv.ts";
@@ -308,6 +317,117 @@ check("empty journal says nothing", sinceLine([]), null);
   check("undated only: a count and no date", sinceLine([txn({ id: "s5", date: null })]), "1 expense");
   const old = sinceLine([txn({ id: "s6", date: `${year - 2}-12-31` })]);
   check("a past year names the year", old !== null && old.includes(String(year - 2)), true);
+}
+
+console.log("\n--- insights: days ---");
+check("a week back across a month end", addDays("2026-03-02", -7), "2026-02-23");
+check("a few days back across a year end", addDays("2027-01-03", -5), "2026-12-29");
+check("leap day", addDays("2028-03-01", -1), "2028-02-29");
+check("forward across a month", addDays("2026-01-31", 1), "2026-02-01");
+{
+  const week = lastNDays("2026-03-02", 7);
+  check("seven days, oldest first, ending today", [week.length, week[0], week[6]], [7, "2026-02-24", "2026-03-02"]);
+  check("no day repeats", new Set(lastNDays("2026-03-08", 40)).size, 40);
+}
+
+console.log("\n--- insights: this week ---");
+const TODAY = "2026-10-10";
+/** One entry a day on each date given. */
+const daily = (dates: string[], amount: number, idp: string) =>
+  dates.map((d, i) => txn({ id: `${idp}${i}`, date: d, amount, description: "thing" }));
+{
+  const thisWeek = lastNDays(TODAY, 7);
+  const lastWeek = lastNDays("2026-10-03", 7);
+  const kept = [...daily(thisWeek, 100, "a"), ...daily(lastWeek, 200, "b")];
+  const w = weekSummary(kept, TODAY);
+  check("total is the seven days", w.total, 700);
+  check("compares with the week before when both were kept", w.compare, { kind: "delta", diff: -700 });
+  check("counts the days noted", [w.loggedDays, w.prevLoggedDays], [7, 7]);
+  check("the last bar is today", w.days[6].date, TODAY);
+
+  const gap = [...daily(thisWeek.slice(0, 3), 100, "g"), ...daily(lastWeek, 200, "h")];
+  check("a week with gaps is not compared", weekSummary(gap, TODAY).compare, { kind: "none" });
+
+  const fresh = [...daily(thisWeek, 100, "f"), ...daily(lastWeek.slice(3), 200, "e")];
+  check("a week before the first entry is not compared", weekSummary(fresh, TODAY).compare, { kind: "none" });
+
+  const future = [...kept, txn({ id: "fut", date: "2026-10-11", amount: 999 })];
+  check("tomorrow is not in the last seven days", weekSummary(future, TODAY).total, 700);
+
+  const undated = [...kept, txn({ id: "nd", date: null, amount: 999 })];
+  check("an undated entry is left out", weekSummary(undated, TODAY).total, 700);
+
+  const noAmount = [...kept, { ...txn({ id: "na", date: TODAY }), amount: f<number>(null) }];
+  const wn = weekSummary(noAmount, TODAY);
+  check("a missing amount counts as 0 and is reported", [wn.total, wn.withoutAmount], [700, 1]);
+
+  const empty = weekSummary([], TODAY);
+  check("an empty journal is zeros, not NaN", [empty.total, empty.loggedDays, empty.compare], [0, 0, { kind: "none" }]);
+
+  const broken = [{ ...txn({ id: "bk" }), amount: undefined, date: undefined }] as unknown as Transaction[];
+  check("a damaged record does not throw", weekSummary(broken, TODAY).total, 0);
+}
+
+console.log("\n--- insights: where it went ---");
+{
+  const rows = [
+    txn({ id: "w1", date: "2026-10-09", amount: 50, description: "tea" }),
+    txn({ id: "w2", date: "2026-10-09", amount: 150, description: "lunch" }),
+    txn({ id: "w3", date: "2026-10-08", amount: 900, description: "zzz mystery" }),
+    txn({ id: "w4", date: "2026-09-01", amount: 5000, description: "lunch" }),
+  ];
+  const s = breakdown(rows, "2026-10-04", TODAY);
+  check("the unnamed group is last even when largest", s.map((x) => x.kind), ["food", "drink", "receipt"]);
+  check("outside the window is left out", s.reduce((n, x) => n + x.total, 0), 1100);
+  check("shares add to one", Math.round(s.reduce((n, x) => n + x.share, 0) * 1000), 1000);
+  check("entries are counted", s.find((x) => x.kind === "receipt")?.count, 1);
+  check("nothing in range is an empty list", breakdown([], "2026-10-04", TODAY), []);
+}
+
+console.log("\n--- insights: when you log ---");
+{
+  const evening = Array.from({ length: 15 }, (_, i) =>
+    txn({ id: `n${i}`, date: "2026-10-09", createdAt: at(2026, 10, 9, 22, i) }));
+  const few = evening.slice(0, 14);
+  check("too few entries says nothing", whenSummary(few), null);
+  const w = whenSummary(evening);
+  check("made from logging time when nothing was said", [w?.basis, w?.top, w?.n], ["logged", "night", 15]);
+
+  const spokenRows = Array.from({ length: 15 }, (_, i) =>
+    txn({ id: `p${i}`, date: "2026-10-09", time: "8:30 AM", createdAt: at(2026, 10, 9, 23, 0) }));
+  const s = whenSummary(spokenRows);
+  check("switches to spoken times once there are enough", [s?.basis, s?.top], ["spoken", "morning"]);
+  check("the four parts always come back in order", w?.parts.map((p) => p.part), ["morning", "afternoon", "evening", "night"]);
+}
+
+console.log("\n--- insights: fun facts ---");
+{
+  const chai = (n: number) =>
+    Array.from({ length: n }, (_, i) =>
+      txn({ id: `c${i}`, date: addDays(TODAY, -i), amount: 30, description: i % 2 ? "Chai" : "2 tea" }));
+  check("five chai is a fact", facts(chai(5), TODAY).some((x) => x.id === "chai"), true);
+  check("four chai is not", facts(chai(4), TODAY).some((x) => x.id === "chai"), false);
+  check("the chai fact carries the rupees", facts(chai(5), TODAY).find((x) => x.id === "chai")?.text.includes("₹150"), true);
+
+  const dosa = ["dosa", "Dosa ", "2 dosa", "a dosa"].map((d, i) =>
+    txn({ id: `d${i}`, date: addDays(TODAY, -i), description: d }));
+  const rep = facts(dosa, TODAY).find((x) => x.id === "repeat");
+  check("the same thing said four ways is counted once", rep?.text.includes("dosa") && rep.text.includes("4"), true);
+  check("three is not enough to call it a regular", facts(dosa.slice(0, 3), TODAY).some((x) => x.id === "repeat"), false);
+
+  const days = (n: number) =>
+    Array.from({ length: n }, (_, i) =>
+      txn({ id: `x${i}`, date: addDays(TODAY, -i), amount: 100 + i, description: `item${"abcdefg"[i]}` }));
+  check("six days is too few for a priciest day", facts(days(6), TODAY).some((x) => x.id === "priciest"), false);
+  check("seven days can name one", facts(days(7), TODAY).find((x) => x.id === "priciest")?.text.includes("₹106"), true);
+  check("how often it is kept uses the real denominator", facts(days(7), TODAY).find((x) => x.id === "kept")?.text, "You noted something on 7 of the last 7 days.");
+  check("a young journal does not claim 30 days", facts(days(3), TODAY).some((x) => x.id === "kept"), false);
+
+  check("nothing to say gives no fact", pickFact([], TODAY), null);
+  const list = facts(days(7), TODAY);
+  check("the same fact all day", pickFact(list, TODAY)?.id, pickFact(list, TODAY)?.id);
+  check("tapping gives a different one", list.length > 1 && pickFact(list, TODAY, 1)?.id !== pickFact(list, TODAY, 0)?.id, true);
+  check("a deleted entry cannot linger in a fact", facts(dosa.slice(0, 3), TODAY).length < facts(dosa, TODAY).length, true);
 }
 
 console.log(
