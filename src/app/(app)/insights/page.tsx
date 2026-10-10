@@ -4,7 +4,8 @@ import { useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { AppHeader } from "@/components/AppHeader";
 import { ExpenseIcon } from "@/components/ExpenseIcon";
-import { todayISO, fromISO } from "@/lib/journal";
+import { fromISO } from "@/lib/journal";
+import { useToday } from "@/lib/useToday";
 import {
   PART_HOURS,
   breakdown,
@@ -108,8 +109,11 @@ function WeekCard({
           const isToday = i === week.days.length - 1;
           const height = d.count === 0 ? 4 : Math.max(8, (d.total / tallest) * 96);
           const name = fromISO(d.date).toLocaleDateString("en-IN", { weekday: "short" });
+          // Two letters on the bars: seven columns of three letters do not fit once
+          // the text is enlarged. The screen-reader line below keeps the full name.
+          const short = name.slice(0, 2);
           return (
-            <li key={d.date} className="flex flex-1 flex-col items-center gap-1">
+            <li key={d.date} className="flex min-w-0 flex-1 flex-col items-center gap-1">
               <div className="flex h-24 w-full items-end">
                 <div
                   className={[
@@ -123,7 +127,7 @@ function WeekCard({
                   style={{ height }}
                 />
               </div>
-              <span className="font-figtree text-caption text-fog">{name}</span>
+              <span className="max-w-full overflow-hidden font-figtree text-caption text-fog">{short}</span>
               <span className="sr-only">
                 {d.count === 0
                   ? `${name}: nothing noted`
@@ -320,7 +324,7 @@ function Cards({ transactions }: { transactions: Transaction[] }) {
   // Read once, after the journal has loaded: the server has no "today" that
   // matches the phone's, and reading it during the first render would not
   // agree with what the server sent.
-  const [today] = useState(() => todayISO());
+  const today = useToday();
   const when = useMemo(() => whenSummary(transactions), [transactions]);
 
   if (transactions.length < 3) {

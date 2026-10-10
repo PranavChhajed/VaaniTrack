@@ -7,9 +7,9 @@ import {
   monthGrid,
   monthLabel,
   shiftMonth,
-  todayISO,
 } from "@/lib/journal";
 import { DEFAULTS } from "@/lib/types";
+import { useToday } from "@/lib/useToday";
 
 const WEEKDAYS = ["S", "M", "T", "W", "T", "F", "S"];
 
@@ -46,7 +46,7 @@ export function DatePicker({
   onMonthChange: (iso: string) => void;
   onSelect: (iso: string) => void;
 }) {
-  const today = todayISO();
+  const today = useToday();
   const weeks = monthGrid(month);
   const monthSpend = weeks
     .flat()
@@ -108,10 +108,14 @@ export function DatePicker({
               type="button"
               disabled={disabled}
               onClick={() => onSelect(iso)}
-              aria-label={`${fromISO(iso).getDate()} ${monthLabel(month)}${
+              // Begins with what is printed on the cell ("9 ₹1.1k"), so that
+              // saying what you see selects it, and then says it in full.
+              aria-label={`${fromISO(iso).getDate()}${
+                spent === undefined ? "" : ` ${DEFAULTS.currency}${compactAmount(spent)}`
+              }, ${monthLabel(month)}${
                 spent === undefined
                   ? ""
-                  : `, ${DEFAULTS.currency}${spent.toLocaleString("en-IN")}`
+                  : `, ${DEFAULTS.currency}${spent.toLocaleString("en-IN")} spent`
               }`}
               aria-current={isToday ? "date" : undefined}
               className={[

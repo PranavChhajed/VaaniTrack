@@ -58,3 +58,9 @@ android/build/
 android/app/build/
 android/local.properties
 *.apk
+
+# Browser tests: their own dependencies, and the screenshots they take
+/qa/node_modules
+/qa/package-lock.json
+/qa/*.png
+/qa/all.out

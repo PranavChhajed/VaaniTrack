@@ -39,6 +39,7 @@ import {
   loadTransactions,
   saveTransactions,
   parseTransactions,
+  sanitizeTransaction,
 } from "../src/lib/types.ts";
 import { readLocal, removeLocal, localKeys } from "../src/lib/localStore.ts";
 import type { Field, Provenance, Transaction } from "../src/lib/types.ts";
@@ -442,6 +443,32 @@ check("a bare 'record' does not", wantsRecord("?record"), false);
 check("a similar name does not", wantsRecord("?recording=1"), false);
 check("a value that merely contains 1 does not", wantsRecord("?record=11"), false);
 check("a hostile value does not", wantsRecord("?record=1%27%3Balert(1)"), false);
+
+console.log("\n--- a damaged journal is repaired, never fatal ---");
+{
+  const good = txn({ id: "ok1", amount: 40, description: "chai", date: "2026-10-01" });
+  const wrecked = parseTransactions(JSON.stringify([null, 5, "x", [], {}, { id: "a" }, good, { id: "ok1", amount: { value: 9 }, description: { value: "dup" } }]));
+  check("junk is dropped, real records kept", wrecked.length, 2);
+  check("a good record passes through unchanged", wrecked[0], good);
+  check("a duplicate id is repaired, not shared", new Set(wrecked.map((w) => w.id)).size, 2);
+
+  const odd = sanitizeTransaction({ amount: { value: "12.5", provenance: "bogus" }, description: { value: "  " }, payee: { value: "Rahul", provenance: "said" }, date: { value: "2026-02-31" }, time: { value: 5 }, createdAt: "garbage", source: "alien" }, 3);
+  check("a numeric string becomes a number", odd?.amount.value, 12.5);
+  check("an unknown provenance becomes unknown", odd?.amount.provenance, "unknown");
+  check("a blank description is nothing", odd?.description.value, null);
+  check("an impossible date is dropped, not rolled over", odd?.date.value, null);
+  check("a non-text time is dropped", odd?.time.value, null);
+  check("a bad timestamp becomes empty, not NaN", odd?.createdAt, "");
+  check("an unknown source falls back to typed", odd?.source, "manual");
+  check("a missing id is made up, stably", odd?.id, "recovered-3");
+  check("a payee alone is enough to keep a record", odd?.payee.value, "Rahul");
+  check("amount NaN with nothing else is dropped", sanitizeTransaction({ id: "n", amount: { value: NaN } }, 0), null);
+  check("Infinity is not an amount", sanitizeTransaction({ id: "i", amount: { value: Infinity }, description: { value: "x" } }, 0)?.amount.value, null);
+  check("February 29 in a leap year is real", sanitizeTransaction({ id: "l", amount: { value: 1 }, date: { value: "2028-02-29" } }, 0)?.date.value, "2028-02-29");
+  check("February 29 in a normal year is not", sanitizeTransaction({ id: "l2", amount: { value: 1 }, date: { value: "2027-02-29" } }, 0)?.date.value, null);
+  check("an object where text should be is survived", sanitizeTransaction({ id: "o", amount: 7, description: { value: { nested: true } } }, 0), null);
+  check("whole-journal garbage is an empty journal", [parseTransactions("{}"), parseTransactions("7"), parseTransactions("null"), parseTransactions("[1,2")], [[], [], [], []]);
+}
 
 console.log("\n--- the widget's addresses ---");
 check("?type=1 asks for the typing box", wantsType("?type=1"), true);

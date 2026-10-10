@@ -89,6 +89,8 @@ function Progress({ step }: { step: number }) {
     <div
       className="flex gap-2"
       role="progressbar"
+      aria-label="Welcome tour"
+      aria-valuetext={`Step ${step + 1} of ${TOTAL_STEPS}`}
       aria-valuenow={step + 1}
       aria-valuemin={1}
       aria-valuemax={TOTAL_STEPS}
@@ -123,9 +125,9 @@ export function Onboarding() {
 
   if (step === CONSENT_STEP) {
     return (
-      <div className="fixed inset-0 z-[70] flex min-h-dvh flex-col bg-paper px-6 py-8">
+      <div role="dialog" aria-modal="true" aria-label="Welcome to VaaniTrack" className="fixed inset-0 z-[70] flex min-h-dvh flex-col overflow-y-auto overscroll-contain bg-paper px-6 pb-[calc(2rem+env(safe-area-inset-bottom))] pt-8">
         <FlowHeader />
-        <div className="mt-10 flex flex-1 flex-col items-start justify-center">
+        <div className="mt-10 flex flex-1 flex-col items-start justify-center [@media(max-height:680px)]:mt-5">
           <p className="display-type text-subheading text-fog">Welcome to VaaniTrack.</p>
           <h2 className="display-type mt-2 text-heading-sm text-vast-ink">
             Can we keep your recordings?
@@ -167,10 +169,10 @@ export function Onboarding() {
   const Art = current.Art;
 
   return (
-    <div className={`fixed inset-0 z-[70] flex min-h-dvh flex-col px-6 py-8 ${current.tint}`}>
+    <div role="dialog" aria-modal="true" aria-label="Welcome to VaaniTrack" className={`fixed inset-0 z-[70] flex min-h-dvh flex-col overflow-y-auto overscroll-contain px-6 pb-[calc(2rem+env(safe-area-inset-bottom))] pt-8 ${current.tint}`}>
       <FlowHeader onSkip={() => setStep(CONSENT_STEP)} />
 
-      <div key={step} className="rise mt-10">
+      <div key={step} className="rise mt-10 [@media(max-height:680px)]:mt-5">
         <p className="font-figtree text-caption font-semibold uppercase tracking-[0.08em] text-fog">
           {String(step + 1).padStart(2, "0")} / {String(STEPS.length).padStart(2, "0")}
         </p>

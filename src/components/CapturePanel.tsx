@@ -31,7 +31,7 @@ export function CapturePanel({
   typedLabel = "Type an expense",
   loggedPrefix = "Logged",
   scrollToPending = false,
-  pendingClassName = "flex flex-col gap-6 scroll-mt-4",
+  pendingClassName = "flex flex-col gap-6 scroll-mt-4 scroll-mb-32",
   onEdit,
   notice = null,
 }: {
@@ -63,7 +63,10 @@ export function CapturePanel({
 
   useEffect(() => {
     if (scrollToPending && capture.pending.length > 0) {
-      reviewRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      // "nearest", with room reserved below (`scroll-mb`), so the whole card
+      // lands above the bottom bar. Aligning its top edge instead left the card
+      // taller than the space beneath it, and Save under the bar.
+      reviewRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
     }
   }, [scrollToPending, capture.pending.length]);
 

@@ -37,7 +37,13 @@ export function AudioConsentGate() {
   const answer = (value: "granted" | "denied") => setAudioConsent(value);
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-end justify-center bg-vast-ink/60 p-4 sm:items-center">
+    // Scrolls when the card is taller than the screen (a small phone, a large
+    // text size, a phone on its side). The inner wrapper is what keeps the card
+    // at the bottom of a tall screen and still reachable on a short one:
+    // centring or bottom-aligning inside the scrolling box itself would push the
+    // top of an overflowing card out of reach.
+    <div className="fixed inset-0 z-[60] overflow-y-auto overscroll-contain bg-vast-ink/60">
+     <div className="flex min-h-full items-end justify-center p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:items-center">
       <div
         role="dialog"
         aria-modal="true"
@@ -79,6 +85,7 @@ export function AudioConsentGate() {
           </button>
         </div>
       </div>
+     </div>
     </div>
   );
 }

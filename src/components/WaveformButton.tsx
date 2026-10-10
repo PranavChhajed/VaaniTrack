@@ -42,12 +42,17 @@ export function WaveformButton({
       type="button"
       onClick={recording ? onStop : onStart}
       disabled={disabled}
+      // The name must contain the words on the button: someone using voice
+      // control says what they read ("tap Say what you spent"), and a name that
+      // paraphrases it is a button they cannot reach.
       aria-label={
-        recording
-          ? "Stop recording"
-          : warming
-            ? "Waiting for the microphone"
-            : "Record an expense"
+        busy
+          ? "Reading it back…"
+          : recording
+            ? "Tap to finish recording"
+            : warming
+              ? "Getting the mic ready…"
+              : "Say what you spent"
       }
       aria-live="polite"
       className={[

@@ -24,6 +24,7 @@ import {
   reportEvent,
   reportTransactions,
 } from "@/lib/report";
+import { useToday } from "@/lib/useToday";
 import { useTransactions } from "@/lib/useTransactions";
 import { DEFAULTS, type Transaction } from "@/lib/types";
 
@@ -52,6 +53,22 @@ import { DEFAULTS, type Transaction } from "@/lib/types";
  * through the markup.
  */
 const BUSY_DAY = 5;
+
+/**
+ * How much of the scroll is drawn before the rest is offered.
+ *
+ * Every entry is a row, and drawing every row of every month made opening the
+ * journal take as long as the journal was long: about a second per thousand
+ * entries on a desktop, several times that on a phone. The last few weeks are
+ * what is looked at; the rest is one tap away, and the calendar reaches any day
+ * directly whether or not its month has been drawn.
+ *
+ * The limit is rows, not months, because a month is anywhere from a handful of
+ * entries to hundreds, and what costs time is the rows. Whole months are drawn
+ * until at least this many entries are showing.
+ */
+const ROWS_AT_FIRST = 150;
+const ROWS_PER_TAP = 300;
 
 function captureProminence(count: number): "primary" | "offered" | "quiet" {
   if (count === 0) return "primary";
@@ -207,6 +224,9 @@ function DaySection({
 
 export default function Journal() {
   const { transactions, hydrated, add, update, remove, undo } = useTransactions();
+  // Not read here: it makes this screen redraw when the day changes, so the
+  // "Today" and "Yesterday" headings below stay true on a screen left open.
+  useToday();
   const [selected, setSelected] = useState<string | null>(null);
   const [month, setMonth] = useState<string>(() => todayISO());
   const [open, setOpen] = useState<Transaction | null>(null);
@@ -232,6 +252,19 @@ export default function Journal() {
   const openLive = open ? transactions.find((t) => t.id === open.id) ?? null : null;
 
   const months = useMemo(() => groupByMonth(groups), [groups]);
+  const [rowLimit, setRowLimit] = useState(ROWS_AT_FIRST);
+  const monthsShown = useMemo(() => {
+    let rows = 0;
+    let shown = 0;
+    for (const m of months) {
+      if (rows >= rowLimit) break;
+      rows += m.count;
+      shown += 1;
+    }
+    return Math.max(shown, 1);
+  }, [months, rowLimit]);
+  const hidden = months.slice(monthsShown);
+  const hiddenCount = hidden.reduce((n, m) => n + m.count, 0);
 
   return (
     <main className="mx-auto flex w-full max-w-[900px] flex-col gap-8 px-5 pb-36 pt-8 sm:px-8 sm:pt-12">
@@ -312,13 +345,23 @@ export default function Journal() {
           </div>
         ) : (
           <>
-            {months.map((month) => (
+            {months.slice(0, monthsShown).map((month) => (
               <MonthSection
                 key={month.month ?? "undated"}
                 group={month}
                 onOpen={setOpen}
               />
             ))}
+            {hidden.length > 0 ? (
+              <button
+                type="button"
+                onClick={() => setRowLimit((n) => n + ROWS_PER_TAP)}
+                className="focus-ring-dark mt-8 w-full rounded-[var(--radius-pill)] border-2 border-charcoal px-5 py-3 font-figtree text-body-sm text-paper transition-colors active:bg-charcoal"
+              >
+                Show earlier months ({hiddenCount.toLocaleString("en-IN")} more{" "}
+                {hiddenCount === 1 ? "expense" : "expenses"})
+              </button>
+            ) : null}
             <CaptureAction count={groups[0]?.count ?? 0} />
           </>
         )}

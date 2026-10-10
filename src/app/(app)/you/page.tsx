@@ -107,8 +107,10 @@ function Switch({
 }) {
   const id = useId();
   return (
-    <div className="flex items-start justify-between gap-4">
-      <div>
+    // Wraps rather than overflows: at a large text size the switch (sized in rem
+    // like everything else) no longer fits beside its words, and drops below.
+    <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
+      <div className="min-w-0 flex-1 basis-[12rem]">
         <p id={id} className="font-figtree text-body-sm font-medium text-vast-ink">
           {label}
         </p>

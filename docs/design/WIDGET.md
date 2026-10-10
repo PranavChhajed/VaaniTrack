@@ -40,8 +40,8 @@ A Trusted Web Activity: the website shown full screen, as an app. It runs in
 Chrome, so it **shares storage with the installed PWA and the journal is still
 there**. A Capacitor-style shell would have had its own empty storage.
 
-- The widget, `RecordWidgetProvider`, is one tile. Its tap opens the launcher
-  activity with `https://<site>/app?record=1` as the intent data.
+- The widget is `RecordWidgetProvider` (see "The widget" below). Its taps open
+  the launcher activity with an address on the site as the intent data.
 - The site's half of the link is `public/.well-known/assetlinks.json`, naming the
   app's package and the **public fingerprint** of its signing key. Without it
   Android shows a browser bar instead of full screen.
@@ -57,8 +57,40 @@ there**. A Capacitor-style shell would have had its own empty storage.
   (`generateShortcuts` in `app/build.gradle`). The first version used a
   reference and registered with an empty address; the system's own shortcut
   dump (`adb shell dumpsys shortcut`) is what showed it.
-- Animations: the tile's look lives in `res/layout/widget_record.xml`; the
-  recording-screen animation is web code.
+
+### The widget
+
+It drops in as a **2 x 2 tile** (a little bigger than an app icon) and becomes
+the **full tile** when it is stretched to about 4 wide. `onAppWidgetOptionsChanged`
+picks the layout from the width it has been given (270dp and up is full), so the
+two sizes behave the same on every launcher.
+
+| Size | Layout | Tap targets |
+|---|---|---|
+| compact | `widget_small.xml`: the animated microphone, "Say it / Tap to record" | the whole tile records |
+| full | `widget_wide.xml`: the microphone, "Say what you spent", and three buttons | the tile records; **Type** opens `/app?type=1` with the cursor in the box; **Journal** opens `/journal?from=widget`; **Insights** opens `/insights` |
+
+Every target has its own press ripple, and its own `PendingIntent` request code
+(or Android hands all four the same intent).
+
+**How it moves.** Android does not run animation code in a widget: the home screen
+draws it from a description, and a ViewFlipper cycling through pre-drawn frames is
+the one thing that gives a smooth loop. `tools/make_widget_frames.py` draws 12
+frames of the app's own record button (a mint disc with five ink bars that breathe
+as a wave travels across them, and a ring that swells and fades once per loop);
+the flipper shows each for 140ms, so the loop is 1.7 seconds. It only runs while
+the widget is on screen.
+
+**What it cannot do.** It cannot listen: Android does not let a widget hold the
+microphone, so a tap opens the app, which records. It cannot show your totals:
+they are in Chrome's storage for the site, which a native widget cannot read. It
+cannot hold a real live waveform for the same reason. Showing today's total on
+the tile would need the journal to be somewhere the widget can reach, which means
+accounts and sync.
+
+**The site's side.** `/journal` normally sends a cold open to capture (an old
+pinned shortcut once pointed there), so the Journal button's address carries
+`from=widget`, which `OpenOnCapture` lets through.
 
 ### Building the two APKs
 

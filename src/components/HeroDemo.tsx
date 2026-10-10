@@ -58,18 +58,13 @@ export function HeroDemo() {
   const listening = phase === "listening";
 
   return (
+    // The card replays on a click anywhere, for a mouse. The control that
+    // matters, for a keyboard or a voice, is the real button at the bottom: a
+    // card made to look like a button has a name that cannot match all the
+    // words on it.
     <div
-      role="button"
-      tabIndex={0}
-      aria-label="Replay the demo"
       onClick={play}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          play();
-        }
-      }}
-      className="focus-ring w-full max-w-[420px] cursor-pointer rounded-[var(--radius-card)] border-2 border-vast-ink bg-paper-raised px-6 py-6"
+      className="w-full max-w-[420px] cursor-pointer rounded-[var(--radius-card)] border-2 border-vast-ink bg-paper-raised px-6 py-6"
     >
       <div className="flex items-center gap-3">
         <span className="flex items-end gap-[4px]" aria-hidden="true">
@@ -114,13 +109,20 @@ export function HeroDemo() {
         )}
       </div>
 
-      <p
-        className={`mt-4 font-figtree text-caption text-fog transition-opacity duration-300 ${
-          phase === "settled" ? "opacity-100" : "opacity-0"
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          play();
+        }}
+        // Only there to be used once the demo has finished playing.
+        disabled={phase !== "settled"}
+        className={`focus-ring -mx-2 mt-2 inline-block rounded-[var(--radius-pill)] px-2 py-2 font-figtree text-caption text-fog transition-opacity duration-300 ${
+          phase === "settled" ? "opacity-100" : "pointer-events-none opacity-0"
         }`}
       >
         Tap to replay
-      </p>
+      </button>
     </div>
   );
 }

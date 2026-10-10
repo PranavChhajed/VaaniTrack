@@ -109,13 +109,91 @@ export function toTransaction(
 
 export const TRANSACTIONS_KEY = "vaanitrack.transactions";
 
+const PROVENANCES: readonly Provenance[] = ["said", "inferred", "default", "unknown"];
+
+const isRecord = (v: unknown): v is Record<string, unknown> =>
+  typeof v === "object" && v !== null && !Array.isArray(v);
+
+/** One field of a stored record, whatever state it is in. */
+function readField<T>(raw: unknown, read: (v: unknown) => T | null): Field<T> {
+  if (!isRecord(raw)) return EMPTY<T>();
+  const value = read(raw.value);
+  if (value === null) return EMPTY<T>();
+  const provenance = PROVENANCES.find((p) => p === raw.provenance) ?? "unknown";
+  return { value, provenance };
+}
+
+const readText = (v: unknown): string | null =>
+  typeof v === "string" && v.trim() !== "" ? v : null;
+
+const readAmount = (v: unknown): number | null => {
+  const n = typeof v === "string" && v.trim() !== "" ? Number(v) : v;
+  return typeof n === "number" && Number.isFinite(n) ? n : null;
+};
+
+/** A real calendar day, or nothing. "2026-02-31" is not one. */
+const readDay = (v: unknown): string | null => {
+  if (typeof v !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(v)) return null;
+  const d = new Date(`${v}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return null;
+  const [y, m, day] = v.split("-").map(Number);
+  return d.getFullYear() === y && d.getMonth() + 1 === m && d.getDate() === day ? v : null;
+};
+
+/**
+ * One stored record made safe to use, or null if there is nothing in it.
+ *
+ * The journal is read from browser storage, where anything can be: an older
+ * version's shape, a write that was cut off, a hand edit. Every screen reads
+ * these fields without checking, so a single `null` in the list used to be
+ * enough to stop the whole app with "This page couldn't load", and the only
+ * way out was to clear the site's data, which is the journal itself. A record
+ * is rebuilt field by field instead, keeping what is real and dropping what is
+ * not, and a record with no amount, no description and no payee has nothing
+ * worth keeping.
+ */
+export function sanitizeTransaction(raw: unknown, index: number): Transaction | null {
+  if (!isRecord(raw)) return null;
+  const amount = readField(raw.amount, readAmount);
+  const description = readField(raw.description, readText);
+  const payee = readField(raw.payee, readText);
+  if (amount.value === null && description.value === null && payee.value === null) return null;
+
+  const created = typeof raw.createdAt === "string" && !Number.isNaN(Date.parse(raw.createdAt));
+  return {
+    id: typeof raw.id === "string" && raw.id !== "" ? raw.id : `recovered-${index}`,
+    amount,
+    description,
+    category: readField(raw.category, readText),
+    payee,
+    paymentMethod: readField(raw.paymentMethod, readText),
+    date: readField(raw.date, readDay),
+    time: readField(raw.time, readText),
+    createdAt: created ? (raw.createdAt as string) : "",
+    source: raw.source === "voice" ? "voice" : "manual",
+    ...(typeof raw.transcript === "string" ? { transcript: raw.transcript } : {}),
+  };
+}
+
 /** A journal from its stored text. Unreadable or wrongly shaped is an empty
- *  journal rather than a crash. */
+ *  journal rather than a crash, and a damaged record is repaired or dropped
+ *  rather than being allowed to take every screen down with it. */
 export function parseTransactions(raw: string | null): Transaction[] {
   if (!raw) return [];
   try {
     const parsed: unknown = JSON.parse(raw);
-    return Array.isArray(parsed) ? (parsed as Transaction[]) : [];
+    if (!Array.isArray(parsed)) return [];
+    const seen = new Set<string>();
+    const out: Transaction[] = [];
+    parsed.forEach((item, i) => {
+      const t = sanitizeTransaction(item, i);
+      if (!t) return;
+      // Two records sharing an id would be edited and deleted together.
+      if (seen.has(t.id)) t.id = `${t.id}~${i}`;
+      seen.add(t.id);
+      out.push(t);
+    });
+    return out;
   } catch {
     return [];
   }

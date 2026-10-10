@@ -228,7 +228,10 @@ export function ReviewCard({
         </>
       )}
 
-      <div className="mt-8 flex flex-wrap items-center gap-3">
+      {/* Stuck just above the bottom bar for as long as the card is on screen.
+          An edit-sized card is taller than the space above the bar on a phone,
+          and the buttons that finish it would otherwise sit underneath. */}
+      <div className="sticky bottom-[calc(6rem+env(safe-area-inset-bottom))] z-10 -mx-2 mt-8 flex flex-wrap items-center gap-3 rounded-[var(--radius-card)] bg-paper-raised/95 px-2 py-2 backdrop-blur-sm">
         <button
           type="button"
           onClick={() => onSave(draft)}

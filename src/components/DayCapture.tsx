@@ -52,7 +52,7 @@ export function DayCapture({
         role="dialog"
         aria-modal="true"
         aria-label={`Record an expense onto ${dateLabel}`}
-        className="sheet-rise absolute inset-x-0 bottom-0 mx-auto max-h-[88vh] w-full max-w-[560px] overflow-y-auto rounded-t-[var(--radius-chamber)] border-t-2 border-vast-ink bg-paper px-5 pb-[calc(2rem+env(safe-area-inset-bottom))] pt-3"
+        className="sheet-rise absolute inset-x-0 bottom-0 mx-auto max-h-[88dvh] w-full max-w-[560px] overflow-y-auto rounded-t-[var(--radius-chamber)] border-t-2 border-vast-ink bg-paper px-5 pb-[calc(2rem+env(safe-area-inset-bottom))] pt-3"
       >
         <div className="mx-auto mb-4 h-[5px] w-12 rounded-full bg-paper-edge" aria-hidden="true" />
 
@@ -69,7 +69,6 @@ export function DayCapture({
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close"
             className="focus-ring shrink-0 rounded-[var(--radius-pill)] border-2 border-vast-ink bg-paper-raised px-4 py-2 font-figtree text-body-sm text-vast-ink active:bg-mint-whisper"
           >
             Done

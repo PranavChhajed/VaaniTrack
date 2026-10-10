@@ -22,6 +22,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Node scripts for the browser tests, not part of the app.
+    "qa/**",
   ]),
 ]);
 

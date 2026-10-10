@@ -8,7 +8,7 @@ import { TransactionList } from "@/components/TransactionList";
 import { useAutoRecord } from "@/lib/useAutoRecord";
 import { useCapture } from "@/lib/useCapture";
 import { changedFields, reportDelete, reportEvent, reportTransactions } from "@/lib/report";
-import { todayISO } from "@/lib/journal";
+import { useToday } from "@/lib/useToday";
 import { useTransactions } from "@/lib/useTransactions";
 import type { Transaction } from "@/lib/types";
 
@@ -45,7 +45,7 @@ export default function Home() {
    * of what today has cost. Showing it here made the day's total read as
    * something it wasn't. The journal is where every day lives.
    */
-  const today = todayISO();
+  const today = useToday();
   const todays = useMemo(
     () => transactions.filter((t) => t.date.value === today),
     [transactions, today],
@@ -75,6 +75,7 @@ export default function Home() {
   return (
     <main className="mx-auto flex w-full max-w-[900px] flex-col gap-16 px-5 pb-36 pt-8 sm:gap-24 sm:px-8 sm:pt-12">
       <AppHeader profile />
+      <h1 className="sr-only">Capture an expense</h1>
 
       {/* No headline here on purpose. This is the screen someone opens to
           log ₹250 at a shop counter, not the one that introduces the
