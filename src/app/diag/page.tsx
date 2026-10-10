@@ -145,24 +145,20 @@ export default function Diag() {
     try {
       const form = new FormData();
       form.append("audio", blob, "capture");
+      form.append("today", todayISO());
       const res = await fetch("/api/transcribe", { method: "POST", body: form });
-      const json = await res.json();
+      // A capture that was heard answers in two lines of JSON, what was heard
+      // and then the result; a rejection answers in one. The last line is the
+      // whole answer either way.
+      const lines = (await res.text()).trim().split("\n");
+      const json = JSON.parse(lines[lines.length - 1]);
       if (res.ok) {
         say(`✓ transcribed: “${json.text}”`);
-        const e = await fetch("/api/extract", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            text: json.text,
-            today: todayISO(),
-          }),
-        });
-        const ej = await e.json();
-        const rows = ej.transactions ?? [];
+        const rows = json.transactions ?? [];
         say(
           rows.length
             ? `✓ extracted: ${rows.map((r: { amount: number; description: string }) => `₹${r.amount} ${r.description}`).join(", ")}`
-            : `✗ extracted nothing from “${json.text}”`,
+            : `✗ extracted nothing from “${json.text}”${json.extractError ? `: ${json.extractError}` : ""}`,
         );
       } else {
         say(`✗ ${res.status}: ${json.error} ${JSON.stringify(json.debug ?? {})}`);
