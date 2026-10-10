@@ -463,6 +463,34 @@ export default function You() {
 
             <details className="group">
               <summary className="focus-ring cursor-pointer py-3 font-figtree text-body-sm text-vast-ink underline underline-offset-4">
+                A one-tap record button
+              </summary>
+              <div className="mt-3 flex flex-col gap-3 font-figtree text-body-sm text-charcoal">
+                <p>
+                  This address opens VaaniTrack already listening, and logs to
+                  today:
+                </p>
+                <p className="break-all rounded-[var(--radius-input)] border-2 border-vast-ink bg-paper px-3 py-2 text-caption text-vast-ink">
+                  {window.location.origin}/app?record=1
+                </p>
+                <p>
+                  <strong className="font-medium">Android:</strong> long-press the
+                  VaaniTrack icon and choose Record an expense.
+                </p>
+                <p>
+                  <strong className="font-medium">iPhone:</strong> open the
+                  Shortcuts app, add the action Open URLs with the address above,
+                  then Add to Home Screen. The Action Button can run it too.
+                </p>
+                <p className="text-caption text-fog">
+                  Some phones ask for one tap before they open the microphone. If
+                  yours does, the screen will say so.
+                </p>
+              </div>
+            </details>
+
+            <details className="group">
+              <summary className="focus-ring cursor-pointer py-3 font-figtree text-body-sm text-vast-ink underline underline-offset-4">
                 What VaaniTrack doesn’t do yet
               </summary>
               <ul className="mt-3 flex flex-col gap-2 font-figtree text-body-sm text-charcoal">

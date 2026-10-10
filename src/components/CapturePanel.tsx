@@ -33,8 +33,12 @@ export function CapturePanel({
   scrollToPending = false,
   pendingClassName = "flex flex-col gap-6 scroll-mt-4",
   onEdit,
+  notice = null,
 }: {
   capture: Capture;
+  /** A calm instruction shown under the controls, for a state that is not an
+   *  error: the screen opened ready, and only needs a tap. */
+  notice?: string | null;
   /** `h2` on the capture screen; `h3` inside the day sheet, which already
    *  has its own `h2`. Also picks the matching display size. */
   pendingHeadingTag?: "h2" | "h3";
@@ -121,6 +125,15 @@ export function CapturePanel({
           Add
         </button>
       </form>
+
+      {notice ? (
+        <p
+          role="status"
+          className="mt-6 max-w-[60ch] rounded-[var(--radius-input)] border-2 border-vast-ink bg-mint-whisper px-4 py-3 font-figtree text-body-sm text-vast-ink"
+        >
+          {notice}
+        </p>
+      ) : null}
 
       {capture.error ? (
         <p className="mt-6 max-w-[60ch] rounded-[var(--radius-input)] border-2 border-alert bg-paper-raised px-4 py-3 font-figtree text-body-sm text-alert">

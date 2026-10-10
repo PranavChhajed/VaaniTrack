@@ -21,7 +21,23 @@ export default function manifest(): MetadataRoute.Manifest {
     short_name: "VaaniTrack",
     description: "Say what you spent. Check it. Done.",
     start_url: "/app",
+    // Spelled out, and spelled the same as the values the browser already
+    // derives from `start_url`, so an app installed before they were written
+    // down is still recognised as the same app and not offered as a second one.
+    id: "/app",
+    scope: "/",
     display: "standalone",
+    // Long-press the home-screen icon on Android for a one-tap way in. iOS
+    // ignores this list; its route is the Shortcuts app (You > Help).
+    shortcuts: [
+      {
+        name: "Record an expense",
+        short_name: "Record",
+        description: "Open VaaniTrack and start listening",
+        url: "/app?record=1",
+        icons: [{ src: "/icon-192.png", sizes: "192x192", type: "image/png" }],
+      },
+    ],
     background_color: "#f0ede7" /* --color-paper */,
     theme_color: "#f0ede7" /* matches the viewport export in layout.tsx */,
     icons: [

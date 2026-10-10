@@ -5,6 +5,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { CapturePanel } from "@/components/CapturePanel";
 import { TransactionDetail } from "@/components/TransactionDetail";
 import { TransactionList } from "@/components/TransactionList";
+import { useAutoRecord } from "@/lib/useAutoRecord";
 import { useCapture } from "@/lib/useCapture";
 import { changedFields, reportDelete, reportEvent, reportTransactions } from "@/lib/report";
 import { todayISO } from "@/lib/journal";
@@ -20,7 +21,21 @@ export default function Home() {
 
   // No captureDate: this screen records onto today, which is also the
   // extractor's own default. The journal is the only caller that overrides it.
-  const capture = useCapture({ onLogged: add, onUndo: undo });
+  const captured = useCapture({ onLogged: add, onUndo: undo });
+
+  // Opened from a shortcut (`/app?record=1`): start listening without a tap
+  // where the phone allows it. Where it does not, say to tap, in plain words,
+  // instead of the permission error that would be the wrong diagnosis.
+  const auto = useAutoRecord({
+    state: captured.state,
+    error: captured.error,
+    start: captured.start,
+  });
+  const capture = {
+    ...captured,
+    start: auto.startByTap,
+    error: auto.blocked ? null : captured.error,
+  };
 
   /**
    * This screen is today, and only today.
@@ -67,6 +82,11 @@ export default function Home() {
           record button is the first thing, every time. */}
       <CapturePanel
         capture={capture}
+        notice={
+          auto.blocked
+            ? "Tap the button to start speaking. Your phone asks for a tap before it opens the microphone."
+            : null
+        }
         scrollToPending
         onEdit={(t) => {
           setFixing(true);

@@ -20,6 +20,7 @@ import {
   todayISO,
 } from "../src/lib/journal.ts";
 import { iconFor } from "../src/lib/icon.ts";
+import { wantsRecord } from "../src/lib/useAutoRecord.ts";
 import {
   addDays,
   lastNDays,
@@ -429,6 +430,18 @@ console.log("\n--- insights: fun facts ---");
   check("tapping gives a different one", list.length > 1 && pickFact(list, TODAY, 1)?.id !== pickFact(list, TODAY, 0)?.id, true);
   check("a deleted entry cannot linger in a fact", facts(dosa.slice(0, 3), TODAY).length < facts(dosa, TODAY).length, true);
 }
+
+console.log("\n--- shortcut deep link ---");
+check("?record=1 asks to record", wantsRecord("?record=1"), true);
+check("true works too", wantsRecord("?record=true"), true);
+check("without the question mark", wantsRecord("record=1"), true);
+check("alongside other params", wantsRecord("?a=b&record=1&c=d"), true);
+check("record=0 does not", wantsRecord("?record=0"), false);
+check("no params does not", wantsRecord(""), false);
+check("a bare 'record' does not", wantsRecord("?record"), false);
+check("a similar name does not", wantsRecord("?recording=1"), false);
+check("a value that merely contains 1 does not", wantsRecord("?record=11"), false);
+check("a hostile value does not", wantsRecord("?record=1%27%3Balert(1)"), false);
 
 console.log(
   failures === 0 ? "\nall passed\n" : `\n${failures} FAILED\n`,
