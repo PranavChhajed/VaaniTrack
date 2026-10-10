@@ -51,8 +51,8 @@ export function WaveformButton({
       }
       aria-live="polite"
       className={[
-        "focus-ring group relative inline-flex items-center justify-center gap-[6px]",
-        "h-[88px] w-full max-w-[340px] rounded-[var(--radius-pill)] border-2 border-vast-ink",
+        "focus-ring group relative inline-flex items-center justify-center gap-2",
+        "h-[112px] w-full max-w-[420px] rounded-[var(--radius-pill)] border-2 border-vast-ink",
         "transition-colors duration-200",
         recording || warming ? "bg-ember-glow" : "bg-mint-whisper",
         // Dimmed while warming, but not to the flat disabled grey: the mic is
@@ -68,27 +68,27 @@ export function WaveformButton({
             {[0, 1, 2].map((i) => (
               <span
                 key={i}
-                className="wave-bar block h-4 w-[5px] rounded-full bg-vast-ink"
+                className="wave-bar block h-5 w-[6px] rounded-full bg-vast-ink"
                 style={{ animationDelay: `${i * 150}ms` }}
               />
             ))}
           </span>
-          <span className="ml-3 font-figtree text-body-sm font-medium text-vast-ink">
+          <span className="ml-3 font-figtree text-body font-medium text-vast-ink">
             Reading it back…
           </span>
         </>
       ) : (
         <>
-          <span className="flex items-end gap-[6px]" aria-hidden="true">
+          <span className="flex items-end gap-[7px]" aria-hidden="true">
             {BASE_HEIGHTS.slice(0, BAR_COUNT).map((base, i) => {
               const height = recording
-                ? 8 + base * (16 + level * 28)
-                : 8 + base * 16;
+                ? 10 + base * (20 + level * 36)
+                : 10 + base * 20;
               return (
                 <span
                   key={i}
                   className={[
-                    "block w-[5px] rounded-full bg-vast-ink",
+                    "block w-[6px] rounded-full bg-vast-ink",
                     recording ? "wave-bar" : "",
                     !recording ? "transition-colors group-hover:bg-paper" : "",
                   ].join(" ")}
@@ -102,7 +102,7 @@ export function WaveformButton({
           </span>
           <span
             className={[
-              "ml-3 font-figtree text-body-sm font-medium",
+              "ml-3 font-figtree text-body font-medium",
               recording
                 ? "text-vast-ink"
                 : "text-vast-ink transition-colors group-hover:text-paper",

@@ -67,8 +67,8 @@ export default function Home() {
   );
 
   return (
-    <main className="mx-auto flex w-full max-w-[900px] flex-col gap-16 px-5 py-8 sm:gap-24 sm:px-8 sm:py-12">
-      <AppHeader navHref="/journal" navLabel="Journal &rsaquo;" signedIn={signedIn} />
+    <main className="mx-auto flex w-full max-w-[900px] flex-col gap-16 px-5 pb-36 pt-8 sm:gap-24 sm:px-8 sm:pt-12">
+      <AppHeader signedIn={signedIn} />
 
       {/* No headline here on purpose. This is the screen someone opens to
           log ₹250 at a shop counter, not the one that introduces the

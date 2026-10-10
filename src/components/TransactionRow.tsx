@@ -1,6 +1,8 @@
 "use client";
 
 import { DEFAULTS, type Transaction } from "@/lib/types";
+import { ExpenseIcon } from "@/components/ExpenseIcon";
+import { iconFor } from "@/lib/icon";
 import { timeDisplay } from "@/lib/journal";
 
 /**
@@ -44,8 +46,12 @@ export function TransactionRow({
       <button
         type="button"
         onClick={() => onOpen(t)}
-        className="focus-ring-dark group flex w-full items-start justify-between gap-4 border-b border-charcoal py-5 text-left last:border-b-0"
+        className="focus-ring-dark group flex w-full items-center justify-between gap-4 border-b border-charcoal py-5 text-left last:border-b-0"
       >
+        {/* A picture to find the row by. Chosen from its words; see
+            lib/icon.ts for why that is not the same as guessing a category. */}
+        <ExpenseIcon kind={iconFor(t)} />
+
         <span className="min-w-0 flex-1">
           <span className="block truncate font-figtree text-body text-paper">
             {primary}

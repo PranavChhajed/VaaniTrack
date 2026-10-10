@@ -2,10 +2,11 @@ import Link from "next/link";
 import { Logo } from "@/components/Logo";
 
 type AppHeaderProps = {
-  /** Where the header's one navigation link goes. */
-  navHref: string;
+  /** Where the header's one navigation link goes. Omitted on the app's own
+   *  screens, which move between each other with `BottomNav` instead. */
+  navHref?: string;
   /** Its label, including the directional caret. */
-  navLabel: string;
+  navLabel?: string;
   /**
    * Whether to show the "Sign in" slot.
    *
@@ -28,10 +29,17 @@ type AppHeaderProps = {
  */
 export function AppHeader({ navHref, navLabel, signedIn }: AppHeaderProps) {
   return (
-    <header className="flex items-center justify-between rounded-[var(--radius-pill)] border-2 border-vast-ink bg-paper-raised px-6 py-4">
+    <header className="flex items-center justify-between rounded-[var(--radius-pill)] border-2 border-vast-ink bg-paper-raised px-6 py-3">
       <span className="flex items-center gap-3">
-        <Logo size={32} />
-        <span className="display-type text-body-sm text-vast-ink">
+        {/* Full size where the header has only the mark to carry. Beside a
+            navigation link, on a phone, the larger wordmark runs into it. */}
+        <Logo size={navHref ? 36 : 44} />
+        <span
+          className={[
+            "display-type text-vast-ink",
+            navHref ? "text-body-sm sm:text-subheading" : "text-subheading",
+          ].join(" ")}
+        >
           VaaniTrack
         </span>
       </span>
@@ -44,12 +52,14 @@ export function AppHeader({ navHref, navLabel, signedIn }: AppHeaderProps) {
             Sign in
           </Link>
         )}
-        <Link
-          href={navHref}
-          className="focus-ring font-figtree text-body-sm text-charcoal underline underline-offset-4 hover:text-vast-ink"
-        >
-          {navLabel}
-        </Link>
+        {navHref ? (
+          <Link
+            href={navHref}
+            className="focus-ring font-figtree text-body-sm text-charcoal underline underline-offset-4 hover:text-vast-ink"
+          >
+            {navLabel}
+          </Link>
+        ) : null}
       </span>
     </header>
   );

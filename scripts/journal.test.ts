@@ -19,6 +19,7 @@ import {
   isFuture,
   todayISO,
 } from "../src/lib/journal.ts";
+import { iconFor } from "../src/lib/icon.ts";
 import type { Field, Provenance, Transaction } from "../src/lib/types.ts";
 
 let failures = 0;
@@ -191,6 +192,22 @@ check("truncates, never rounds up", compactAmount(1999), "1.9k");
 check("ten thousand and over loses the decimal", compactAmount(12500), "12k");
 check("lakhs", compactAmount(150000), "1.5L");
 check("crores", compactAmount(25000000), "2.5Cr");
+
+console.log("\n--- row icons ---");
+check("parking is transport", iconFor(txn({ id: "a", description: "parking" })), "transport");
+check("a drink is a drink", iconFor(txn({ id: "b", description: "sting" })), "drink");
+check("plurals match", iconFor(txn({ id: "c", description: "200 petrols" })), "transport");
+check("tea beats the food it comes with", iconFor(txn({ id: "d", description: "lemon tea" })), "drink");
+check("a word inside another word does not match", iconFor(txn({ id: "e", description: "steam iron" })), "receipt");
+check("unknown words get the neutral icon", iconFor(txn({ id: "f", description: "Itachi" })), "receipt");
+{
+  const fed = { ...txn({ id: "g", description: "Itachi" }), category: f("food", "inferred") };
+  check("category is used when the words say nothing", iconFor(fed), "food");
+  const parked = { ...txn({ id: "h", description: "parking" }), category: f("food", "inferred") };
+  check("the words beat the category", iconFor(parked), "transport");
+  const paid = { ...txn({ id: "i" }), description: f<string>(null, "unknown"), payee: f("Rahul") };
+  check("a payee with no description is a person", iconFor(paid), "person");
+}
 
 console.log(
   failures === 0 ? "\nall passed\n" : `\n${failures} FAILED\n`,

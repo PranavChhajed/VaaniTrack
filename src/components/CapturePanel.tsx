@@ -84,7 +84,7 @@ export function CapturePanel({
       {capture.heard ? (
         <p
           aria-live="polite"
-          className="rise mt-4 max-w-[340px] font-figtree text-body-sm text-charcoal"
+          className="rise mt-4 max-w-[420px] font-figtree text-body-sm text-charcoal"
         >
           <span className="text-fog">Heard </span>“{capture.heard}”
         </p>
@@ -93,7 +93,7 @@ export function CapturePanel({
       {/* Typing the same thing you'd say. The behaviour the product was
           modelled on, and the reason a refused mic isn't a dead end. */}
       <form
-        className="mt-4 flex w-full max-w-[340px] items-center gap-2"
+        className="mt-4 flex w-full max-w-[420px] items-center gap-2"
         onSubmit={(e) => {
           e.preventDefault();
           void capture.submitTyped();
@@ -131,7 +131,7 @@ export function CapturePanel({
       {/* Auto-logged entries announce themselves and stay undoable. Saving
           without asking is only acceptable if reversing it is trivial. */}
       {capture.justSaved && capture.justSaved.length > 0 ? (
-        <div className="rise mt-6 flex w-full max-w-[340px] flex-wrap items-center justify-between gap-3 rounded-[var(--radius-input)] border-2 border-vast-ink bg-mint-whisper px-4 py-3">
+        <div className="rise mt-6 flex w-full max-w-[420px] flex-wrap items-center justify-between gap-3 rounded-[var(--radius-input)] border-2 border-vast-ink bg-mint-whisper px-4 py-3">
           <span className="font-figtree text-body-sm text-vast-ink">
             {loggedPrefix}{" "}
             {capture.justSaved.map((t, i) => {

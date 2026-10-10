@@ -240,10 +240,8 @@ export default function Journal() {
   const months = useMemo(() => groupByMonth(groups), [groups]);
 
   return (
-    <main className="mx-auto flex w-full max-w-[900px] flex-col gap-8 px-5 py-8 sm:px-8 sm:py-12">
-      {/* Capture is the app; this is a room you stepped into. The way back
-          is stated plainly rather than left to the browser's back button. */}
-      <AppHeader navHref="/app" navLabel="&lsaquo; Capture" signedIn={signedIn} />
+    <main className="mx-auto flex w-full max-w-[900px] flex-col gap-8 px-5 pb-36 pt-8 sm:px-8 sm:pt-12">
+      <AppHeader signedIn={signedIn} />
 
       <div>
         <h1 className="display-type text-heading text-vast-ink">Expenses</h1>
