@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The web app's palette: vast-ink, paper and mint-whisper. -->
+    <color name="ink">#1A1A1A</color>
+    <color name="paper">#F0EDE7</color>
+    <color name="mint">#CFEAD9</color>
+</resources>

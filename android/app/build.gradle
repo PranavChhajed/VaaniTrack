@@ -1,0 +1,67 @@
+plugins {
+    id 'com.android.application'
+}
+
+// Where the app points, taken from -PvaaniUrl or gradle.properties.
+def vaaniUrl = (project.findProperty('vaaniUrl') ?: 'https://vaanitrack.vercel.app').toString().replaceAll('/+$', '')
+def vaaniHost = new URI(vaaniUrl).host
+
+// The signing key lives beside this file and is never committed. Without it
+// the release build is unsigned and will not install.
+def keystoreProps = new Properties()
+def keystoreFile = rootProject.file('keystore.properties')
+if (keystoreFile.exists()) {
+    keystoreFile.withInputStream { keystoreProps.load(it) }
+}
+
+android {
+    namespace 'app.vaanitrack.android'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'app.vaanitrack.android'
+        minSdk 24
+        targetSdk 34
+        versionCode 1
+        versionName '1.0'
+
+        manifestPlaceholders = [vaaniHost: vaaniHost]
+        // The one address, spelled once and used in three places: the launch
+        // URL, the widget's tap target, and the site this app vouches for.
+        resValue 'string', 'vaani_record_url', "${vaaniUrl}/app?record=1"
+        resValue 'string', 'vaani_open_url', "${vaaniUrl}/app"
+        resValue 'string', 'asset_statements',
+                '[{\\"relation\\": [\\"delegate_permission/common.handle_all_urls\\"], \\"target\\": {\\"namespace\\": \\"web\\", \\"site\\": \\"' + vaaniUrl + '\\"}}]'
+    }
+
+    signingConfigs {
+        if (keystoreFile.exists()) {
+            release {
+                storeFile rootProject.file(keystoreProps['storeFile'])
+                storePassword keystoreProps['storePassword']
+                keyAlias keystoreProps['keyAlias']
+                keyPassword keystoreProps['keyPassword']
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            if (keystoreFile.exists()) {
+                signingConfig signingConfigs.release
+            }
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    // Trusted Web Activity: shows the website full screen, as an app.
+    implementation 'com.google.androidbrowserhelper:androidbrowserhelper:2.5.0'
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+}

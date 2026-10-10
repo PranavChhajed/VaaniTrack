@@ -48,3 +48,12 @@ phone-link.png
 
 # Real device captures kept for offline accuracy work — audio, never commit
 .captures/
+
+# Android shell: the signing key and what it builds. The key is the app's
+# identity; losing it means users cannot update, so it is backed up, never committed.
+android/keystore.properties
+android/*.jks
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties

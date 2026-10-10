@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "app.vaanitrack.android",
+      "sha256_cert_fingerprints": [
+        "39:FA:13:14:62:77:49:B0:95:48:3C:1A:F7:79:3B:C1:7B:7C:C0:99:4E:A8:B2:FA:A0:4E:5F:F1:13:CF:17:7C"
+      ]
+    }
+  }
+]
