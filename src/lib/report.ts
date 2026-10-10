@@ -30,16 +30,23 @@ function send(body: unknown): void {
  * actionable; "the amount was inferred rather than heard" tells you whether to
  * look at the transcriber, the prompt, or the threshold.
  */
-export function gateFailures(row: {
-  amount: number | null;
-  amountProvenance: string;
-  needsConfirmation: boolean;
-}, heardWell: boolean): string[] {
+export function gateFailures(
+  row: {
+    amount: number | null;
+    amountProvenance: string;
+    needsConfirmation: boolean;
+  },
+  heardWell: boolean,
+  /** The person asked to check every entry, whatever the app thinks. */
+  reviewAll = false,
+): string[] {
   const failed: string[] = [];
   if (!heardWell) failed.push("audio_unclear");
   if (row.needsConfirmation) failed.push("extractor_flagged_ambiguous");
   if (row.amount === null) failed.push("amount_missing");
   else if (row.amountProvenance !== "said") failed.push("amount_not_said");
+  // Last, so "review_mode" alone means the app itself had no doubt.
+  if (reviewAll) failed.push("review_mode");
   return failed;
 }
 

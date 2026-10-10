@@ -123,6 +123,7 @@ A sheet travels the height of *itself*, not the 8px a banner gets, so it reads a
 | `TransactionList` | Today's spending, rendered as a dark chamber |
 | `TransactionRow` | Built for scanning. Falls back to payee as the primary label when there is no description. Starts with an `ExpenseIcon` |
 | `ExpenseIcon` | A line icon on a forest tile, chosen from the row's words by `lib/icon.ts`. A picture only: it is never written to the category. Line art, not emoji, so it is the same drawing on every phone |
+| `ProfileLink` | The profile icon in the header (the person's initial, or a plain figure): the way to the You screen. Replaces the in-app "Sign in" link |
 | `BottomNav` | The two tabs, Capture and Journal, fixed under the thumb. Mounted once in `(app)/layout.tsx`; sits below the sheets |
 | `TransactionDetail` | Full record with provenance, edit and delete |
 | `DatePicker` | Month grid, always open in the journal; each populated day carries its total, future days are disabled |

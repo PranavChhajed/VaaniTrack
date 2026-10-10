@@ -2,7 +2,7 @@ import { after, NextResponse } from "next/server";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { extensionFor, transcribeAudio } from "@/lib/asr";
-import { extractTransactions } from "@/lib/extract";
+import { cleanPayment, extractTransactions } from "@/lib/extract";
 import {
   recordCapture,
   recordAudioDecision,
@@ -105,6 +105,7 @@ export async function POST(request: Request) {
   let audioMeanDb: number | null = null;
   let audioWarmupMs: number | null = null;
   let today = new Date().toISOString().slice(0, 10);
+  let defaultPayment = cleanPayment(undefined);
   try {
     const form = await request.formData();
     const value = form.get("audio");
@@ -128,6 +129,7 @@ export async function POST(request: Request) {
     // yesterday for the first five and a half hours of an Indian morning.
     const day = form.get("today");
     if (typeof day === "string" && /^\d{4}-\d{2}-\d{2}$/.test(day)) today = day;
+    defaultPayment = cleanPayment(form.get("defaultPayment"));
   } catch {
     return NextResponse.json(
       { error: "Could not read the uploaded audio." },
@@ -280,7 +282,7 @@ export async function POST(request: Request) {
   // Started, not awaited: the reply below begins with what was heard and
   // finishes with what was made of it, so the speaker sees their own words
   // while the slower half is still running.
-  const extracting = extractTransactions(asr.text, today, { apiKey });
+  const extracting = extractTransactions(asr.text, today, { apiKey, defaultPayment });
 
   // Registered here, while the request is still being handled, and left to
   // wait on the extraction itself. It runs once the reply has been sent.

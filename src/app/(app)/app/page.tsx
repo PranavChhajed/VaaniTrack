@@ -1,11 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { AppHeader } from "@/components/AppHeader";
 import { CapturePanel } from "@/components/CapturePanel";
 import { TransactionDetail } from "@/components/TransactionDetail";
 import { TransactionList } from "@/components/TransactionList";
-import { currentSession } from "@/lib/auth";
 import { useCapture } from "@/lib/useCapture";
 import { changedFields, reportDelete, reportEvent, reportTransactions } from "@/lib/report";
 import { todayISO } from "@/lib/journal";
@@ -14,18 +13,10 @@ import type { Transaction } from "@/lib/types";
 
 export default function Home() {
   const { transactions, add, update, remove, undo } = useTransactions();
-  const [signedIn, setSignedIn] = useState(false);
   const [open, setOpen] = useState<Transaction | null>(null);
   // True when the row was opened from the "Logged" confirmation, which is
   // only ever done to correct it.
   const [fixing, setFixing] = useState(false);
-
-  // Read after mount, same reason as the transaction hydration in
-  // TransactionsProvider: a stub session lives in localStorage, which
-  // doesn't exist on the server.
-  useEffect(() => {
-    setSignedIn(currentSession() !== null);
-  }, []);
 
   // No captureDate: this screen records onto today, which is also the
   // extractor's own default. The journal is the only caller that overrides it.
@@ -68,7 +59,7 @@ export default function Home() {
 
   return (
     <main className="mx-auto flex w-full max-w-[900px] flex-col gap-16 px-5 pb-36 pt-8 sm:gap-24 sm:px-8 sm:pt-12">
-      <AppHeader signedIn={signedIn} />
+      <AppHeader profile />
 
       {/* No headline here on purpose. This is the screen someone opens to
           log ₹250 at a shop counter, not the one that introduces the

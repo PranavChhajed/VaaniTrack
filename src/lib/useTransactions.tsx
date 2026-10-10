@@ -4,18 +4,25 @@ import {
   createContext,
   useCallback,
   useContext,
-  useEffect,
-  useState,
+  useMemo,
   type ReactNode,
 } from "react";
 import { deleteTransaction, updateTransaction } from "@/lib/journal";
-import { loadTransactions, saveTransactions, type Transaction } from "@/lib/types";
+import { readLocal } from "@/lib/localStore";
+import { useLocalValue } from "@/lib/useLocalValue";
+import {
+  TRANSACTIONS_KEY,
+  loadTransactions,
+  parseTransactions,
+  saveTransactions,
+  type Transaction,
+} from "@/lib/types";
 
 type TransactionsContextValue = {
   transactions: Transaction[];
-  /** False until the first read from localStorage completes. Gates the
-   *  save effect below, and whatever "loading" state a screen wants to
-   *  show, so a screen never renders an empty journal as if it were one. */
+  /** False until the journal has been read from the phone. Whatever "loading"
+   *  state a screen wants to show hangs off this, so a screen never renders
+   *  an empty journal as if it were one. */
   hydrated: boolean;
   /** Prepend freshly captured rows. */
   add: (saved: Transaction[]) => void;
@@ -31,49 +38,60 @@ const TransactionsContext = createContext<TransactionsContextValue | null>(
   null,
 );
 
+const NONE: Transaction[] = [];
+
 /**
- * One journal, one save effect, mounted once in `(app)/layout.tsx`.
+ * One journal, mounted once in `(app)/layout.tsx`.
  *
- * `(app)/app/page.tsx` and `(app)/journal/page.tsx` previously each held
- * their own copy of this state and their own save effect against the same
- * `vaanitrack.transactions` key: navigating between them re-hydrated from
- * scratch, and unmount ordering decided whose write landed last. Lifting it
- * here removes that race rather than papering over it.
+ * The journal lives in browser storage and this provider is a window onto it,
+ * not a copy of it. Every change reads the journal as it is *now*, applies
+ * itself, and writes it back, so there is no in-memory list that can fall
+ * behind what is stored, and no second writer that can overwrite it with a
+ * stale one. That is what the old hydrate-then-save-on-change effect needed a
+ * guard against, and the guard (never save an empty journal over a full one)
+ * is what made deleting your last remaining entry silently come back on the
+ * next reload.
+ *
+ * Storage is the source of truth, so a change made in another tab arrives
+ * here too.
  */
 export function TransactionsProvider({ children }: { children: ReactNode }) {
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [hydrated, setHydrated] = useState(false);
-
-  useEffect(() => {
-    setTransactions(loadTransactions());
-    setHydrated(true);
-  }, []);
-
-  useEffect(() => {
-    if (hydrated) saveTransactions(transactions);
-  }, [transactions, hydrated]);
+  // The raw text is the snapshot: it is a string, so React can tell whether
+  // it changed. Parsed once per change below.
+  const raw = useLocalValue<string | null | undefined>(
+    () => readLocal(TRANSACTIONS_KEY),
+    undefined,
+  );
+  const hydrated = raw !== undefined;
+  const transactions = useMemo(
+    () => (raw ? parseTransactions(raw) : NONE),
+    [raw],
+  );
 
   const add = useCallback((saved: Transaction[]) => {
-    setTransactions((prev) => [...saved, ...prev]);
+    saveTransactions([...saved, ...loadTransactions()]);
   }, []);
 
   const update = useCallback((next: Transaction) => {
-    setTransactions((prev) => updateTransaction(prev, next.id, next));
+    saveTransactions(updateTransaction(loadTransactions(), next.id, next));
   }, []);
 
   const remove = useCallback((id: string) => {
-    setTransactions((prev) => deleteTransaction(prev, id));
+    saveTransactions(deleteTransaction(loadTransactions(), id));
   }, []);
 
   const undo = useCallback((ids: string[]) => {
     const drop = new Set(ids);
-    setTransactions((prev) => prev.filter((t) => !drop.has(t.id)));
+    saveTransactions(loadTransactions().filter((t) => !drop.has(t.id)));
   }, []);
 
+  const value = useMemo(
+    () => ({ transactions, hydrated, add, update, remove, undo }),
+    [transactions, hydrated, add, update, remove, undo],
+  );
+
   return (
-    <TransactionsContext.Provider
-      value={{ transactions, hydrated, add, update, remove, undo }}
-    >
+    <TransactionsContext.Provider value={value}>
       {children}
     </TransactionsContext.Provider>
   );

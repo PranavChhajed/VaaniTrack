@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState, useSyncExternalStore } from "react";
 import { todayISO } from "@/lib/journal";
 
 /**
@@ -14,8 +14,78 @@ import { todayISO } from "@/lib/journal";
 
 type Line = { label: string; value: string; ok: boolean | null };
 
+/**
+ * What this browser offers the capture path. Read once and kept: the answer
+ * cannot change while the page is open, and a stable object is what lets
+ * React treat it as an external snapshot instead of something to copy into
+ * state from an effect.
+ */
+let probed: Line[] | null = null;
+function probeEnvironment(): Line[] {
+  if (probed) return probed;
+  const types = [
+    "audio/webm;codecs=opus",
+    "audio/webm",
+    "audio/mp4;codecs=mp4a.40.2",
+    "audio/mp4",
+    "audio/ogg;codecs=opus",
+  ];
+  const supported =
+    typeof MediaRecorder === "undefined"
+      ? []
+      : types.filter((t) => {
+          try {
+            return MediaRecorder.isTypeSupported(t);
+          } catch {
+            return false;
+          }
+        });
+
+  const lines: Line[] = [
+    {
+      label: "Page URL",
+      value: `${location.protocol}//${location.host}`,
+      ok: null,
+    },
+    {
+      label: "Secure context",
+      value: String(window.isSecureContext),
+      ok: window.isSecureContext,
+    },
+    {
+      label: "navigator.mediaDevices",
+      value: navigator.mediaDevices ? "present" : "MISSING",
+      ok: Boolean(navigator.mediaDevices),
+    },
+    {
+      label: "getUserMedia",
+      value:
+        typeof navigator.mediaDevices?.getUserMedia === "function"
+          ? "present"
+          : "MISSING",
+      ok: typeof navigator.mediaDevices?.getUserMedia === "function",
+    },
+    {
+      label: "MediaRecorder",
+      value: typeof MediaRecorder === "undefined" ? "MISSING" : "present",
+      ok: typeof MediaRecorder !== "undefined",
+    },
+    {
+      label: "Supported audio types",
+      value: supported.length ? supported.join(", ") : "NONE",
+      ok: supported.length > 0,
+    },
+    { label: "Browser", value: navigator.userAgent, ok: null },
+  ];
+  probed = lines;
+  return lines;
+}
+
+const NO_LINES: Line[] = [];
+const noSubscription = () => () => {};
+
 export default function Diag() {
-  const [env, setEnv] = useState<Line[]>([]);
+  const env = useSyncExternalStore(noSubscription, probeEnvironment, () => NO_LINES);
   const [log, setLog] = useState<string[]>([]);
   const [recording, setRecording] = useState(false);
   const recRef = useRef<MediaRecorder | null>(null);
@@ -25,63 +95,6 @@ export default function Diag() {
 
   const say = (s: string) =>
     setLog((prev) => [...prev, `${new Date().toLocaleTimeString()}  ${s}`]);
-
-  useEffect(() => {
-    const types = [
-      "audio/webm;codecs=opus",
-      "audio/webm",
-      "audio/mp4;codecs=mp4a.40.2",
-      "audio/mp4",
-      "audio/ogg;codecs=opus",
-    ];
-    const supported =
-      typeof MediaRecorder === "undefined"
-        ? []
-        : types.filter((t) => {
-            try {
-              return MediaRecorder.isTypeSupported(t);
-            } catch {
-              return false;
-            }
-          });
-
-    setEnv([
-      {
-        label: "Page URL",
-        value: `${location.protocol}//${location.host}`,
-        ok: null,
-      },
-      {
-        label: "Secure context",
-        value: String(window.isSecureContext),
-        ok: window.isSecureContext,
-      },
-      {
-        label: "navigator.mediaDevices",
-        value: navigator.mediaDevices ? "present" : "MISSING",
-        ok: Boolean(navigator.mediaDevices),
-      },
-      {
-        label: "getUserMedia",
-        value:
-          typeof navigator.mediaDevices?.getUserMedia === "function"
-            ? "present"
-            : "MISSING",
-        ok: typeof navigator.mediaDevices?.getUserMedia === "function",
-      },
-      {
-        label: "MediaRecorder",
-        value: typeof MediaRecorder === "undefined" ? "MISSING" : "present",
-        ok: typeof MediaRecorder !== "undefined",
-      },
-      {
-        label: "Supported audio types",
-        value: supported.length ? supported.join(", ") : "NONE",
-        ok: supported.length > 0,
-      },
-      { label: "Browser", value: navigator.userAgent, ok: null },
-    ]);
-  }, []);
 
   const step1 = async () => {
     say("① asking for microphone permission…");

@@ -578,3 +578,87 @@ export async function markAudioPurged(captureId: string): Promise<void> {
     /* diagnostics never break capture */
   }
 }
+
+/* ------------------------------------------------------------------ *
+ * Erasure
+ *
+ * The one place in this file that does NOT swallow its errors. Everywhere
+ * else a failed write costs a data point and the user never hears of it.
+ * Here the user asked for something to be gone, and "it said done" while the
+ * rows were still there is the failure that matters.
+ * ------------------------------------------------------------------ */
+
+export type EraseScope = "recordings" | "everything";
+
+export type EraseResult =
+  | { ok: true; recordings: number; captures: number }
+  | { ok: false; error: string };
+
+/**
+ * Remove what this device has left on the server.
+ *
+ *   recordings   the stored audio files, and the rows that point at them.
+ *                Transcripts, amounts and everything else stay.
+ *   everything   the recordings, then every row of every kind for the device:
+ *                the transaction mirror, what the user did with them, the
+ *                captures, and (by cascade) what the gate decided for each.
+ *
+ * Recordings go first and the rows only if every file went. A row is the only
+ * thing that knows a file's path, so deleting rows first and then failing on
+ * a file would leave audio nobody can find to remove.
+ *
+ * Idempotent: running it again after a partial failure finishes the job.
+ * `deleteStoredAudio` counts an already-missing file as removed.
+ *
+ * Authority is knowing the device id, an unguessable random UUID that only
+ * this browser holds and that is only ever sent over HTTPS. There is no
+ * account to check it against; see the sign-in stub in lib/auth.ts.
+ */
+export async function eraseDeviceData(
+  deviceId: string,
+  scope: EraseScope,
+): Promise<EraseResult> {
+  const s = db();
+  // No database configured means nothing was ever kept for anyone.
+  if (!s) return { ok: true, recordings: 0, captures: 0 };
+
+  try {
+    const stored = await s<{ path: string }[]>`
+      select audio_path as path from captures
+      where device_id = ${deviceId} and audio_path is not null
+    `;
+
+    for (const { path } of stored) {
+      if (!(await deleteStoredAudio(path))) {
+        return {
+          ok: false,
+          error: "Couldn’t remove some of the recordings. Nothing else was deleted.",
+        };
+      }
+    }
+
+    if (scope === "recordings") {
+      await s`
+        update captures
+        set audio_stored = false, audio_path = null, audio_expires_at = null
+        where device_id = ${deviceId} and audio_path is not null
+      `;
+      return { ok: true, recordings: stored.length, captures: 0 };
+    }
+
+    // One transaction: either all of it goes or none of it does. Events first
+    // because their link to a capture is "set null on delete", which would
+    // orphan them rather than remove them.
+    const captures = await s.begin(async (tx) => {
+      await tx`delete from capture_events where device_id = ${deviceId}`;
+      await tx`delete from transactions where device_id = ${deviceId}`;
+      const gone = await tx`
+        delete from captures where device_id = ${deviceId} returning id
+      `;
+      return gone.length;
+    });
+    return { ok: true, recordings: stored.length, captures };
+  } catch {
+    return { ok: false, error: "Couldn’t reach the server’s records. Nothing was deleted." };
+  }
+}

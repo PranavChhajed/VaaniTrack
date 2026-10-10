@@ -265,6 +265,28 @@ export function monthTotal(transactions: Transaction[], iso: string): number {
   );
 }
 
+/**
+ * "122 expenses since 6 Sept": what the journal holds, in one line.
+ *
+ * A mirror, not a score: no streak, no comparison, nothing that can be missed
+ * or fallen behind on. Null for an empty journal, where there is nothing to
+ * say yet.
+ */
+export function sinceLine(transactions: Transaction[]): string | null {
+  if (transactions.length === 0) return null;
+  const dates = transactions.map((t) => t.date.value).filter((d): d is string => !!d);
+  const count = `${transactions.length} ${transactions.length === 1 ? "expense" : "expenses"}`;
+  if (dates.length === 0) return count;
+
+  const first = fromISO(dates.reduce((a, b) => (a < b ? a : b)));
+  const sameYear = first.getFullYear() === new Date().getFullYear();
+  return `${count} since ${first.toLocaleDateString(undefined, {
+    day: "numeric",
+    month: "short",
+    year: sameYear ? undefined : "numeric",
+  })}`;
+}
+
 /** Every transaction on one date, in the same order the journal would show. */
 export function forDate(transactions: Transaction[], iso: string): DayGroup {
   const only = transactions.filter((t) => t.date.value === iso);

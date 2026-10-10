@@ -4,6 +4,7 @@ import { useCallback, useRef, useState } from "react";
 import { useRecorder } from "./useRecorder";
 import { audioConsent, deviceId } from "./device";
 import { todayISO } from "./journal";
+import { loadSettings } from "./settings";
 import {
   changedFields,
   gateFailures,
@@ -238,11 +239,14 @@ export function useCapture({
       //   - the amount was explicitly heard, not inferred or defaulted.
       // The amount is the one field that must never be silently wrong, so
       // anything short of "said" earns a review rather than a save.
-      const confident = (row: ExtractedTransaction) =>
-        heardWell &&
-        !row.needsConfirmation &&
-        row.amount !== null &&
-        row.amountProvenance === "said";
+      //
+      // And one that is the person's, not the app's: "always let me check"
+      // sends everything to review, sure or not. It can only add caution,
+      // never remove it.
+      const { reviewAll } = loadSettings();
+      const failures = (row: ExtractedTransaction) =>
+        gateFailures(row, heardWell, reviewAll);
+      const confident = (row: ExtractedTransaction) => failures(row).length === 0;
 
       const auto = rows.filter(confident);
       const review = rows.filter((row) => !confident(row));
@@ -273,10 +277,16 @@ export function useCapture({
             transactionId: savedByRow.get(row)?.id ?? null,
             extracted: row,
             outcome: confident(row) ? ("auto_saved" as const) : ("review" as const),
-            failed: confident(row) ? [] : gateFailures(row, heardWell),
+            failed: failures(row),
           })),
         );
       }
+
+      /** Held back for no reason but the person asking to see everything. */
+      const onlyByChoice = (row: ExtractedTransaction) => {
+        const failed = failures(row);
+        return failed.length === 1 && failed[0] === "review_mode";
+      };
 
       // FR-5: several expenses in one utterance stay separate transactions.
       if (review.length > 0) {
@@ -284,15 +294,19 @@ export function useCapture({
           ...prev,
           ...review.map((row) => ({
             transaction: placeOnDate(toTransaction(row, text, source)),
-            needsConfirmation: true,
+            // Not "the app is unsure" when the only reason is the person's own
+            // choice to check everything: no warning banner, and the card
+            // opens in its reading view rather than its edit form.
+            needsConfirmation: !onlyByChoice(row),
             captureId: captureId ?? null,
-            confirmationReason:
-              row.confirmationReason ??
+            confirmationReason: onlyByChoice(row)
+              ? null
+              : (row.confirmationReason ??
               (row.amount === null
                 ? "Didn’t catch the amount. What was it?"
                 : !heardWell
                   ? "That wasn’t heard cleanly. Check the amount."
-                  : "Check the amount before this is saved."),
+                  : "Check the amount before this is saved.")),
           })),
         ]);
       }
@@ -314,6 +328,7 @@ export function useCapture({
           // from whichever page happens to be open. The speaker's own calendar
           // day, not UTC's.
           today: todayISO(),
+          defaultPayment: loadSettings().defaultPayment,
           deviceId: deviceId(),
         }),
       });
@@ -399,6 +414,7 @@ export function useCapture({
         form.append("warmupMs", String(result.warmupMs));
       }
       form.append("today", todayISO());
+      form.append("defaultPayment", loadSettings().defaultPayment);
 
       let early = "";
       const reply = await postCapture(form, (text) => {

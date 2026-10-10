@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSettings } from "@/lib/settings";
 import { DEFAULTS, type Field, type Provenance, type Transaction } from "@/lib/types";
 
 /**
@@ -91,6 +92,7 @@ export function ReviewCard({
 }) {
   // A transaction the model flagged as ambiguous opens in edit mode: the
   // user is going to have to touch it anyway, so don't make them ask.
+  const { defaultPayment } = useSettings();
   const [editing, setEditing] = useState(needsConfirmation);
   const [draft, setDraft] = useState(transaction);
 
@@ -176,7 +178,7 @@ export function ReviewCard({
                 className={inputClass}
                 value={draft.paymentMethod.value ?? ""}
                 onChange={(e) => set("paymentMethod", e.target.value)}
-                placeholder={DEFAULTS.paymentMethod}
+                placeholder={defaultPayment}
               />
             </label>
           </div>

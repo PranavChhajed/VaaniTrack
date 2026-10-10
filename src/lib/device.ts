@@ -10,6 +10,9 @@
  * is an acceptable trade for asking nobody to sign up.
  */
 
+import { notifyLocal } from "./localStore";
+import { useLocalValue } from "./useLocalValue";
+
 const DEVICE_KEY = "vaanitrack.device";
 const CONSENT_KEY = "vaanitrack.audioConsent";
 const ONBOARDED_KEY = "vaanitrack.onboarded";
@@ -58,6 +61,7 @@ export function setAudioConsent(value: Exclude<AudioConsent, "unknown">): void {
   if (typeof window === "undefined") return;
   try {
     window.localStorage.setItem(CONSENT_KEY, value);
+    notifyLocal();
   } catch {
     /* a consent we cannot store is a consent we must not assume */
   }
@@ -108,7 +112,19 @@ export function setOnboarded(): void {
   if (typeof window === "undefined") return;
   try {
     window.localStorage.setItem(ONBOARDED_KEY, "true");
+    notifyLocal();
   } catch {
     /* see hasOnboarded()'s fail-safe direction; nothing to do here */
   }
+}
+
+/** The consent answer as a live value. Null on the server and while the page
+ *  is hydrating, so a screen can show nothing rather than a guess. */
+export function useAudioConsent(): AudioConsent | null {
+  return useLocalValue<AudioConsent | null>(audioConsent, null);
+}
+
+/** Whether first-run is done, live. Null until storage has been read. */
+export function useOnboarded(): boolean | null {
+  return useLocalValue<boolean | null>(hasOnboarded, null);
 }

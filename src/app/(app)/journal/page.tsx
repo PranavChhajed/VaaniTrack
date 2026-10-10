@@ -1,13 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { AppHeader } from "@/components/AppHeader";
 import { DatePicker } from "@/components/DatePicker";
 import { DayCapture } from "@/components/DayCapture";
 import { TransactionDetail } from "@/components/TransactionDetail";
 import { TransactionRow } from "@/components/TransactionRow";
-import { currentSession } from "@/lib/auth";
 import {
   dayLabel,
   dayTotals,
@@ -212,11 +211,6 @@ export default function Journal() {
   const [month, setMonth] = useState<string>(() => todayISO());
   const [open, setOpen] = useState<Transaction | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [signedIn, setSignedIn] = useState(false);
-
-  useEffect(() => {
-    setSignedIn(currentSession() !== null);
-  }, []);
 
   // The day being viewed is the day a capture lands on. Null while browsing,
   // which falls back to today, the same behaviour as the capture screen.
@@ -241,7 +235,7 @@ export default function Journal() {
 
   return (
     <main className="mx-auto flex w-full max-w-[900px] flex-col gap-8 px-5 pb-36 pt-8 sm:px-8 sm:pt-12">
-      <AppHeader signedIn={signedIn} />
+      <AppHeader profile />
 
       <div>
         <h1 className="display-type text-heading text-vast-ink">Expenses</h1>

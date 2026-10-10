@@ -1,12 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import {
-  audioConsent,
-  hasOnboarded,
-  setAudioConsent,
-  type AudioConsent,
-} from "@/lib/device";
+import { hasOnboarded, setAudioConsent, useAudioConsent } from "@/lib/device";
 
 /**
  * The one question asked before the first recording.
@@ -32,21 +26,15 @@ import {
  * real bug, not a cosmetic one; this line is the fix, not an optimisation.
  */
 export function AudioConsentGate() {
-  // Rendered only after mount: localStorage doesn't exist on the server, and
-  // guessing an answer would flash the wrong thing at someone who already
-  // decided.
-  const [consent, setConsent] = useState<AudioConsent | null>(null);
-
-  useEffect(() => {
-    setConsent(audioConsent());
-  }, []);
+  // Null on the server and while hydrating: localStorage doesn't exist on the
+  // server, and guessing an answer would flash the wrong thing at someone who
+  // already decided. Live afterwards, so answering here, or changing the
+  // answer on the You screen, is reflected without a reload.
+  const consent = useAudioConsent();
 
   if (consent === null || consent !== "unknown" || !hasOnboarded()) return null;
 
-  const answer = (value: "granted" | "denied") => {
-    setAudioConsent(value);
-    setConsent(value);
-  };
+  const answer = (value: "granted" | "denied") => setAudioConsent(value);
 
   return (
     <div className="fixed inset-0 z-[60] flex items-end justify-center bg-vast-ink/60 p-4 sm:items-center">

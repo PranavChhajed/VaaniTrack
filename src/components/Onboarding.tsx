@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Logo } from "@/components/Logo";
 import { LedgerArt, ReceiptArt, SpeechArt } from "@/components/OnboardingArt";
 import {
   audioConsent,
-  hasOnboarded,
+  useOnboarded,
   setAudioConsent,
   setOnboarded,
 } from "@/lib/device";
@@ -104,15 +104,11 @@ function Progress({ step }: { step: number }) {
 }
 
 export function Onboarding() {
-  // Three states: null (not yet mounted, render nothing, matching
+  // Three states: null (not yet read, render nothing, matching
   // AudioConsentGate's approach to avoiding a hydration mismatch),
   // true (done, render nothing), false (run the flow).
-  const [onboarded, setOnboardedState] = useState<boolean | null>(null);
+  const onboarded = useOnboarded();
   const [step, setStep] = useState(0);
-
-  useEffect(() => {
-    setOnboardedState(hasOnboarded());
-  }, []);
 
   if (onboarded === null || onboarded === true) return null;
 
@@ -123,7 +119,6 @@ export function Onboarding() {
     // common path) must not have that answer silently overwritten.
     if (audioConsent() === "unknown") setAudioConsent(consent);
     setOnboarded();
-    setOnboardedState(true);
   };
 
   if (step === CONSENT_STEP) {

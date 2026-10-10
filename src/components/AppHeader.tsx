@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Logo } from "@/components/Logo";
+import { ProfileLink } from "@/components/ProfileLink";
 
 type AppHeaderProps = {
   /** Where the header's one navigation link goes. Omitted on the app's own
@@ -7,6 +8,12 @@ type AppHeaderProps = {
   navHref?: string;
   /** Its label, including the directional caret. */
   navLabel?: string;
+  /**
+   * Show the profile icon, which leads to the You screen. The app's own
+   * screens set this; it takes the place of the sign-in link and of the
+   * navigation link, which the bottom bar does instead.
+   */
+  profile?: boolean;
   /**
    * Whether to show the "Sign in" slot.
    *
@@ -17,7 +24,7 @@ type AppHeaderProps = {
    * design, and its own CTA already leads to the screen that offers
    * sign-in.
    */
-  signedIn: boolean;
+  signedIn?: boolean;
 };
 
 /**
@@ -27,7 +34,12 @@ type AppHeaderProps = {
  * written with a literal `rounded-[9999px]`, the others with the token. This
  * is the one place the lockup, the border, and the sign-in slot are defined.
  */
-export function AppHeader({ navHref, navLabel, signedIn }: AppHeaderProps) {
+export function AppHeader({
+  navHref,
+  navLabel,
+  profile = false,
+  signedIn = true,
+}: AppHeaderProps) {
   return (
     <header className="flex items-center justify-between rounded-[var(--radius-pill)] border-2 border-vast-ink bg-paper-raised px-6 py-3">
       <span className="flex items-center gap-3">
@@ -44,7 +56,8 @@ export function AppHeader({ navHref, navLabel, signedIn }: AppHeaderProps) {
         </span>
       </span>
       <span className="flex items-center gap-4">
-        {!signedIn && (
+        {profile ? <ProfileLink /> : null}
+        {!profile && !signedIn && (
           <Link
             href="/signin"
             className="focus-ring font-figtree text-body-sm text-fog underline underline-offset-4 hover:text-vast-ink"

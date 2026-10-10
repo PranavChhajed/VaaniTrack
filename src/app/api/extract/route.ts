@@ -1,5 +1,5 @@
 import { after, NextResponse } from "next/server";
-import { extractTransactions } from "@/lib/extract";
+import { cleanPayment, extractTransactions } from "@/lib/extract";
 import { recordCapture, recordExtraction, validDeviceId } from "@/lib/observe";
 
 export const runtime = "nodejs"; // `postgres` requires it
@@ -28,9 +28,11 @@ export async function POST(request: Request) {
   // Absent for one typed from scratch, which gets its row here.
   let priorCaptureId: string | null = null;
   let deviceId: string | null = null;
+  let defaultPayment = cleanPayment(undefined);
   try {
     const body = (await request.json()) as {
       text?: string;
+      defaultPayment?: string;
       today?: string;
       captureId?: string;
       deviceId?: string;
@@ -42,6 +44,7 @@ export async function POST(request: Request) {
     }
     priorCaptureId = typeof body.captureId === "string" ? body.captureId : null;
     deviceId = validDeviceId(body.deviceId);
+    defaultPayment = cleanPayment(body.defaultPayment);
   } catch {
     return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
   }
@@ -64,7 +67,7 @@ export async function POST(request: Request) {
         asrVerdict: "skipped_typed",
       });
 
-  const result = await extractTransactions(text, today, { apiKey });
+  const result = await extractTransactions(text, today, { apiKey, defaultPayment });
   const captureId = await opened;
 
   after(async () => {

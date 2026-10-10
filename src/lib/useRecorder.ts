@@ -393,7 +393,7 @@ export function useRecorder() {
       // first can produce an extra empty chunk on some implementations.
       recorder.stop();
     });
-  }, []);
+  }, [teardown]);
 
   return { state, error, level, start, stop };
 }

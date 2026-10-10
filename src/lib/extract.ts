@@ -1,4 +1,9 @@
-import { DEFAULTS, type ExtractedTransaction } from "./types";
+import {
+  DEFAULTS,
+  PAYMENT_OPTIONS,
+  type ExtractedTransaction,
+  type PaymentMethod,
+} from "./types";
 
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 
@@ -19,7 +24,16 @@ export const EXTRACT_MODEL = process.env.GROQ_MODEL ?? "openai/gpt-oss-120b";
  * instead of two, and the replay harness (scripts/replay.ts) runs real
  * transcripts through exactly this code.
  */
-function buildSystemPrompt(today: string): string {
+/**
+ * A payment default from the outside world, or the built-in one.
+ *
+ * It goes into the prompt verbatim, so only a known option gets through.
+ */
+export function cleanPayment(value: unknown): PaymentMethod {
+  return PAYMENT_OPTIONS.find((p) => p === value) ?? DEFAULTS.paymentMethod;
+}
+
+function buildSystemPrompt(today: string, payment: PaymentMethod): string {
   return `Convert spoken expense notes (Indian English, rupees) into JSON.
 Today is ${today}.
 
@@ -29,7 +43,7 @@ said=stated outright, inferred=worked out confidently, default=you supplied it, 
 
 RULES
 1. Never invent. Not said and not confidently inferable -> null + "unknown". A blank beats a guess.
-2. Defaults, only when unstated: paymentMethod "${DEFAULTS.paymentMethod}", date ${today}. Both provenance "default". Anything stated overrides them as "said" ("300 lunch paid in cash" -> cash/said).
+2. Defaults, only when unstated: paymentMethod "${payment}", date ${today}. Both provenance "default". Anything stated overrides them as "said" ("300 lunch paid in cash" -> cash/said).
 3. Category: infer only when obvious (lunch/chai->food, auto/uber->transport). Otherwise null+"unknown". Never use "other"/"misc" to avoid a blank.
 4. time: null+"unknown" unless a clock time was actually spoken. Never "now".
 5. Several expenses -> several array entries. Never merge or group.
@@ -69,6 +83,8 @@ export async function extractTransactions(
   opts: {
     apiKey: string;
     model?: string;
+    /** What a capture is filed as when no payment method was spoken. */
+    defaultPayment?: PaymentMethod;
     /** Only the replay harness sets these; the app runs the defaults. */
     reasoningEffort?: "low" | "medium" | "high";
   },
@@ -91,7 +107,10 @@ export async function extractTransactions(
         response_format: { type: "json_object" },
         ...(opts.reasoningEffort ? { reasoning_effort: opts.reasoningEffort } : {}),
         messages: [
-          { role: "system", content: buildSystemPrompt(today) },
+          {
+            role: "system",
+            content: buildSystemPrompt(today, opts.defaultPayment ?? DEFAULTS.paymentMethod),
+          },
           { role: "user", content: text },
         ],
       }),

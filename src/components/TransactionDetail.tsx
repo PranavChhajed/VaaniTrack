@@ -8,6 +8,7 @@ import {
   type Transaction,
 } from "@/lib/types";
 import { isFuture, parseClock, todayISO } from "@/lib/journal";
+import { useSettings } from "@/lib/settings";
 
 /**
  * Transaction detail: inspect, correct, delete (§22-§26).
@@ -132,6 +133,7 @@ export function TransactionDetail({
   startEditing?: boolean;
 }) {
   const t = transaction;
+  const { defaultPayment } = useSettings();
   const [editing, setEditing] = useState(startEditing);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -304,7 +306,7 @@ export function TransactionDetail({
                   label="Payment method"
                   value={paymentMethod}
                   onChange={setPaymentMethod}
-                  placeholder={DEFAULTS.paymentMethod}
+                  placeholder={defaultPayment}
                 />
                 <EditField
                   label="Date"

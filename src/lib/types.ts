@@ -1,3 +1,5 @@
+import { readLocal, writeLocal } from "./localStore";
+
 /**
  * Core types for VaaniTrack.
  *
@@ -68,9 +70,15 @@ export interface ExtractionResult {
   transcript: string;
 }
 
-/** Hard-coded for the demo. No settings screen in v1; PRD FR-3. */
+/** What a payment method can be filed as when none was spoken. A spoken one
+ *  ("paid by PhonePe") is stored as said and is not limited to these. */
+export const PAYMENT_OPTIONS = ["UPI", "Cash", "Card"] as const;
+export type PaymentMethod = (typeof PAYMENT_OPTIONS)[number];
+
+/** The out-of-the-box defaults. Payment method is the starting point of the
+ *  setting on the You screen (`lib/settings.ts`), not a fixed fact. */
 export const DEFAULTS = {
-  paymentMethod: "UPI",
+  paymentMethod: "UPI" as PaymentMethod,
   currency: "₹",
 } as const;
 
@@ -99,39 +107,32 @@ export function toTransaction(
   };
 }
 
-const STORAGE_KEY = "vaanitrack.transactions";
+export const TRANSACTIONS_KEY = "vaanitrack.transactions";
 
-export function loadTransactions(): Transaction[] {
-  if (typeof window === "undefined") return [];
+/** A journal from its stored text. Unreadable or wrongly shaped is an empty
+ *  journal rather than a crash. */
+export function parseTransactions(raw: string | null): Transaction[] {
+  if (!raw) return [];
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as Transaction[]) : [];
+    const parsed: unknown = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as Transaction[]) : [];
   } catch {
     return [];
   }
 }
 
+export function loadTransactions(): Transaction[] {
+  return parseTransactions(readLocal(TRANSACTIONS_KEY));
+}
+
+/**
+ * Write the journal. An empty one is a legitimate thing to write: it is what
+ * deleting your last entry leaves. There used to be a guard here refusing to
+ * overwrite a full journal with an empty one, as a backstop against two
+ * components racing to hydrate. That race is gone (see useTransactions.tsx),
+ * and the guard's only remaining effect was that removing the final entry
+ * never persisted, so it came back on reload.
+ */
 export function saveTransactions(transactions: Transaction[]): void {
-  if (typeof window === "undefined") return;
-  try {
-    // A whole-journal wipe is the worst available bug here, and the one
-    // shape a race between two components writing this same key would
-    // actually produce: one hydrates, one hasn't yet, the empty one saves
-    // last. Refuse rather than silently erase; TransactionsProvider removes
-    // the race itself, but this stays as the backstop.
-    if (transactions.length === 0) {
-      const existing = window.localStorage.getItem(STORAGE_KEY);
-      if (existing && existing !== "[]") {
-        console.error(
-          "[types] saveTransactions refused to overwrite a non-empty journal " +
-            "with an empty one.",
-        );
-        return;
-      }
-    }
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(transactions));
-  } catch {
-    // Storage can be unavailable (private mode, blocked site data).
-    // A demo that loses history is better than one that crashes.
-  }
+  writeLocal(TRANSACTIONS_KEY, JSON.stringify(transactions));
 }
