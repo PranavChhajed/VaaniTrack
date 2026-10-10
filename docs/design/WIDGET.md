@@ -51,8 +51,26 @@ there**. A Capacitor-style shell would have had its own empty storage.
   Lose it and installed copies cannot be updated. Back it up somewhere safe.
 - Build: `cd android && ./gradlew assembleRelease` (JDK 17, an Android SDK with
   platform 34). Output: `android/app/build/outputs/apk/release/app-release.apk`.
+- Long-pressing the app icon also offers "Record an expense". Android does not
+  resolve a string reference inside a shortcut's `data`, so Gradle writes
+  `shortcuts.xml` at build time with the real address in it
+  (`generateShortcuts` in `app/build.gradle`). The first version used a
+  reference and registered with an empty address; the system's own shortcut
+  dump (`adb shell dumpsys shortcut`) is what showed it.
 - Animations: the tile's look lives in `res/layout/widget_record.xml`; the
   recording-screen animation is web code.
+
+### Building the two APKs
+
+```
+cd android
+./gradlew assembleRelease -PvaaniUrl=https://<the address to open>
+```
+
+The address must serve `/.well-known/assetlinks.json` (it is in `public/`, so any
+deployment of this repo does). Use the branch preview address to try a build
+before release; use the default (production) for the real one. Install with
+`adb install -r app/build/outputs/apk/release/app-release.apk`.
 
 ## iPhone
 
@@ -61,8 +79,29 @@ Developer account, and a native shell has its own empty storage, so the existing
 phone-only journal would not appear in it without an import feature. The
 Shortcuts route gives iPhone users a one-tap button today without any of that.
 
+## Verified, and how
+
+On an Android 14 emulator (Google APIs with Chrome), with the APK signed by the
+real key and pointed at the branch preview:
+
+- The app opens full screen, with no browser bar, so the asset link verified.
+- The tile is offered by the widget picker (3 x 1), can be dropped on the home
+  screen, and tapping it opens the app and starts recording with no further tap.
+  The first time, Chrome and Android each ask once for the microphone.
+- Second use, from a cold start, goes straight to recording with no prompts.
+- The long-press shortcut does the same.
+- Opening by the app icon does not record.
+- A fresh install sees the tour and the recordings question first, and records
+  only after them.
+
 ## Not verified
 
-- Microphone behaviour on real phones. An iPhone is expected to ask for a tap;
-  the fallback covers it, but it was only simulated.
+- Microphone behaviour on real phones. The emulator's microphone is the host's.
+  An iPhone is expected to ask for a tap; the fallback covers it, but it was
+  only simulated.
+- That the existing journal carries over into the app. It should, because a
+  Trusted Web Activity shares Chrome's storage for the site, but the emulator
+  had no earlier journal to carry.
+- Start-up time on a real phone. The emulator took about 30 seconds to paint
+  after a cold start.
 - iOS in any form.

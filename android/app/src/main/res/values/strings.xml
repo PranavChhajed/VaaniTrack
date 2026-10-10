@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">VaaniTrack</string>
+    <string name="shortcut_short">Record</string>
+    <string name="shortcut_long">Record an expense</string>
     <string name="widget_label">Record an expense</string>
     <string name="widget_title">Say what you spent</string>
     <string name="widget_hint">Tap, then speak</string>

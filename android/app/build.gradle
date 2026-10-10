@@ -14,6 +14,37 @@ if (keystoreFile.exists()) {
     keystoreFile.withInputStream { keystoreProps.load(it) }
 }
 
+// Android does not resolve a string reference inside a shortcut's data
+// attribute (it registers as an empty address), so the shortcut file is
+// written at build time with the real address in it.
+def generatedRes = layout.buildDirectory.dir('generated/vaaniRes').get().asFile
+tasks.register('generateShortcuts') {
+    def out = new File(generatedRes, 'xml/shortcuts.xml')
+    inputs.property('url', vaaniUrl)
+    outputs.file(out)
+    doLast {
+        out.parentFile.mkdirs()
+        out.text = """<?xml version="1.0" encoding="utf-8"?>
+<!-- Generated. Long-press the app icon: the same one-tap way in as the tile. -->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_record"
+        android:shortcutId="record"
+        android:shortcutLongLabel="@string/shortcut_long"
+        android:shortcutShortLabel="@string/shortcut_short">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="${vaaniUrl}/app?record=1"
+            android:targetClass="com.google.androidbrowserhelper.trusted.LauncherActivity"
+            android:targetPackage="app.vaanitrack.android" />
+    </shortcut>
+</shortcuts>
+"""
+    }
+}
+preBuild.dependsOn 'generateShortcuts'
+
 android {
     namespace 'app.vaanitrack.android'
     compileSdk 34
@@ -51,6 +82,12 @@ android {
             if (keystoreFile.exists()) {
                 signingConfig signingConfigs.release
             }
+        }
+    }
+
+    sourceSets {
+        main {
+            res.srcDir generatedRes
         }
     }
 
