@@ -24,12 +24,17 @@ export type Settings = {
   defaultPayment: PaymentMethod;
   /** True: every capture waits for an OK, however sure the app is. */
   reviewAll: boolean;
+  /** True: opening the app on the capture screen starts listening at once.
+   *  Off by default: an app that opens the microphone unasked is one people
+   *  stop opening in a meeting. */
+  openToRecord: boolean;
 };
 
 export const DEFAULT_SETTINGS: Settings = {
   name: "",
   defaultPayment: DEFAULTS.paymentMethod,
   reviewAll: false,
+  openToRecord: false,
 };
 
 export const SETTINGS_KEY = "vaanitrack.settings";
@@ -56,6 +61,7 @@ export function parseSettings(raw: string | null | undefined): Settings {
     name: typeof data.name === "string" ? data.name.replace(/[\u0000-\u001f\u007f]/g, "").slice(0, NAME_MAX) : "",
     defaultPayment: payment ?? DEFAULT_SETTINGS.defaultPayment,
     reviewAll: data.reviewAll === true,
+    openToRecord: data.openToRecord === true,
   };
 }
 

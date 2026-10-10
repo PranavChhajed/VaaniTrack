@@ -20,7 +20,7 @@ import {
   todayISO,
 } from "../src/lib/journal.ts";
 import { iconFor } from "../src/lib/icon.ts";
-import { wantsRecord } from "../src/lib/useAutoRecord.ts";
+import { wantsRecord, isLaunchOfCapture, shouldAutoRecord } from "../src/lib/useAutoRecord.ts";
 import {
   addDays,
   lastNDays,
@@ -237,12 +237,12 @@ check("a non-object gives the defaults", parseSettings("42"), DEFAULT_SETTINGS);
 check(
   "a good value is kept",
   parseSettings('{"name":"Asha","defaultPayment":"Cash","reviewAll":true}'),
-  { name: "Asha", defaultPayment: "Cash", reviewAll: true },
+  { name: "Asha", defaultPayment: "Cash", reviewAll: true, openToRecord: false },
 );
 check(
   "one bad field does not discard the others",
   parseSettings('{"name":"Asha","defaultPayment":"Bitcoin","reviewAll":"yes"}'),
-  { name: "Asha", defaultPayment: "UPI", reviewAll: false },
+  { name: "Asha", defaultPayment: "UPI", reviewAll: false, openToRecord: false },
 );
 check("a name is capped at 40", parseSettings(JSON.stringify({ name: "x".repeat(90) })).name.length, 40);
 check("control characters are stripped from a name", parseSettings(JSON.stringify({ name: "A\u0000b\nc" })).name, "Abc");
@@ -442,6 +442,26 @@ check("a bare 'record' does not", wantsRecord("?record"), false);
 check("a similar name does not", wantsRecord("?recording=1"), false);
 check("a value that merely contains 1 does not", wantsRecord("?record=11"), false);
 check("a hostile value does not", wantsRecord("?record=1%27%3Balert(1)"), false);
+
+console.log("\n--- opening the app listening ---");
+const nav = (type: string, name: string) => ({ type, name });
+check("a fresh open of /app is a launch", isLaunchOfCapture(nav("navigate", "https://x.app/app")), true);
+check("a launch with a query still counts", isLaunchOfCapture(nav("navigate", "https://x.app/app?record=1")), true);
+check("a reload is not a launch", isLaunchOfCapture(nav("reload", "https://x.app/app")), false);
+check("Back is not a launch", isLaunchOfCapture(nav("back_forward", "https://x.app/app")), false);
+check("opening You then tapping Capture is not a launch", isLaunchOfCapture(nav("navigate", "https://x.app/you")), false);
+check("the journal is not capture", isLaunchOfCapture(nav("navigate", "https://x.app/journal")), false);
+check("a lookalike path is not capture", isLaunchOfCapture(nav("navigate", "https://x.app/app/other")), false);
+check("no navigation record is not a launch", isLaunchOfCapture(undefined), false);
+check("a garbled address is not a launch", isLaunchOfCapture(nav("navigate", "not a url")), false);
+check("the setting listens on a launch", shouldAutoRecord({ search: "", openToRecord: true, launchOfCapture: true }), true);
+check("the setting off does not", shouldAutoRecord({ search: "", openToRecord: false, launchOfCapture: true }), false);
+check("the setting on but not a launch does not", shouldAutoRecord({ search: "", openToRecord: true, launchOfCapture: false }), false);
+check("the link listens whatever the setting", shouldAutoRecord({ search: "?record=1", openToRecord: false, launchOfCapture: false }), true);
+check("a default install does not listen by itself", shouldAutoRecord({ search: "", openToRecord: DEFAULT_SETTINGS.openToRecord, launchOfCapture: true }), false);
+check("the setting round-trips", parseSettings(JSON.stringify({ openToRecord: true })).openToRecord, true);
+check("anything but true is off", parseSettings(JSON.stringify({ openToRecord: "yes" })).openToRecord, false);
+check("an old settings file reads as off", parseSettings(JSON.stringify({ name: "A", reviewAll: true })).openToRecord, false);
 
 console.log(
   failures === 0 ? "\nall passed\n" : `\n${failures} FAILED\n`,

@@ -73,7 +73,7 @@ function CaptureAction({ count }: { count: number }) {
     return (
       <Link
         href="/app"
-        className="focus-ring-dark mt-6 inline-block font-figtree text-body-sm text-haze underline underline-offset-4 hover:text-paper"
+        className="focus-ring-dark mt-3 inline-block py-3 font-figtree text-body-sm text-haze underline underline-offset-4 hover:text-paper"
       >
         Record an expense
       </Link>

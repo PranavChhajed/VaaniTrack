@@ -135,13 +135,13 @@ export default function SignUp() {
       <div className="mt-6 flex flex-col items-center gap-3 border-t-2 border-paper-edge pt-6">
         <Link
           href="/signin"
-          className="focus-ring font-figtree text-body-sm text-charcoal underline underline-offset-4 hover:text-vast-ink"
+          className="focus-ring inline-block py-3 font-figtree text-body-sm text-charcoal underline underline-offset-4 hover:text-vast-ink"
         >
           Already have an account? Sign in
         </Link>
         <Link
           href="/app"
-          className="focus-ring font-figtree text-body-sm text-fog underline underline-offset-4 hover:text-vast-ink"
+          className="focus-ring inline-block py-3 font-figtree text-body-sm text-fog underline underline-offset-4 hover:text-vast-ink"
         >
           Continue without an account
         </Link>

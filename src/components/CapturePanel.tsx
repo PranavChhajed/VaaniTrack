@@ -176,7 +176,7 @@ export function CapturePanel({
           <button
             type="button"
             onClick={capture.undo}
-            className="focus-ring font-figtree text-body-sm font-medium text-vast-ink underline underline-offset-4"
+            className="focus-ring -my-3 inline-block px-1 py-3 font-figtree text-body-sm font-medium text-vast-ink underline underline-offset-4"
           >
             Undo
           </button>

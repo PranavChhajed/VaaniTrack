@@ -60,7 +60,10 @@ export function AppHeader({
         {!profile && !signedIn && (
           <Link
             href="/signin"
-            className="focus-ring font-figtree text-body-sm text-fog underline underline-offset-4 hover:text-vast-ink"
+            // Padded out to a thumb-sized target, and pulled back by the same
+            // amount so the header does not grow: 44pt is the size Apple asks
+            // for, and the bare text line is under half of it.
+            className="focus-ring -my-3 inline-block px-1 py-3 font-figtree text-body-sm text-fog underline underline-offset-4 hover:text-vast-ink"
           >
             Sign in
           </Link>
@@ -68,7 +71,7 @@ export function AppHeader({
         {navHref ? (
           <Link
             href={navHref}
-            className="focus-ring font-figtree text-body-sm text-charcoal underline underline-offset-4 hover:text-vast-ink"
+            className="focus-ring -my-3 inline-block px-1 py-3 font-figtree text-body-sm text-charcoal underline underline-offset-4 hover:text-vast-ink"
           >
             {navLabel}
           </Link>

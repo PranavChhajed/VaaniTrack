@@ -328,6 +328,15 @@ export default function You() {
             </div>
           </Card>
 
+          <Card title="Opening the app">
+            <Switch
+              checked={settings.openToRecord}
+              onChange={(next) => saveSettings({ openToRecord: next })}
+              label="Start listening when I open the app"
+              hint="Opens ready for today’s expense, so one tap on the icon is all it takes. Your phone may still ask for permission, or for a tap, before it opens the microphone."
+            />
+          </Card>
+
           <Card title="Your voice">
             <Switch
               checked={consent === "granted"}
@@ -467,24 +476,24 @@ export default function You() {
               </summary>
               <div className="mt-3 flex flex-col gap-3 font-figtree text-body-sm text-charcoal">
                 <p>
-                  This address opens VaaniTrack already listening, and logs to
-                  today:
-                </p>
-                <p className="break-all rounded-[var(--radius-input)] border-2 border-vast-ink bg-paper px-3 py-2 text-caption text-vast-ink">
-                  {window.location.origin}/app?record=1
-                </p>
-                <p>
-                  <strong className="font-medium">Android:</strong> long-press the
-                  VaaniTrack icon and choose Record an expense.
+                  <strong className="font-medium">iPhone:</strong> in Safari,
+                  tap Share, then Add to Home Screen, and always open VaaniTrack
+                  from that icon. Then turn on “Start listening when I open the
+                  app” above, and one tap on the icon starts recording today’s
+                  expense.
                 </p>
                 <p>
-                  <strong className="font-medium">iPhone:</strong> open the
-                  Shortcuts app, add the action Open URLs with the address above,
-                  then Add to Home Screen. The Action Button can run it too.
+                  <strong className="font-medium">Android:</strong> the same
+                  switch works. The VaaniTrack app also adds a Record an expense
+                  tile for your home screen, and a long-press shortcut on its
+                  icon.
                 </p>
                 <p className="text-caption text-fog">
-                  Some phones ask for one tap before they open the microphone. If
-                  yours does, the screen will say so.
+                  Keep to one icon. On iPhone the Home Screen icon and Safari
+                  each keep their own journal, so an expense saved in one will
+                  not appear in the other. Some phones also ask for one tap
+                  before they open the microphone; if yours does, the screen
+                  will say so.
                 </p>
               </div>
             </details>

@@ -95,7 +95,7 @@ export default function Landing() {
           </Link>
           <a
             href="#how"
-            className="focus-ring font-figtree text-body-sm text-fog underline underline-offset-4 hover:text-vast-ink"
+            className="focus-ring inline-block py-3 font-figtree text-body-sm text-fog underline underline-offset-4 hover:text-vast-ink"
           >
             See how it works
           </a>
@@ -189,13 +189,13 @@ export default function Landing() {
         <span className="flex items-center gap-4">
           <Link
             href="/app"
-            className="focus-ring font-figtree text-caption text-fog underline underline-offset-4 hover:text-vast-ink"
+            className="focus-ring inline-block py-3 font-figtree text-caption text-fog underline underline-offset-4 hover:text-vast-ink"
           >
             Open the app
           </Link>
           <Link
             href="/signin"
-            className="focus-ring font-figtree text-caption text-fog underline underline-offset-4 hover:text-vast-ink"
+            className="focus-ring inline-block py-3 font-figtree text-caption text-fog underline underline-offset-4 hover:text-vast-ink"
           >
             Sign in
           </Link>

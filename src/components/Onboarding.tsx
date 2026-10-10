@@ -75,7 +75,7 @@ function FlowHeader({ onSkip }: { onSkip?: () => void }) {
         <button
           type="button"
           onClick={onSkip}
-          className="focus-ring font-figtree text-body-sm text-fog underline underline-offset-4 hover:text-vast-ink"
+          className="focus-ring -my-3 inline-block px-1 py-3 font-figtree text-body-sm text-fog underline underline-offset-4 hover:text-vast-ink"
         >
           Skip
         </button>

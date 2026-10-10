@@ -17,7 +17,7 @@ tap is the website's own capture screen, so the tile cannot drift from the app.
 | `/app?record=1` | everyone | The capture screen starts listening by itself. `src/lib/useAutoRecord.ts` |
 | Long-press icon shortcut | Android | `shortcuts` in `src/app/manifest.ts` |
 | Home-screen tile | Android | The app in `android/` (below) |
-| Shortcuts-app button | iPhone | Instructions in You > Help. The Action Button can run it too |
+| "Start listening when I open the app" | everyone, **the iPhone route** | A setting on You. `useAutoRecord` listens when the app is opened on capture, never when you tap around to it |
 | Native tile | iPhone | **Not built.** See "iPhone" |
 
 ## `/app?record=1`
@@ -74,10 +74,40 @@ before release; use the default (production) for the real one. Install with
 
 ## iPhone
 
-Not built, on purpose, for now. It needs a Mac with Xcode and a paid Apple
-Developer account, and a native shell has its own empty storage, so the existing
-phone-only journal would not appear in it without an import feature. The
-Shortcuts route gives iPhone users a one-tap button today without any of that.
+**What works:** the app itself, in Safari or from the Home Screen, and the
+"Start listening when I open the app" setting on the You screen.
+
+**What was planned and then dropped:** a Shortcuts-app button that opens
+`/app?record=1`. On iPhone, Shortcuts' "Open URL" opens **Safari**, never an
+installed Home Screen app, and Safari and the Home Screen icon each keep their
+own website storage. Expenses recorded through such a button would have landed
+in a second, empty journal. The first version of the You > Help text told people
+to do exactly that; it was corrected after this was caught. The rule that follows
+for iPhone: **keep to one icon.**
+
+**What is not possible without native code:**
+
+- A Home Screen widget tile. iPhone widgets are written in SwiftUI (WidgetKit),
+  cannot hold the microphone, and can only open an app.
+- An iPhone app that carries the existing journal. A native shell has its own
+  storage, so it would start empty until an "import my journal" feature (built on
+  the CSV export in `src/lib/exportCsv.ts`) existed.
+- Building any of it from Windows. It needs a Mac with Xcode, and a paid Apple
+  Developer account (about $99 a year) to run on a phone for more than a week.
+
+**Things that are iPhone's to decide, and not verified here:** whether a page may
+open the microphone without a tap (if not, the screen says "Tap the button to
+start speaking"), and whether a Home Screen app asks for microphone permission
+every time it is launched (it has historically). Both are covered by the fallback.
+
+**Needs iOS 16.4 or newer.** The styling framework the app is built on needs it,
+so an older iPhone would show a broken layout.
+
+**Testing without an iPhone:** the app was run in WebKit (Safari's engine, which
+every iPhone browser must use) with iPhone 14 and iPhone SE profiles: layout of
+every screen, tap targets, text-box zoom, storage across reloads, and every
+launch scenario. That is the engine, not iOS: it has no microphone API on
+Windows and it is not an iOS audio session or a Home Screen app.
 
 ## Verified, and how
 
