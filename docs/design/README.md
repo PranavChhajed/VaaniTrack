@@ -27,6 +27,7 @@ Items 1 to 3 below have since shipped, so that paragraph now describes the probl
 | 7 | [`SPEED-ACCURACY.md`](SPEED-ACCURACY.md) — what a month of use showed, and what was measured before changing anything | **Built** (10 Oct) |
 | 8 | [`YOU-SCREEN.md`](YOU-SCREEN.md) — name, payment default, review mode, recordings, export and delete | **Built** (10 Oct) |
 | 9 | [`INSIGHTS.md`](INSIGHTS.md) — this week, where it went, a fun fact, when you log | **Built** (10 Oct) |
+| 10 | [`WIDGET.md`](WIDGET.md) — `/app?record=1`, Android widget app, iPhone Shortcuts route | **Built** (10 Oct), iPhone native not built |
 
 `reference/` holds the visual references these were designed against.
 
