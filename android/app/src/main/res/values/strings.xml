@@ -6,5 +6,10 @@
     <string name="widget_label">Record an expense</string>
     <string name="widget_title">Say what you spent</string>
     <string name="widget_hint">Tap, then speak</string>
-    <string name="widget_description">One tap to start recording today’s expense.</string>
+    <string name="chip_type">Type</string>
+    <string name="chip_journal">Journal</string>
+    <string name="chip_insights">Insights</string>
+    <string name="widget_short_title">Say it</string>
+    <string name="widget_short_hint">Tap to record</string>
+    <string name="widget_description">One tap to start recording today’s expense. Stretch it for shortcuts to type, the journal and insights.</string>
 </resources>

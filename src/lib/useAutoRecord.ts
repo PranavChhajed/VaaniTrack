@@ -19,6 +19,14 @@ export function wantsRecord(search: string): boolean {
 }
 
 /**
+ * Whether a query string asks for the typing box instead of the microphone.
+ * The widget's Type button opens `/app?type=1`.
+ */
+export function wantsType(search: string): boolean {
+  return new URLSearchParams(search).get("type") === "1";
+}
+
+/**
  * Whether this page load was the app being *opened* on the capture screen,
  * as opposed to reloaded, reached with Back, or arrived at by tapping around.
  *
@@ -129,6 +137,19 @@ export function useAutoRecord({
     window.history.replaceState(null, "", window.location.pathname);
     void start().then(() => setTried(true));
   }, [ready, start, openToRecord]);
+
+  // The typing shortcut: put the cursor in the box, once, when the person can
+  // see the screen. (An iPhone will not raise the keyboard for a script, but
+  // the box is still the thing selected and one tap on it opens the keyboard.)
+  const typedRef = useRef(false);
+  useEffect(() => {
+    if (typedRef.current) return;
+    if (!(onboarded === true && consent !== null && consent !== "unknown")) return;
+    if (!wantsType(window.location.search)) return;
+    typedRef.current = true;
+    window.history.replaceState(null, "", window.location.pathname);
+    document.querySelector<HTMLInputElement>("[data-typed-entry]")?.focus();
+  }, [onboarded, consent]);
 
   /** The button's own start. A tap ends the "tap to start" explanation. */
   const startByTap = useCallback(() => {

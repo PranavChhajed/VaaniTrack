@@ -213,7 +213,98 @@ body {
   animation: veil-in 200ms ease-out both;
 }
 
+/* ---- Liquid glass -------------------------------------------
+   The bottom bar. A pill of frosted glass that lets the page show
+   through, with the cues that make glass read as glass rather than
+   as a see-through box: a bright edge where light catches the top, a
+   soft glow inside the rim, a faint diagonal sheen, and a shadow that
+   lifts it off the page.
+
+   The "lens" is the selected tab: a second, brighter pane of glass
+   that slides to the new tab with a small overshoot, like a droplet
+   settling.
+
+   Text on it is ink over a tint of at least ~55% white, so it stays
+   readable over the dark chamber as well as over paper (measured:
+   docs/design/LIQUID-GLASS.md). True refraction (bending what is behind
+   the glass) needs an SVG filter that only Chromium applies to a
+   backdrop, so it is not used: the same look would otherwise differ from
+   one phone to the next. */
+.glass-bar {
+  position: relative;
+  isolation: isolate;
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 0.58), rgb(255 255 255 / 0.3)),
+    rgb(240 237 231 / 0.34);
+  -webkit-backdrop-filter: blur(24px) saturate(190%) brightness(1.04);
+  backdrop-filter: blur(24px) saturate(190%) brightness(1.04);
+  border: 1px solid rgb(255 255 255 / 0.72);
+  box-shadow:
+    0 12px 32px rgb(26 26 26 / 0.18),
+    0 2px 6px rgb(26 26 26 / 0.1),
+    inset 0 1.5px 0 rgb(255 255 255 / 0.95),
+    inset 0 -1px 0 rgb(26 26 26 / 0.08),
+    inset 0 0 22px rgb(255 255 255 / 0.3);
+}
+
+/* The sheen: light raking across the glass from the upper left. */
+.glass-bar::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(
+    115deg,
+    rgb(255 255 255 / 0.5) 0%,
+    rgb(255 255 255 / 0) 34%,
+    rgb(255 255 255 / 0) 64%,
+    rgb(255 255 255 / 0.2) 100%
+  );
+}
+
+.glass-lens {
+  background: linear-gradient(180deg, rgb(255 255 255 / 0.95), rgb(255 255 255 / 0.6));
+  border: 1px solid rgb(255 255 255 / 0.95);
+  box-shadow:
+    0 6px 16px rgb(26 26 26 / 0.2),
+    0 1px 3px rgb(26 26 26 / 0.12),
+    inset 0 1.5px 0 rgb(255 255 255),
+    inset 0 -3px 8px rgb(26 26 26 / 0.07);
+  -webkit-backdrop-filter: blur(8px) saturate(170%);
+  backdrop-filter: blur(8px) saturate(170%);
+  transition:
+    transform 560ms cubic-bezier(0.34, 1.45, 0.64, 1),
+    opacity 200ms ease-out;
+  will-change: transform;
+}
+
+/* No backdrop blur available, or the person has asked for less
+   transparency: a solid bar, with the same shape and the same lens. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass-bar {
+    background: rgb(249 247 243 / 0.97);
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .glass-bar {
+    background: rgb(249 247 243 / 0.98);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  .glass-lens {
+    background: rgb(255 255 255);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .glass-lens {
+    transition: opacity 200ms ease-out;
+  }
   .wave-bar,
   .rise,
   .sheet-rise,

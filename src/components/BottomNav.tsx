@@ -9,16 +9,18 @@ import { usePathname } from "next/navigation";
  * It used to be one small underlined link in the header: "Journal ›" on one
  * screen, "‹ Capture" on the other. That is a long reach on a phone held in
  * one hand, and it never said where you were, only where else you could go.
- * This sits under the thumb and shows both.
+ * This sits under the thumb and shows all of them.
  *
- * Mounted once in `(app)/layout.tsx`, so it belongs to capture and journal
- * and to nothing else. It stays below the sheets (`z-40` against their
- * `z-50`): a sheet is somewhere you are in the middle of, and the way out of
- * it is its own close button, not a tab.
+ * Mounted once in `(app)/layout.tsx`, so it belongs to the app's screens and to
+ * nothing else. It stays below the sheets (`z-40` against their `z-50`): a
+ * sheet is somewhere you are in the middle of, and the way out of it is its own
+ * close button, not a tab.
  *
- * The strip behind the pill is translucent, so the page reads as continuing
- * underneath it rather than stopping at a bar. The blur is what keeps the
- * tab labels legible while a list scrolls past behind them.
+ * It is a floating pill of liquid glass (`.glass-bar` in globals.css). The
+ * selected tab is a second pane of glass, the lens, that slides to the new
+ * tab. Every tab is the same width, so the lens moves by whole multiples of
+ * its own width and needs no measuring. On a screen that is not a tab (You)
+ * the lens is simply hidden.
  */
 const TABS = [
   {
@@ -46,33 +48,42 @@ const TABS = [
 
 export function BottomNav() {
   const pathname = usePathname();
+  const active = TABS.findIndex((tab) => tab.href === pathname);
 
   return (
     <nav
       aria-label="Screens"
-      className="fixed inset-x-0 bottom-0 z-40 bg-paper/50 px-5 backdrop-blur-md pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3"
+      // The strip itself does not catch taps, so the thin margins either side
+      // of the pill stay part of the page beneath.
+      className="pointer-events-none fixed inset-x-0 bottom-0 z-40 px-5 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3"
     >
-      <div className="mx-auto flex w-full max-w-[420px] gap-1 rounded-[var(--radius-pill)] border-2 border-vast-ink bg-paper-raised p-1">
-        {TABS.map((tab) => {
-          const active = pathname === tab.href;
+      <div className="glass-bar pointer-events-auto relative mx-auto grid w-full max-w-[420px] grid-cols-3 rounded-[var(--radius-pill)] p-1">
+        <span
+          aria-hidden="true"
+          className={[
+            "glass-lens pointer-events-none absolute bottom-1 left-1 top-1 w-[calc((100%-0.5rem)/3)] rounded-[var(--radius-pill)]",
+            active === -1 ? "opacity-0" : "opacity-100",
+          ].join(" ")}
+          style={{ transform: `translateX(${Math.max(active, 0) * 100}%)` }}
+        />
+        {TABS.map((tab, i) => {
+          const current = i === active;
           return (
             <Link
               key={tab.href}
               href={tab.href}
-              aria-current={active ? "page" : undefined}
+              aria-current={current ? "page" : undefined}
               className={[
-                "focus-ring flex h-12 flex-1 items-center justify-center gap-2 rounded-[var(--radius-pill)]",
-                "font-figtree text-body-sm font-medium transition-colors",
-                active
-                  ? "bg-vast-ink text-paper"
-                  : "text-charcoal active:bg-mint-whisper",
+                "focus-ring relative z-10 flex h-12 items-center justify-center gap-2 rounded-[var(--radius-pill)]",
+                "font-figtree text-body-sm transition-[color,transform] duration-200 active:scale-95",
+                current ? "font-semibold text-vast-ink" : "font-medium text-charcoal",
               ].join(" ")}
             >
               <svg
                 viewBox="0 0 24 24"
                 aria-hidden="true"
                 className="h-5 w-5 fill-none stroke-current"
-                strokeWidth={1.75}
+                strokeWidth={current ? 2 : 1.75}
                 strokeLinecap="round"
                 strokeLinejoin="round"
               >

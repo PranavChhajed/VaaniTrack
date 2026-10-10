@@ -20,7 +20,7 @@ import {
   todayISO,
 } from "../src/lib/journal.ts";
 import { iconFor } from "../src/lib/icon.ts";
-import { wantsRecord, isLaunchOfCapture, shouldAutoRecord } from "../src/lib/useAutoRecord.ts";
+import { wantsRecord, wantsType, isLaunchOfCapture, shouldAutoRecord } from "../src/lib/useAutoRecord.ts";
 import {
   addDays,
   lastNDays,
@@ -442,6 +442,14 @@ check("a bare 'record' does not", wantsRecord("?record"), false);
 check("a similar name does not", wantsRecord("?recording=1"), false);
 check("a value that merely contains 1 does not", wantsRecord("?record=11"), false);
 check("a hostile value does not", wantsRecord("?record=1%27%3Balert(1)"), false);
+
+console.log("\n--- the widget's addresses ---");
+check("?type=1 asks for the typing box", wantsType("?type=1"), true);
+check("type=0 does not", wantsType("?type=0"), false);
+check("a bare type does not", wantsType("?type"), false);
+check("type=true is not accepted", wantsType("?type=true"), false);
+check("no query does not", wantsType(""), false);
+check("record and type are separate asks", [wantsRecord("?type=1"), wantsType("?record=1")], [false, false]);
 
 console.log("\n--- opening the app listening ---");
 const nav = (type: string, name: string) => ({ type, name });

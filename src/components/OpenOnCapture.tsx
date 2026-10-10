@@ -21,8 +21,10 @@
  *   pathname === "/journal"   the only page that redirects
  *   type === "navigate"       a reload or back/forward stays on the journal
  *   no same-origin referrer   a full-page link from inside the site stays too
+ *   no `from=widget`          the home-screen widget has a Journal button, and a
+ *                             button that says Journal must open the journal
  */
-const SCRIPT = `try{var n=performance.getEntriesByType("navigation")[0];if(location.pathname==="/journal"&&n&&n.type==="navigate"&&document.referrer.indexOf(location.origin)!==0){location.replace("/app")}}catch(e){}`;
+const SCRIPT = `try{var n=performance.getEntriesByType("navigation")[0];if(location.pathname==="/journal"&&n&&n.type==="navigate"&&document.referrer.indexOf(location.origin)!==0&&location.search.indexOf("from=widget")<0){location.replace("/app")}}catch(e){}`;
 
 export function OpenOnCapture() {
   return <script dangerouslySetInnerHTML={{ __html: SCRIPT }} />;

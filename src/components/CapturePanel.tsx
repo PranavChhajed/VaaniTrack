@@ -108,6 +108,7 @@ export function CapturePanel({
           onChange={(e) => capture.setTyped(e.target.value)}
           placeholder="…or type it: 250 lunch"
           aria-label={typedLabel}
+          data-typed-entry
           enterKeyHint="done"
           className="focus-ring min-w-0 flex-1 rounded-[var(--radius-input)] border-2 border-vast-ink bg-paper-raised px-4 py-3 font-figtree text-body-sm text-vast-ink outline-none placeholder:text-fog focus:border-forest-ink"
         />

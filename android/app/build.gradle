@@ -61,6 +61,9 @@ android {
         // URL, the widget's tap target, and the site this app vouches for.
         resValue 'string', 'vaani_record_url', "${vaaniUrl}/app?record=1"
         resValue 'string', 'vaani_open_url', "${vaaniUrl}/app"
+        resValue 'string', 'vaani_type_url', "${vaaniUrl}/app?type=1"
+        resValue 'string', 'vaani_journal_url', "${vaaniUrl}/journal?from=widget"
+        resValue 'string', 'vaani_insights_url', "${vaaniUrl}/insights"
         resValue 'string', 'asset_statements',
                 '[{\\"relation\\": [\\"delegate_permission/common.handle_all_urls\\"], \\"target\\": {\\"namespace\\": \\"web\\", \\"site\\": \\"' + vaaniUrl + '\\"}}]'
     }
