@@ -12,6 +12,8 @@ import {
   groupByDay,
   groupByMonth,
   monthTotal,
+  dayTotals,
+  compactAmount,
   monthGrid,
   shiftMonth,
   isFuture,
@@ -156,6 +158,27 @@ console.log("\n--- months ---");
   check("monthTotal excludes undated rows", monthTotal(rows, "2026-08-01"), 300);
   check("a month with nothing in it totals zero", monthTotal(rows, "2026-07-01"), 0);
 }
+
+console.log("\n--- calendar totals ---");
+{
+  const totals = dayTotals([
+    txn({ id: "a", amount: 250, date: "2026-09-06" }),
+    txn({ id: "b", amount: 80, date: "2026-09-06" }),
+    txn({ id: "c", amount: 40, date: "2026-09-07" }),
+    txn({ id: "d", amount: 999, date: null }),
+  ]);
+  check("a day's entries are summed", totals.get("2026-09-06"), 330);
+  check("each day is its own total", totals.get("2026-09-07"), 40);
+  check("an empty day is absent, not zero", totals.has("2026-09-08"), false);
+  check("undated rows belong to no day", totals.size, 2);
+}
+check("under a thousand is written out", compactAmount(450), "450");
+check("thousands", compactAmount(1500), "1.5k");
+check("a round thousand drops the decimal", compactAmount(2000), "2k");
+check("truncates, never rounds up", compactAmount(1999), "1.9k");
+check("ten thousand and over loses the decimal", compactAmount(12500), "12k");
+check("lakhs", compactAmount(150000), "1.5L");
+check("crores", compactAmount(25000000), "2.5Cr");
 
 console.log(
   failures === 0 ? "\nall passed\n" : `\n${failures} FAILED\n`,

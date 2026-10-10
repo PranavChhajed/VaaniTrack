@@ -360,9 +360,40 @@ export function monthGrid(iso: string): (string | null)[][] {
   return weeks;
 }
 
-/** Dates that actually have transactions; the picker marks these. */
-export function populatedDates(transactions: Transaction[]): Set<string> {
-  const dates = new Set<string>();
-  for (const t of transactions) if (t.date.value) dates.add(t.date.value);
-  return dates;
+/**
+ * What each date cost, for the calendar.
+ *
+ * A date is present only if something is recorded on it, so presence still
+ * answers "is there anything here?" even for a day whose entries total zero.
+ */
+export function dayTotals(transactions: Transaction[]): Map<string, number> {
+  const totals = new Map<string, number>();
+  for (const t of transactions) {
+    if (!t.date.value) continue;
+    totals.set(t.date.value, (totals.get(t.date.value) ?? 0) + (t.amount.value ?? 0));
+  }
+  return totals;
+}
+
+/**
+ * An amount short enough to sit under a date in a calendar cell.
+ *
+ * Indian units, because that is how these amounts are said: 1,500 is "1.5k",
+ * 1,50,000 is "1.5L". Truncated rather than rounded, so the cell never shows
+ * more than was spent; the exact figure is one tap away in the day itself.
+ */
+export function compactAmount(amount: number): string {
+  const units: [number, string][] = [
+    [1e7, "Cr"],
+    [1e5, "L"],
+    [1e3, "k"],
+  ];
+  for (const [size, suffix] of units) {
+    if (amount < size) continue;
+    const scaled = amount / size;
+    const shown =
+      scaled >= 10 ? Math.floor(scaled) : Math.floor(scaled * 10) / 10;
+    return `${shown}${suffix}`;
+  }
+  return String(Math.floor(amount));
 }

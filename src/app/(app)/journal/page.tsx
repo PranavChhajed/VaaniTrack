@@ -5,17 +5,16 @@ import Link from "next/link";
 import { AppHeader } from "@/components/AppHeader";
 import { DatePicker } from "@/components/DatePicker";
 import { DayCapture } from "@/components/DayCapture";
+import { OpenOnCapture } from "@/components/OpenOnCapture";
 import { TransactionDetail } from "@/components/TransactionDetail";
 import { TransactionRow } from "@/components/TransactionRow";
 import { currentSession } from "@/lib/auth";
 import {
   dayLabel,
+  dayTotals,
   forDate,
   groupByDay,
   groupByMonth,
-  monthLabel,
-  monthTotal,
-  populatedDates,
   todayISO,
   type DayGroup,
   type MonthGroup,
@@ -36,7 +35,9 @@ import { DEFAULTS, type Transaction } from "@/lib/types";
  * Two states of one screen, which is how §8 and §18 reconcile:
  *
  *   browse  : every populated day, newest first. The default.
- *   day     : one chosen date, and only that date. Entered from the picker.
+ *   day     : one chosen date, and only that date. Entered from the calendar.
+ *
+ * The calendar sits above both, always open, with each day's total on it.
  *
  * Day-by-day scrolling is deliberately not built (§18). The requirement is
  * that history is reachable, not that it is an infinite feed, and committing
@@ -209,11 +210,7 @@ function DaySection({
 export default function Journal() {
   const { transactions, hydrated, add, update, remove, undo } = useTransactions();
   const [selected, setSelected] = useState<string | null>(null);
-  const [pickerOpen, setPickerOpen] = useState(false);
-  // Owned here, not inside DatePicker: see the comment on DatePicker's
-  // `month` prop. The picker is conditionally rendered, so if it owned this
-  // itself, closing and reopening it would reset wherever you'd browsed to.
-  const [month, setMonth] = useState<string>(() => selected ?? todayISO());
+  const [month, setMonth] = useState<string>(() => todayISO());
   const [open, setOpen] = useState<Transaction | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [signedIn, setSignedIn] = useState(false);
@@ -231,7 +228,7 @@ export default function Journal() {
   });
 
   const groups = useMemo(() => groupByDay(transactions), [transactions]);
-  const populated = useMemo(() => populatedDates(transactions), [transactions]);
+  const totals = useMemo(() => dayTotals(transactions), [transactions]);
   const day = useMemo(
     () => (selected ? forDate(transactions, selected) : null),
     [transactions, selected],
@@ -243,77 +240,52 @@ export default function Journal() {
 
   const months = useMemo(() => groupByMonth(groups), [groups]);
 
-  // The headline figure is this calendar month, not everything ever recorded.
-  // A running all-time total grows without meaning; a month is the cycle rent
-  // and salary actually land on.
-  const thisMonth = todayISO();
-  const currentMonthTotal = useMemo(
-    () => monthTotal(transactions, thisMonth),
-    [transactions, thisMonth],
-  );
-  const viewing = selected ? dayLabel(selected) : monthLabel(thisMonth);
-
   return (
     <main className="mx-auto flex w-full max-w-[900px] flex-col gap-8 px-5 py-8 sm:px-8 sm:py-12">
+      <OpenOnCapture />
       {/* Capture is the app; this is a room you stepped into. The way back
           is stated plainly rather than left to the browser's back button. */}
       <AppHeader navHref="/app" navLabel="&lsaquo; Capture" signedIn={signedIn} />
 
       <div>
         <h1 className="display-type text-heading text-vast-ink">Expenses</h1>
-        <p className="mt-2 font-figtree text-body-sm text-fog">
-          {viewing}
-          {!selected && transactions.length > 0 ? (
-            <>
-              {" · "}
-              <span className="money text-vast-ink">
-                {DEFAULTS.currency}
-                {currentMonthTotal.toLocaleString("en-IN")}
-              </span>
-            </>
-          ) : null}
-        </p>
+        {/* The month and its total live on the calendar below, which is
+            also where you change month; repeating them here only gave the
+            same figure twice. */}
+        {selected ? (
+          <p className="mt-2 font-figtree text-body-sm text-fog">
+            {dayLabel(selected)}
+          </p>
+        ) : null}
       </div>
 
-      <div className="flex flex-wrap gap-3">
-        <button
-          type="button"
-          onClick={() => setPickerOpen((v) => !v)}
-          aria-expanded={pickerOpen}
-          className="focus-ring rounded-[var(--radius-pill)] border-2 border-vast-ink bg-paper-raised px-5 py-3 font-figtree text-body-sm text-vast-ink active:bg-mint-whisper"
-        >
-          {pickerOpen ? "Close dates" : "Pick a date"}
-        </button>
+      <DatePicker
+        selected={selected}
+        totals={totals}
+        month={month}
+        onMonthChange={setMonth}
+        onSelect={(iso) => {
+          // Tapping the open day again closes it, back to every day.
+          setSelected(iso === selected ? null : iso);
+          setSheetOpen(false);
+        }}
+      />
 
-        {/* Only offered once you have gone somewhere else; otherwise it is a
-            button that does nothing (§18). */}
-        {selected ? (
+      {/* Only offered once you have gone somewhere else; otherwise it is a
+          button that does nothing (§18). */}
+      {selected ? (
+        <div>
           <button
             type="button"
             onClick={() => {
               setSelected(null);
-              setPickerOpen(false);
               setSheetOpen(false);
             }}
             className="focus-ring rounded-[var(--radius-pill)] border-2 border-vast-ink bg-mint-whisper px-5 py-3 font-figtree text-body-sm font-medium text-vast-ink active:bg-mint-deep"
           >
             All days
           </button>
-        ) : null}
-      </div>
-
-      {pickerOpen ? (
-        <DatePicker
-          selected={selected}
-          populated={populated}
-          month={month}
-          onMonthChange={setMonth}
-          onSelect={(iso) => {
-            setSelected(iso);
-            setPickerOpen(false);
-            setSheetOpen(false);
-          }}
-        />
+        </div>
       ) : null}
 
       <section className="rounded-[var(--radius-chamber)] bg-vast-ink px-6 py-10 sm:rounded-[var(--radius-chamber-lg)] sm:px-12 sm:py-14">

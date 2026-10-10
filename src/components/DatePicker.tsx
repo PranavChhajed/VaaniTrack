@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  compactAmount,
   fromISO,
   isFuture,
   monthGrid,
@@ -8,45 +9,51 @@ import {
   shiftMonth,
   todayISO,
 } from "@/lib/journal";
+import { DEFAULTS } from "@/lib/types";
 
 const WEEKDAYS = ["S", "M", "T", "W", "T", "F", "S"];
 
 /**
- * Date navigation only (§18).
+ * The month, with what each day cost written under its date.
  *
- * Not a spending visualisation: no heatmap, no amounts, no category colour.
- * The single piece of information it carries beyond the dates themselves is a
- * mark showing which days have anything on them, because otherwise choosing a
- * date is guesswork.
+ * This began as date navigation only (§18): a dot for "something is here" and
+ * deliberately no amounts. A month of real use overturned that. The question
+ * the journal actually gets asked is "what did I spend on the 14th", and a dot
+ * answers it only after a tap. So each populated day carries its total, and
+ * the header carries the month's.
+ *
+ * Still not a heatmap and still no category colour: the figures are the whole
+ * of it.
  *
  * Future dates are disabled. Expenses happen in the past, capture always dates
  * to today, and editing refuses a future date (§29), so a future day could
  * never hold anything, and offering it would only lead somewhere empty.
  *
- * `month` is owned by the caller rather than this component. It previously
- * lived here as `useState(() => selected ?? todayISO())`, a lazy initialiser
- * that only runs once per mount -- and this component is conditionally
- * rendered, so closing and reopening the picker remounted it and reset
- * wherever you had browsed to. Lifting it means the picker remembers your
- * place across opens.
+ * `month` is owned by the caller, so the journal can keep the calendar and
+ * the list beneath it pointed at the same place.
  */
 export function DatePicker({
   selected,
-  populated,
+  totals,
   month,
   onMonthChange,
   onSelect,
 }: {
   selected: string | null;
-  populated: Set<string>;
+  /** What each populated date cost; see `dayTotals`. */
+  totals: Map<string, number>;
   month: string;
   onMonthChange: (iso: string) => void;
   onSelect: (iso: string) => void;
 }) {
   const today = todayISO();
+  const weeks = monthGrid(month);
+  const monthSpend = weeks
+    .flat()
+    .reduce((sum, iso) => sum + ((iso && totals.get(iso)) || 0), 0);
 
   return (
-    <div className="rounded-[var(--radius-card)] border-2 border-vast-ink bg-paper-raised p-5">
+    <div className="rounded-[var(--radius-card)] border-2 border-vast-ink bg-paper-raised p-3 sm:p-5">
       <div className="mb-4 flex items-center justify-between gap-3">
         <button
           type="button"
@@ -57,8 +64,14 @@ export function DatePicker({
           &lsaquo;
         </button>
 
-        <span className="display-type text-subheading text-vast-ink">
-          {monthLabel(month)}
+        <span className="flex flex-col items-center">
+          <span className="display-type text-subheading text-vast-ink">
+            {monthLabel(month)}
+          </span>
+          <span className="money font-figtree text-caption text-fog">
+            {DEFAULTS.currency}
+            {monthSpend.toLocaleString("en-IN")}
+          </span>
         </span>
 
         <button
@@ -81,13 +94,13 @@ export function DatePicker({
           </span>
         ))}
 
-        {monthGrid(month).flat().map((iso, i) => {
+        {weeks.flat().map((iso, i) => {
           if (!iso) return <span key={`pad-${i}`} />;
 
           const disabled = isFuture(iso);
           const isSelected = iso === selected;
           const isToday = iso === today;
-          const hasRows = populated.has(iso);
+          const spent = totals.get(iso);
 
           return (
             <button
@@ -95,10 +108,14 @@ export function DatePicker({
               type="button"
               disabled={disabled}
               onClick={() => onSelect(iso)}
-              aria-label={`${fromISO(iso).getDate()} ${monthLabel(month)}${hasRows ? ", has transactions" : ""}`}
+              aria-label={`${fromISO(iso).getDate()} ${monthLabel(month)}${
+                spent === undefined
+                  ? ""
+                  : `, ${DEFAULTS.currency}${spent.toLocaleString("en-IN")}`
+              }`}
               aria-current={isToday ? "date" : undefined}
               className={[
-                "focus-ring relative flex aspect-square items-center justify-center rounded-[var(--radius-button)]",
+                "focus-ring flex h-[52px] flex-col items-center justify-start gap-1 rounded-[var(--radius-button)] pt-2",
                 "font-figtree text-body-sm transition-colors",
                 disabled
                   ? "cursor-not-allowed text-paper-edge"
@@ -109,10 +126,18 @@ export function DatePicker({
                       : "text-vast-ink active:bg-mint-whisper",
               ].join(" ")}
             >
-              {fromISO(iso).getDate()}
-              {/* A day with something on it. Presence only, never how much. */}
-              {hasRows && !isSelected ? (
-                <span className="absolute bottom-1 block h-[5px] w-[5px] rounded-full bg-forest-ink" />
+              <span className="leading-none">{fromISO(iso).getDate()}</span>
+              {/* The day's total. Absent, not zero, on a day with nothing
+                  recorded: a blank cell and a "0" say different things. */}
+              {spent !== undefined ? (
+                <span
+                  className={[
+                    "money text-[11px] font-medium leading-none",
+                    isSelected ? "text-paper" : "text-forest-ink",
+                  ].join(" ")}
+                >
+                  {compactAmount(spent)}
+                </span>
               ) : null}
             </button>
           );
