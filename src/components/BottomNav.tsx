@@ -15,6 +15,10 @@ import { usePathname } from "next/navigation";
  * and to nothing else. It stays below the sheets (`z-40` against their
  * `z-50`): a sheet is somewhere you are in the middle of, and the way out of
  * it is its own close button, not a tab.
+ *
+ * The strip behind the pill is translucent, so the page reads as continuing
+ * underneath it rather than stopping at a bar. The blur is what keeps the
+ * tab labels legible while a list scrolls past behind them.
  */
 const TABS = [
   {
@@ -40,7 +44,7 @@ export function BottomNav() {
   return (
     <nav
       aria-label="Screens"
-      className="fixed inset-x-0 bottom-0 z-40 border-t-2 border-paper-edge bg-paper px-5 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3"
+      className="fixed inset-x-0 bottom-0 z-40 bg-paper/50 px-5 backdrop-blur-md pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3"
     >
       <div className="mx-auto flex w-full max-w-[420px] gap-1 rounded-[var(--radius-pill)] border-2 border-vast-ink bg-paper-raised p-1">
         {TABS.map((tab) => {

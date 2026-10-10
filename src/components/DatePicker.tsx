@@ -136,6 +136,7 @@ export function DatePicker({
                     isSelected ? "text-paper" : "text-forest-ink",
                   ].join(" ")}
                 >
+                  {DEFAULTS.currency}
                   {compactAmount(spent)}
                 </span>
               ) : null}
