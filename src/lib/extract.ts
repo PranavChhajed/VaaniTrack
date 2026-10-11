@@ -33,7 +33,7 @@ export function cleanPayment(value: unknown): PaymentMethod {
   return PAYMENT_OPTIONS.find((p) => p === value) ?? DEFAULTS.paymentMethod;
 }
 
-function buildSystemPrompt(today: string, payment: PaymentMethod): string {
+export function buildSystemPrompt(today: string, payment: PaymentMethod): string {
   return `Convert spoken expense notes (Indian English, rupees) into JSON.
 Today is ${today}.
 

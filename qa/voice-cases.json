@@ -1,0 +1,2501 @@
+[
+ {
+  "id": 1,
+  "group": "basic",
+  "tags": [
+   "basic"
+  ],
+  "utterance": "250 lunch",
+  "expect": {
+   "entries": [
+    {
+     "description": "lunch",
+     "amount": 250,
+     "payment": "UPI",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "₹250, lunch, food, UPI, today"
+ },
+ {
+  "id": 2,
+  "group": "basic",
+  "tags": [
+   "basic"
+  ],
+  "utterance": "120 chai",
+  "expect": {
+   "entries": [
+    {
+     "description": "chai",
+     "amount": 120,
+     "payment": "UPI",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "₹120, chai, food/beverage, UPI, today"
+ },
+ {
+  "id": 3,
+  "group": "basic",
+  "tags": [
+   "basic"
+  ],
+  "utterance": "I spent 500 on dinner",
+  "expect": {
+   "entries": [
+    {
+     "description": "dinner",
+     "amount": 500,
+     "payment": "UPI",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "₹500, dinner, food, UPI, today"
+ },
+ {
+  "id": 4,
+  "group": "basic",
+  "tags": [
+   "basic"
+  ],
+  "utterance": "Paid 300 for groceries",
+  "expect": {
+   "entries": [
+    {
+     "description": "groceries",
+     "amount": 300,
+     "payment": "UPI",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "₹300, groceries, food/groceries, UPI, today"
+ },
+ {
+  "id": 5,
+  "group": "basic",
+  "tags": [
+   "basic"
+  ],
+  "utterance": "I bought a coffee for 180",
+  "expect": {
+   "entries": [
+    {
+     "description": "coffee",
+     "amount": 180,
+     "payment": "UPI",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "₹180, coffee, food/beverage, UPI, today"
+ },
+ {
+  "id": 6,
+  "group": "basic",
+  "tags": [
+   "basic"
+  ],
+  "utterance": "Spent 70 on snacks",
+  "expect": {
+   "entries": [
+    {
+     "description": "snacks",
+     "amount": 70,
+     "payment": "UPI",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "₹70, snacks, food, UPI, today"
+ },
+ {
+  "id": 7,
+  "group": "basic",
+  "tags": [
+   "basic"
+  ],
+  "utterance": "Got a dosa for 150",
+  "expect": {
+   "entries": [
+    {
+     "description": "dosa",
+     "amount": 150,
+     "payment": "UPI",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "₹150, dosa, food, UPI, today"
+ },
+ {
+  "id": 8,
+  "group": "basic",
+  "tags": [
+   "basic"
+  ],
+  "utterance": "I just spent 450 on lunch",
+  "expect": {
+   "entries": [
+    {
+     "description": "lunch",
+     "amount": 450,
+     "payment": "UPI",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "₹450, lunch, food, UPI, today"
+ },
+ {
+  "id": 9,
+  "group": "basic",
+  "tags": [
+   "basic"
+  ],
+  "utterance": "Lunch was 280",
+  "expect": {
+   "entries": [
+    {
+     "description": "lunch",
+     "amount": 280,
+     "payment": "UPI",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "₹280, lunch, food, UPI, today"
+ },
+ {
+  "id": 10,
+  "group": "basic",
+  "tags": [
+   "basic"
+  ],
+  "utterance": "Just paid 90 for coffee",
+  "expect": {
+   "entries": [
+    {
+     "description": "coffee",
+     "amount": 90,
+     "payment": "UPI",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "₹90, coffee, food/beverage, UPI, today"
+ },
+ {
+  "id": 11,
+  "group": "messy",
+  "tags": [
+   "messy"
+  ],
+  "utterance": "Uh, I spent like 250 on lunch",
+  "expect": {
+   "entries": [
+    {
+     "description": "lunch",
+     "amount": 250,
+     "payment": "UPI",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "₹250, lunch, food, UPI, today"
+ },
+ {
+  "id": 12,
+  "group": "messy",
+  "tags": [
+   "messy"
+  ],
+  "utterance": "Yeah, just got lunch, it was 320",
+  "expect": {
+   "entries": [
+    {
+     "description": "lunch",
+     "amount": 320,
+     "payment": "UPI",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "₹320, lunch, food, UPI, today"
+ },
+ {
+  "id": 13,
+  "group": "messy",
+  "tags": [
+   "messy"
+  ],
+  "utterance": "I think I paid 180 for coffee",
+  "expect": {
+   "entries": [
+    {
+     "description": "coffee",
+     "amount": 180,
+     "payment": "UPI",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "₹180, coffee, food/beverage, UPI, today"
+ },
+ {
+  "id": 14,
+  "group": "messy",
+  "tags": [
+   "messy"
+  ],
+  "utterance": "So yeah, 500 for dinner",
+  "expect": {
+   "entries": [
+    {
+     "description": "dinner",
+     "amount": 500,
+     "payment": "UPI",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "₹500, dinner, food, UPI, today"
+ },
+ {
+  "id": 15,
+  "group": "messy",
+  "tags": [
+   "messy"
+  ],
+  "utterance": "I just bought some snacks, 120 rupees",
+  "expect": {
+   "entries": [
+    {
+     "description": "snacks",
+     "amount": 120,
+     "payment": "UPI",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "₹120, snacks, food, UPI, today"
+ },
+ {
+  "id": 16,
+  "group": "messy",
+  "tags": [
+   "messy"
+  ],
+  "utterance": "Spent about 600 on groceries",
+  "expect": {
+   "entries": [
+    {
+     "description": "groceries",
+     "amount": 600,
+     "payment": "UPI",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "₹600, groceries, food/groceries, UPI, today"
+ },
+ {
+  "id": 17,
+  "group": "messy",
+  "tags": [
+   "messy"
+  ],
+  "utterance": "Got some food for 240",
+  "expect": {
+   "entries": [
+    {
+     "description": null,
+     "amount": 240,
+     "payment": "UPI",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "₹240, food, food, UPI, today"
+ },
+ {
+  "id": 18,
+  "group": "messy",
+  "tags": [
+   "messy"
+  ],
+  "utterance": "Paid, uh, 350 for lunch",
+  "expect": {
+   "entries": [
+    {
+     "description": "lunch",
+     "amount": 350,
+     "payment": "UPI",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "₹350, lunch, food, UPI, today"
+ },
+ {
+  "id": 19,
+  "group": "messy",
+  "tags": [
+   "messy"
+  ],
+  "utterance": "I paid around 200 for breakfast",
+  "expect": {
+   "entries": [
+    {
+     "description": "breakfast",
+     "amount": 200,
+     "payment": "UPI",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "₹200, breakfast, food, UPI, today"
+ },
+ {
+  "id": 20,
+  "group": "messy",
+  "tags": [
+   "messy"
+  ],
+  "utterance": "That was 150 for chai",
+  "expect": {
+   "entries": [
+    {
+     "description": "chai",
+     "amount": 150,
+     "payment": "UPI",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "₹150, chai, food/beverage, UPI, today"
+ },
+ {
+  "id": 21,
+  "group": "amounts",
+  "tags": [
+   "amounts"
+  ],
+  "utterance": "Two hundred and fifty for lunch",
+  "expect": {
+   "entries": [
+    {
+     "description": "lunch",
+     "amount": 250,
+     "payment": "UPI",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "₹250, lunch, food, UPI, today"
+ },
+ {
+  "id": 22,
+  "group": "amounts",
+  "tags": [
+   "amounts"
+  ],
+  "utterance": "Three hundred bucks on dinner",
+  "expect": {
+   "entries": [
+    {
+     "description": "dinner",
+     "amount": 300,
+     "payment": "UPI",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "₹300, dinner, food, UPI, today"
+ },
+ {
+  "id": 23,
+  "group": "amounts",
+  "tags": [
+   "amounts"
+  ],
+  "utterance": "A hundred and twenty for coffee",
+  "expect": {
+   "entries": [
+    {
+     "description": "coffee",
+     "amount": 120,
+     "payment": "UPI",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "₹120, coffee, food/beverage, UPI, today"
+ },
+ {
+  "id": 24,
+  "group": "amounts",
+  "tags": [
+   "amounts"
+  ],
+  "utterance": "I spent one thousand on groceries",
+  "expect": {
+   "entries": [
+    {
+     "description": "groceries",
+     "amount": 1000,
+     "payment": "UPI",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "₹1,000, groceries, food/groceries, UPI, today"
+ },
+ {
+  "id": 25,
+  "group": "amounts",
+  "tags": [
+   "amounts"
+  ],
+  "utterance": "About five hundred on dinner",
+  "expect": {
+   "entries": [
+    {
+     "description": "dinner",
+     "amount": 500,
+     "payment": "UPI",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "₹500, dinner, food, UPI, today"
+ },
+ {
+  "id": 26,
+  "group": "amounts",
+  "tags": [
+   "amounts"
+  ],
+  "utterance": "Fifty rupees for chai",
+  "expect": {
+   "entries": [
+    {
+     "description": "chai",
+     "amount": 50,
+     "payment": "UPI",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "₹50, chai, food/beverage, UPI, today"
+ },
+ {
+  "id": 27,
+  "group": "amounts",
+  "tags": [
+   "amounts"
+  ],
+  "utterance": "One twenty on snacks",
+  "expect": {
+   "entries": [
+    {
+     "description": "snacks",
+     "amount": 120,
+     "payment": "UPI",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "₹120, snacks, food, UPI, today"
+ },
+ {
+  "id": 28,
+  "group": "amounts",
+  "tags": [
+   "amounts"
+  ],
+  "utterance": "Seven fifty for groceries",
+  "expect": {
+   "entries": [
+    {
+     "description": "groceries",
+     "amount": 750,
+     "payment": "UPI",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "₹750, groceries, food/groceries, UPI, today"
+ },
+ {
+  "id": 29,
+  "group": "amounts",
+  "tags": [
+   "amounts"
+  ],
+  "utterance": "Two thousand on shopping",
+  "expect": {
+   "entries": [
+    {
+     "description": "shopping",
+     "amount": 2000,
+     "payment": "UPI",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "₹2,000, shopping, shopping, UPI, today"
+ },
+ {
+  "id": 30,
+  "group": "amounts",
+  "tags": [
+   "amounts"
+  ],
+  "utterance": "Ninety rupees, coffee",
+  "expect": {
+   "entries": [
+    {
+     "description": "coffee",
+     "amount": 90,
+     "payment": "UPI",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "₹90, coffee, food/beverage, UPI, today"
+ },
+ {
+  "id": 31,
+  "group": "payment",
+  "tags": [
+   "payment"
+  ],
+  "utterance": "300 lunch, paid in cash",
+  "expect": {
+   "entries": [
+    {
+     "description": "lunch",
+     "amount": 300,
+     "payment": "Cash",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "₹300, lunch, food, cash, today"
+ },
+ {
+  "id": 32,
+  "group": "payment",
+  "tags": [
+   "payment"
+  ],
+  "utterance": "I paid 500 for dinner with cash",
+  "expect": {
+   "entries": [
+    {
+     "description": "dinner",
+     "amount": 500,
+     "payment": "Cash",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "₹500, dinner, food, cash, today"
+ },
+ {
+  "id": 33,
+  "group": "payment",
+  "tags": [
+   "payment"
+  ],
+  "utterance": "200 for coffee on my card",
+  "expect": {
+   "entries": [
+    {
+     "description": "coffee",
+     "amount": 200,
+     "payment": "Card",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "₹200, coffee, food/beverage, card, today"
+ },
+ {
+  "id": 34,
+  "group": "payment",
+  "tags": [
+   "payment"
+  ],
+  "utterance": "Spent 800 on groceries using cash",
+  "expect": {
+   "entries": [
+    {
+     "description": "groceries",
+     "amount": 800,
+     "payment": "Cash",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "₹800, groceries, food/groceries, cash, today"
+ },
+ {
+  "id": 35,
+  "group": "payment",
+  "tags": [
+   "payment"
+  ],
+  "utterance": "Paid 120 for chai through UPI",
+  "expect": {
+   "entries": [
+    {
+     "description": "chai",
+     "amount": 120,
+     "payment": "UPI",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "₹120, chai, food/beverage, UPI, today"
+ },
+ {
+  "id": 36,
+  "group": "payment",
+  "tags": [
+   "payment"
+  ],
+  "utterance": "300 lunch",
+  "expect": {
+   "entries": [
+    {
+     "description": "lunch",
+     "amount": 300,
+     "payment": "UPI",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "₹300, lunch, food, UPI, today"
+ },
+ {
+  "id": 37,
+  "group": "payment",
+  "tags": [
+   "payment"
+  ],
+  "utterance": "Paid 450 for dinner",
+  "expect": {
+   "entries": [
+    {
+     "description": "dinner",
+     "amount": 450,
+     "payment": "UPI",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "₹450, dinner, food, UPI, today"
+ },
+ {
+  "id": 38,
+  "group": "payment",
+  "tags": [
+   "payment"
+  ],
+  "utterance": "I used cash for the 100 rupee coffee",
+  "expect": {
+   "entries": [
+    {
+     "description": "coffee",
+     "amount": 100,
+     "payment": "Cash",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "₹100, coffee, food/beverage, cash, today"
+ },
+ {
+  "id": 39,
+  "group": "payment",
+  "tags": [
+   "payment"
+  ],
+  "utterance": "Spent 600 on groceries with my card",
+  "expect": {
+   "entries": [
+    {
+     "description": "groceries",
+     "amount": 600,
+     "payment": "Card",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "₹600, groceries, food/groceries, card, today"
+ },
+ {
+  "id": 40,
+  "group": "payment",
+  "tags": [
+   "payment"
+  ],
+  "utterance": "150 chai, cash",
+  "expect": {
+   "entries": [
+    {
+     "description": "chai",
+     "amount": 150,
+     "payment": "Cash",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "₹150, chai, food/beverage, cash, today"
+ },
+ {
+  "id": 41,
+  "group": "dates",
+  "tags": [
+   "dates",
+   "needs-spoken-dates"
+  ],
+  "utterance": "I spent 400 on dinner yesterday",
+  "expect": {
+   "entries": [
+    {
+     "description": "dinner",
+     "amount": 400,
+     "payment": "UPI",
+     "dayOffset": -1
+    }
+   ]
+  },
+  "doc": "₹400, dinner, food, UPI, T−1"
+ },
+ {
+  "id": 42,
+  "group": "dates",
+  "tags": [
+   "dates",
+   "needs-spoken-dates"
+  ],
+  "utterance": "Yesterday's lunch was 300",
+  "expect": {
+   "entries": [
+    {
+     "description": "lunch",
+     "amount": 300,
+     "payment": "UPI",
+     "dayOffset": -1
+    }
+   ]
+  },
+  "doc": "₹300, lunch, food, UPI, T−1"
+ },
+ {
+  "id": 43,
+  "group": "dates",
+  "tags": [
+   "dates",
+   "needs-spoken-dates"
+  ],
+  "utterance": "I bought coffee for 180 this morning",
+  "expect": {
+   "entries": [
+    {
+     "description": "coffee",
+     "amount": 180,
+     "payment": "UPI",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "₹180, coffee, food/beverage, UPI, T, morning"
+ },
+ {
+  "id": 44,
+  "group": "dates",
+  "tags": [
+   "dates",
+   "needs-spoken-dates"
+  ],
+  "utterance": "Spent 500 on dinner last night",
+  "expect": {
+   "entries": [
+    {
+     "description": "dinner",
+     "amount": 500,
+     "payment": "UPI",
+     "dayOffset": -1
+    }
+   ]
+  },
+  "doc": "₹500, dinner, food, UPI, T−1, night"
+ },
+ {
+  "id": 45,
+  "group": "dates",
+  "tags": [
+   "dates",
+   "needs-spoken-dates"
+  ],
+  "utterance": "Day before yesterday I spent 250 on lunch",
+  "expect": {
+   "entries": [
+    {
+     "description": "lunch",
+     "amount": 250,
+     "payment": "UPI",
+     "dayOffset": -2
+    }
+   ]
+  },
+  "doc": "₹250, lunch, food, UPI, T−2"
+ },
+ {
+  "id": 46,
+  "group": "dates",
+  "tags": [
+   "dates",
+   "needs-spoken-dates"
+  ],
+  "utterance": "I paid 700 for groceries two days ago",
+  "expect": {
+   "entries": [
+    {
+     "description": "groceries",
+     "amount": 700,
+     "payment": "UPI",
+     "dayOffset": -2
+    }
+   ]
+  },
+  "doc": "₹700, groceries, food/groceries, UPI, T−2"
+ },
+ {
+  "id": 47,
+  "group": "dates",
+  "tags": [
+   "dates",
+   "needs-spoken-dates"
+  ],
+  "utterance": "This morning, 100 for chai",
+  "expect": {
+   "entries": [
+    {
+     "description": "chai",
+     "amount": 100,
+     "payment": "UPI",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "₹100, chai, food/beverage, UPI, T, morning"
+ },
+ {
+  "id": 48,
+  "group": "dates",
+  "tags": [
+   "dates",
+   "needs-spoken-dates"
+  ],
+  "utterance": "Last night I spent 350 on food",
+  "expect": {
+   "entries": [
+    {
+     "description": null,
+     "amount": 350,
+     "payment": "UPI",
+     "dayOffset": -1
+    }
+   ]
+  },
+  "doc": "₹350, food, food, UPI, T−1, night"
+ },
+ {
+  "id": 49,
+  "group": "dates",
+  "tags": [
+   "dates",
+   "needs-spoken-dates"
+  ],
+  "utterance": "On September 3rd I spent 900 on shopping",
+  "expect": {
+   "entries": [
+    {
+     "amount": 900,
+     "payment": "UPI",
+     "dayOffset": null,
+     "calendar": "September 3rd"
+    }
+   ]
+  },
+  "doc": "₹900, shopping, shopping, UPI, T−3"
+ },
+ {
+  "id": 50,
+  "group": "dates",
+  "tags": [
+   "dates",
+   "needs-spoken-dates"
+  ],
+  "utterance": "I spent 250 on lunch today",
+  "expect": {
+   "entries": [
+    {
+     "description": "lunch",
+     "amount": 250,
+     "payment": "UPI",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "₹250, lunch, food, UPI, T"
+ },
+ {
+  "id": 51,
+  "group": "multiple",
+  "tags": [
+   "multiple"
+  ],
+  "utterance": "300 lunch and 150 coffee",
+  "expect": {
+   "entries": [
+    {
+     "amount": 300,
+     "description": "lunch",
+     "payment": "UPI",
+     "dayOffset": 0
+    },
+    {
+     "amount": 150,
+     "description": "coffee",
+     "payment": "UPI",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "2 transactions: ₹300 lunch, ₹150 coffee"
+ },
+ {
+  "id": 52,
+  "group": "multiple",
+  "tags": [
+   "multiple"
+  ],
+  "utterance": "Spent 200 on breakfast, 300 on lunch, and 400 on dinner",
+  "expect": {
+   "entries": [
+    {
+     "amount": 200,
+     "description": "breakfast",
+     "payment": "UPI",
+     "dayOffset": 0
+    },
+    {
+     "amount": 300,
+     "description": "lunch",
+     "payment": "UPI",
+     "dayOffset": 0
+    },
+    {
+     "amount": 400,
+     "description": "dinner",
+     "payment": "UPI",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "3 transactions"
+ },
+ {
+  "id": 53,
+  "group": "multiple",
+  "tags": [
+   "multiple"
+  ],
+  "utterance": "I got coffee for 120 and snacks for 80",
+  "expect": {
+   "entries": [
+    {
+     "amount": 120,
+     "description": "coffee",
+     "payment": "UPI",
+     "dayOffset": 0
+    },
+    {
+     "amount": 80,
+     "description": "snacks",
+     "payment": "UPI",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "2 transactions"
+ },
+ {
+  "id": 54,
+  "group": "multiple",
+  "tags": [
+   "multiple"
+  ],
+  "utterance": "250 lunch, 100 chai, 150 snacks",
+  "expect": {
+   "entries": [
+    {
+     "amount": 250,
+     "description": "lunch",
+     "payment": "UPI",
+     "dayOffset": 0
+    },
+    {
+     "amount": 100,
+     "description": "chai",
+     "payment": "UPI",
+     "dayOffset": 0
+    },
+    {
+     "amount": 150,
+     "description": "snacks",
+     "payment": "UPI",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "3 transactions"
+ },
+ {
+  "id": 55,
+  "group": "multiple",
+  "tags": [
+   "multiple"
+  ],
+  "utterance": "Spent 500 on groceries and 200 on toiletries",
+  "expect": {
+   "entries": [
+    {
+     "amount": 500,
+     "description": "groceries",
+     "payment": "UPI",
+     "dayOffset": 0
+    },
+    {
+     "amount": 200,
+     "description": "toiletries",
+     "payment": "UPI",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "2 transactions"
+ },
+ {
+  "id": 56,
+  "group": "multiple",
+  "tags": [
+   "multiple"
+  ],
+  "utterance": "I paid 300 for lunch and 100 for coffee in cash",
+  "expect": {
+   "entries": [
+    {
+     "amount": 300,
+     "description": "lunch",
+     "payment": "Cash",
+     "dayOffset": 0
+    },
+    {
+     "amount": 100,
+     "description": "coffee",
+     "payment": "Cash",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "2 transactions, both cash"
+ },
+ {
+  "id": 57,
+  "group": "multiple",
+  "tags": [
+   "multiple",
+   "needs-spoken-dates"
+  ],
+  "utterance": "Yesterday I spent 400 on dinner and 100 on dessert",
+  "expect": {
+   "entries": [
+    {
+     "amount": 400,
+     "description": "dinner",
+     "payment": "UPI",
+     "dayOffset": -1
+    },
+    {
+     "amount": 100,
+     "description": "dessert",
+     "payment": "UPI",
+     "dayOffset": -1
+    }
+   ]
+  },
+  "doc": "2 transactions, both T−1"
+ },
+ {
+  "id": 58,
+  "group": "multiple",
+  "tags": [
+   "multiple"
+  ],
+  "utterance": "Today I bought breakfast for 150, coffee for 80, and lunch for 250",
+  "expect": {
+   "entries": [
+    {
+     "amount": 150,
+     "description": "breakfast",
+     "payment": "UPI",
+     "dayOffset": 0
+    },
+    {
+     "amount": 80,
+     "description": "coffee",
+     "payment": "UPI",
+     "dayOffset": 0
+    },
+    {
+     "amount": 250,
+     "description": "lunch",
+     "payment": "UPI",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "3 transactions"
+ },
+ {
+  "id": 59,
+  "group": "multiple",
+  "tags": [
+   "multiple"
+  ],
+  "utterance": "200 for chai and 600 for groceries, groceries was cash",
+  "expect": {
+   "entries": [
+    {
+     "amount": 200,
+     "description": "chai",
+     "payment": "UPI",
+     "dayOffset": 0
+    },
+    {
+     "amount": 600,
+     "description": "groceries",
+     "payment": "Cash",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "2 transactions; chai UPI, groceries cash"
+ },
+ {
+  "id": 60,
+  "group": "multiple",
+  "tags": [
+   "multiple"
+  ],
+  "utterance": "Lunch was 300 and dinner was 500, both paid cash",
+  "expect": {
+   "entries": [
+    {
+     "amount": 300,
+     "description": "lunch",
+     "payment": "Cash",
+     "dayOffset": 0
+    },
+    {
+     "amount": 500,
+     "description": "dinner",
+     "payment": "Cash",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "2 transactions, both cash"
+ },
+ {
+  "id": 61,
+  "group": "correction",
+  "tags": [
+   "correction",
+   "needs-correction"
+  ],
+  "utterance": "Actually, lunch was 350.",
+  "expect": {
+   "conversation": {
+    "before": [
+     {
+      "amount": 300,
+      "description": "lunch",
+      "payment": "UPI",
+      "dayOffset": 0
+     }
+    ],
+    "say": "Actually, lunch was 350.",
+    "after": [
+     {
+      "amount": 350,
+      "description": "lunch",
+      "payment": "UPI",
+      "dayOffset": 0
+     }
+    ]
+   }
+  },
+  "doc": ""
+ },
+ {
+  "id": 62,
+  "group": "correction",
+  "tags": [
+   "correction",
+   "needs-correction"
+  ],
+  "utterance": "Actually, make that 180.",
+  "expect": {
+   "conversation": {
+    "before": [
+     {
+      "amount": 150,
+      "description": "coffee",
+      "payment": "UPI",
+      "dayOffset": 0
+     }
+    ],
+    "say": "Actually, make that 180.",
+    "after": [
+     {
+      "amount": 180,
+      "description": "coffee",
+      "payment": "UPI",
+      "dayOffset": 0
+     }
+    ]
+   }
+  },
+  "doc": ""
+ },
+ {
+  "id": 63,
+  "group": "correction",
+  "tags": [
+   "correction",
+   "needs-correction"
+  ],
+  "utterance": "No, wait, 550.",
+  "expect": {
+   "conversation": {
+    "before": [
+     {
+      "amount": 500,
+      "description": "dinner",
+      "payment": "UPI",
+      "dayOffset": 0
+     }
+    ],
+    "say": "No, wait, 550.",
+    "after": [
+     {
+      "amount": 550,
+      "description": "dinner",
+      "payment": "UPI",
+      "dayOffset": 0
+     }
+    ]
+   }
+  },
+  "doc": ""
+ },
+ {
+  "id": 64,
+  "group": "correction",
+  "tags": [
+   "correction",
+   "needs-correction"
+  ],
+  "utterance": "That's 280 actually.",
+  "expect": {
+   "conversation": {
+    "before": [
+     {
+      "amount": 250,
+      "description": "lunch",
+      "payment": "UPI",
+      "dayOffset": 0
+     }
+    ],
+    "say": "That's 280 actually.",
+    "after": [
+     {
+      "amount": 280,
+      "description": "lunch",
+      "payment": "UPI",
+      "dayOffset": 0
+     }
+    ]
+   }
+  },
+  "doc": ""
+ },
+ {
+  "id": 65,
+  "group": "correction",
+  "tags": [
+   "correction",
+   "needs-correction"
+  ],
+  "utterance": "I mean 450.",
+  "expect": {
+   "conversation": {
+    "before": [
+     {
+      "amount": 400,
+      "description": "groceries",
+      "payment": "UPI",
+      "dayOffset": 0
+     }
+    ],
+    "say": "I mean 450.",
+    "after": [
+     {
+      "amount": 450,
+      "description": "groceries",
+      "payment": "UPI",
+      "dayOffset": 0
+     }
+    ]
+   }
+  },
+  "doc": ""
+ },
+ {
+  "id": 66,
+  "group": "correction",
+  "tags": [
+   "correction",
+   "needs-correction"
+  ],
+  "utterance": "The coffee was 220.",
+  "expect": {
+   "conversation": {
+    "before": [
+     {
+      "amount": 200,
+      "description": "coffee",
+      "payment": "UPI",
+      "dayOffset": 0
+     }
+    ],
+    "say": "The coffee was 220.",
+    "after": [
+     {
+      "amount": 220,
+      "description": "coffee",
+      "payment": "UPI",
+      "dayOffset": 0
+     }
+    ]
+   }
+  },
+  "doc": ""
+ },
+ {
+  "id": 67,
+  "group": "correction",
+  "tags": [
+   "correction",
+   "needs-correction"
+  ],
+  "utterance": "Actually, the coffee was 180.",
+  "expect": {
+   "conversation": {
+    "before": [
+     {
+      "amount": 300,
+      "description": "lunch",
+      "payment": "UPI",
+      "dayOffset": 0
+     },
+     {
+      "amount": 150,
+      "description": "coffee",
+      "payment": "UPI",
+      "dayOffset": 0
+     }
+    ],
+    "say": "Actually, the coffee was 180.",
+    "after": [
+     {
+      "amount": 300,
+      "description": "lunch",
+      "payment": "UPI",
+      "dayOffset": 0
+     },
+     {
+      "amount": 180,
+      "description": "coffee",
+      "payment": "UPI",
+      "dayOffset": 0
+     }
+    ]
+   }
+  },
+  "doc": ""
+ },
+ {
+  "id": 68,
+  "group": "correction",
+  "tags": [
+   "correction",
+   "needs-correction"
+  ],
+  "utterance": "No, I paid 600.",
+  "expect": {
+   "conversation": {
+    "before": [
+     {
+      "amount": 500,
+      "description": "dinner",
+      "payment": "UPI",
+      "dayOffset": 0
+     }
+    ],
+    "say": "No, I paid 600.",
+    "after": [
+     {
+      "amount": 600,
+      "description": "dinner",
+      "payment": "UPI",
+      "dayOffset": 0
+     }
+    ]
+   }
+  },
+  "doc": ""
+ },
+ {
+  "id": 69,
+  "group": "correction",
+  "tags": [
+   "correction",
+   "needs-correction"
+  ],
+  "utterance": "Change that to 300.",
+  "expect": {
+   "conversation": {
+    "before": [
+     {
+      "amount": 250,
+      "description": "lunch",
+      "payment": "UPI",
+      "dayOffset": 0
+     }
+    ],
+    "say": "Change that to 300.",
+    "after": [
+     {
+      "amount": 300,
+      "description": "lunch",
+      "payment": "UPI",
+      "dayOffset": 0
+     }
+    ]
+   }
+  },
+  "doc": ""
+ },
+ {
+  "id": 70,
+  "group": "correction",
+  "tags": [
+   "correction",
+   "needs-correction"
+  ],
+  "utterance": "Actually, make it 120 cash.",
+  "expect": {
+   "conversation": {
+    "before": [
+     {
+      "amount": 100,
+      "description": "chai",
+      "payment": "UPI",
+      "dayOffset": 0
+     }
+    ],
+    "say": "Actually, make it 120 cash.",
+    "after": [
+     {
+      "amount": 120,
+      "description": "chai",
+      "payment": "Cash",
+      "dayOffset": 0
+     }
+    ]
+   }
+  },
+  "doc": ""
+ },
+ {
+  "id": 71,
+  "group": "self-correction",
+  "tags": [
+   "self-correction"
+  ],
+  "utterance": "Spent 250... no, wait, 280 on lunch.",
+  "expect": {
+   "entries": [
+    {
+     "description": "lunch",
+     "amount": 280,
+     "payment": "UPI",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "₹280 lunch"
+ },
+ {
+  "id": 72,
+  "group": "self-correction",
+  "tags": [
+   "self-correction"
+  ],
+  "utterance": "Coffee was 100, actually 120.",
+  "expect": {
+   "entries": [
+    {
+     "description": "coffee",
+     "amount": 120,
+     "payment": "UPI",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "₹120 coffee"
+ },
+ {
+  "id": 73,
+  "group": "self-correction",
+  "tags": [
+   "self-correction"
+  ],
+  "utterance": "I paid 500... sorry, 550 for dinner.",
+  "expect": {
+   "entries": [
+    {
+     "description": "dinner",
+     "amount": 550,
+     "payment": "UPI",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "₹550 dinner"
+ },
+ {
+  "id": 74,
+  "group": "self-correction",
+  "tags": [
+   "self-correction"
+  ],
+  "utterance": "Lunch was 300, no, 350.",
+  "expect": {
+   "entries": [
+    {
+     "description": "lunch",
+     "amount": 350,
+     "payment": "UPI",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "₹350 lunch"
+ },
+ {
+  "id": 75,
+  "group": "self-correction",
+  "tags": [
+   "self-correction"
+  ],
+  "utterance": "Spent 200 on chai... actually make that 180.",
+  "expect": {
+   "entries": [
+    {
+     "description": "chai",
+     "amount": 180,
+     "payment": "UPI",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "₹180 chai"
+ },
+ {
+  "id": 76,
+  "group": "self-correction",
+  "tags": [
+   "self-correction"
+  ],
+  "utterance": "I spent 400 on groceries, wait, it was 450 cash.",
+  "expect": {
+   "entries": [
+    {
+     "description": "groceries",
+     "amount": 450,
+     "payment": "Cash",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "₹450 groceries, cash"
+ },
+ {
+  "id": 77,
+  "group": "self-correction",
+  "tags": [
+   "self-correction"
+  ],
+  "utterance": "300 for lunch, no 320, sorry.",
+  "expect": {
+   "entries": [
+    {
+     "description": "lunch",
+     "amount": 320,
+     "payment": "UPI",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "₹320 lunch"
+ },
+ {
+  "id": 78,
+  "group": "self-correction",
+  "tags": [
+   "self-correction"
+  ],
+  "utterance": "I paid 150 for coffee, actually it was 170.",
+  "expect": {
+   "entries": [
+    {
+     "description": "coffee",
+     "amount": 170,
+     "payment": "UPI",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "₹170 coffee"
+ },
+ {
+  "id": 79,
+  "group": "self-correction",
+  "tags": [
+   "self-correction"
+  ],
+  "utterance": "Dinner was 600... no, 650.",
+  "expect": {
+   "entries": [
+    {
+     "description": "dinner",
+     "amount": 650,
+     "payment": "UPI",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "₹650 dinner"
+ },
+ {
+  "id": 80,
+  "group": "self-correction",
+  "tags": [
+   "self-correction"
+  ],
+  "utterance": "Uh, 100 for chai, actually 120 through cash.",
+  "expect": {
+   "entries": [
+    {
+     "description": "chai",
+     "amount": 120,
+     "payment": "Cash",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "₹120 chai, cash"
+ },
+ {
+  "id": 81,
+  "group": "ambiguity",
+  "tags": [
+   "ambiguity"
+  ],
+  "utterance": "Paid Rahul 500.",
+  "expect": {
+   "clarify": true
+  },
+  "doc": "Determine whether this is money paid to Rahul or potentially another interpretation if transaction direction matters"
+ },
+ {
+  "id": 82,
+  "group": "ambiguity",
+  "tags": [
+   "ambiguity"
+  ],
+  "utterance": "Rahul paid 500.",
+  "expect": {
+   "clarify": true
+  },
+  "doc": "Determine whether Rahul paid the user or whether user recorded Rahul's payment"
+ },
+ {
+  "id": 83,
+  "group": "ambiguity",
+  "tags": [
+   "ambiguity"
+  ],
+  "utterance": "Spent 500.",
+  "expect": {
+   "amountOnly": 500
+  },
+  "doc": "Amount known, but description/category unknown. Record without inventing category, or ask only if category is required"
+ },
+ {
+  "id": 84,
+  "group": "ambiguity",
+  "tags": [
+   "ambiguity"
+  ],
+  "utterance": "Paid for it, 300.",
+  "expect": {
+   "amountOnly": 300
+  },
+  "doc": "Amount known; description unknown. Do not invent description"
+ },
+ {
+  "id": 85,
+  "group": "ambiguity",
+  "tags": [
+   "ambiguity",
+   "needs-correction"
+  ],
+  "utterance": "That was 200.",
+  "expect": {
+   "clarify": true
+  },
+  "doc": "If no active transaction context, clarification required"
+ },
+ {
+  "id": 86,
+  "group": "ambiguity",
+  "tags": [
+   "ambiguity",
+   "needs-correction"
+  ],
+  "utterance": "Actually, make that 300.",
+  "expect": {
+   "clarify": true
+  },
+  "doc": "If multiple recent transactions are plausible, ask which transaction"
+ },
+ {
+  "id": 87,
+  "group": "ambiguity",
+  "tags": [
+   "ambiguity"
+  ],
+  "utterance": "I paid 500 for Rahul.",
+  "expect": {
+   "clarify": true
+  },
+  "doc": "Determine whether this means a payment made on Rahul's behalf or money transferred to Rahul, depending on product semantics"
+ },
+ {
+  "id": 88,
+  "group": "ambiguity",
+  "tags": [
+   "ambiguity"
+  ],
+  "utterance": "Dinner, 500.",
+  "expect": {
+   "entries": [
+    {
+     "amount": 500,
+     "description": "dinner",
+     "payment": "UPI",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "₹500 dinner, UPI, today. Not ambiguous despite unusual word order"
+ },
+ {
+  "id": 89,
+  "group": "ambiguity",
+  "tags": [
+   "ambiguity"
+  ],
+  "utterance": "Coffee and 200.",
+  "expect": {
+   "entries": [
+    {
+     "amount": 200,
+     "description": "coffee",
+     "payment": "UPI",
+     "dayOffset": 0
+    }
+   ],
+   "clarifyOk": true
+  },
+  "doc": "Likely ₹200 coffee, but test whether the model handles reversed ordering correctly"
+ },
+ {
+  "id": 90,
+  "group": "ambiguity",
+  "tags": [
+   "ambiguity"
+  ],
+  "utterance": "Paid 300.",
+  "expect": {
+   "amountOnly": 300
+  },
+  "doc": "₹300 payment, UPI, today, but description/category remains unknown"
+ },
+ {
+  "id": 91,
+  "group": "complex",
+  "tags": [
+   "complex",
+   "needs-spoken-dates"
+  ],
+  "utterance": "I spent 350 on lunch yesterday, cash.",
+  "expect": {
+   "entries": [
+    {
+     "description": "lunch",
+     "amount": 350,
+     "payment": "Cash",
+     "dayOffset": -1
+    }
+   ]
+  },
+  "doc": "₹350 lunch, food, cash, T−1"
+ },
+ {
+  "id": 92,
+  "group": "complex",
+  "tags": [
+   "complex",
+   "needs-spoken-dates"
+  ],
+  "utterance": "This morning I paid 120 for chai and 300 for breakfast.",
+  "expect": {
+   "entries": [
+    {
+     "amount": 120,
+     "description": "chai",
+     "payment": "UPI",
+     "dayOffset": 0
+    },
+    {
+     "amount": 300,
+     "description": "breakfast",
+     "payment": "UPI",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "2 transactions, T, UPI"
+ },
+ {
+  "id": 93,
+  "group": "complex",
+  "tags": [
+   "complex",
+   "needs-spoken-dates"
+  ],
+  "utterance": "Yesterday's dinner was 600, but I paid cash.",
+  "expect": {
+   "entries": [
+    {
+     "description": "dinner",
+     "amount": 600,
+     "payment": "Cash",
+     "dayOffset": -1
+    }
+   ]
+  },
+  "doc": "₹600 dinner, cash, T−1"
+ },
+ {
+  "id": 94,
+  "group": "complex",
+  "tags": [
+   "complex"
+  ],
+  "utterance": "I spent around 250 on lunch, actually it was 280.",
+  "expect": {
+   "entries": [
+    {
+     "description": "lunch",
+     "amount": 280,
+     "payment": "UPI",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "₹280 lunch, UPI, today"
+ },
+ {
+  "id": 95,
+  "group": "complex",
+  "tags": [
+   "complex",
+   "needs-spoken-dates"
+  ],
+  "utterance": "Paid Rahul 500 through UPI yesterday.",
+  "expect": {
+   "entries": [
+    {
+     "description": "Rahul",
+     "amount": 500,
+     "payment": "UPI",
+     "dayOffset": -1
+    }
+   ]
+  },
+  "doc": "₹500, Rahul, UPI, T−1, subject to transaction-direction semantics"
+ },
+ {
+  "id": 96,
+  "group": "complex",
+  "tags": [
+   "complex"
+  ],
+  "utterance": "I got groceries for 1,250 and paid cash.",
+  "expect": {
+   "entries": [
+    {
+     "description": "groceries",
+     "amount": 1250,
+     "payment": "Cash",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "₹1,250 groceries, cash, today"
+ },
+ {
+  "id": 97,
+  "group": "complex",
+  "tags": [
+   "complex"
+  ],
+  "utterance": "Spent 300 on lunch, 150 on coffee, actually coffee was 180.",
+  "expect": {
+   "entries": [
+    {
+     "amount": 300,
+     "description": "lunch",
+     "payment": "UPI",
+     "dayOffset": 0
+    },
+    {
+     "amount": 180,
+     "description": "coffee",
+     "payment": "UPI",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "2 transactions: lunch ₹300, coffee ₹180"
+ },
+ {
+  "id": 98,
+  "group": "complex",
+  "tags": [
+   "complex",
+   "needs-spoken-dates"
+  ],
+  "utterance": "Uh yesterday I had lunch for about 400, no sorry, 450, and I paid cash.",
+  "expect": {
+   "entries": [
+    {
+     "description": "lunch",
+     "amount": 450,
+     "payment": "Cash",
+     "dayOffset": -1
+    }
+   ]
+  },
+  "doc": "₹450 lunch, cash, T−1"
+ },
+ {
+  "id": 99,
+  "group": "complex",
+  "tags": [
+   "complex",
+   "needs-spoken-dates"
+  ],
+  "utterance": "I spent 200 on coffee today and 300 on lunch yesterday.",
+  "expect": {
+   "entries": [
+    {
+     "amount": 200,
+     "description": "coffee",
+     "payment": "UPI",
+     "dayOffset": 0
+    },
+    {
+     "amount": 300,
+     "description": "lunch",
+     "payment": "UPI",
+     "dayOffset": -1
+    }
+   ]
+  },
+  "doc": "2 transactions: ₹200 coffee T, ₹300 lunch T−1"
+ },
+ {
+  "id": 100,
+  "group": "complex",
+  "tags": [
+   "complex",
+   "needs-spoken-dates"
+  ],
+  "utterance": "Today I spent 300 on lunch, 150 on coffee, paid the lunch in cash, and actually the coffee was 180.",
+  "expect": {
+   "entries": [
+    {
+     "amount": 300,
+     "description": "lunch",
+     "payment": "Cash",
+     "dayOffset": 0
+    },
+    {
+     "amount": 180,
+     "description": "coffee",
+     "payment": "UPI",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "2 transactions: lunch ₹300 cash T; coffee ₹180 UPI T"
+ },
+ {
+  "id": 101,
+  "group": "indian-numbers",
+  "tags": [
+   "indian-numbers",
+   "hinglish-numbers"
+  ],
+  "utterance": "Dhai sau ka lunch",
+  "expect": {
+   "entries": [
+    {
+     "description": "lunch",
+     "amount": 250,
+     "payment": "UPI",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "₹250, lunch, food, UPI, T"
+ },
+ {
+  "id": 102,
+  "group": "indian-numbers",
+  "tags": [
+   "indian-numbers",
+   "hinglish-numbers"
+  ],
+  "utterance": "Dhedh sau chai",
+  "expect": {
+   "entries": [
+    {
+     "description": "chai",
+     "amount": 150,
+     "payment": "UPI",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "₹150, chai, food/beverage, UPI, T"
+ },
+ {
+  "id": 103,
+  "group": "indian-numbers",
+  "tags": [
+   "indian-numbers",
+   "hinglish-numbers"
+  ],
+  "utterance": "Sava sau for auto",
+  "expect": {
+   "entries": [
+    {
+     "description": "auto",
+     "amount": 125,
+     "payment": "UPI",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "₹125, auto, transport, UPI, T"
+ },
+ {
+  "id": 104,
+  "group": "indian-numbers",
+  "tags": [
+   "indian-numbers",
+   "hinglish-numbers"
+  ],
+  "utterance": "Paune do sau on breakfast",
+  "expect": {
+   "entries": [
+    {
+     "description": "breakfast",
+     "amount": 175,
+     "payment": "UPI",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "₹175, breakfast, food, UPI, T"
+ },
+ {
+  "id": 105,
+  "group": "indian-numbers",
+  "tags": [
+   "indian-numbers",
+   "hinglish-numbers"
+  ],
+  "utterance": "Ek lakh for the deposit",
+  "expect": {
+   "entries": [
+    {
+     "description": "deposit",
+     "amount": 100000,
+     "payment": "UPI",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "₹100,000, deposit, UPI, T"
+ },
+ {
+  "id": 106,
+  "group": "indian-numbers",
+  "tags": [
+   "indian-numbers",
+   "hinglish-numbers"
+  ],
+  "utterance": "Spent dedh lakh on the car",
+  "expect": {
+   "entries": [
+    {
+     "description": "car",
+     "amount": 150000,
+     "payment": "UPI",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "₹150,000, car, UPI, T"
+ },
+ {
+  "id": 107,
+  "group": "indian-numbers",
+  "tags": [
+   "indian-numbers",
+   "hinglish-numbers"
+  ],
+  "utterance": "Paanch sau on groceries",
+  "expect": {
+   "entries": [
+    {
+     "description": "groceries",
+     "amount": 500,
+     "payment": "UPI",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "₹500, groceries, food/groceries, UPI, T"
+ },
+ {
+  "id": 108,
+  "group": "indian-numbers",
+  "tags": [
+   "indian-numbers",
+   "hinglish-numbers"
+  ],
+  "utterance": "Teen sau paachas for dinner",
+  "expect": {
+   "entries": [
+    {
+     "description": "dinner",
+     "amount": 350,
+     "payment": "UPI",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "₹350, dinner, food, UPI, T"
+ },
+ {
+  "id": 109,
+  "group": "indian-numbers",
+  "tags": [
+   "indian-numbers",
+   "hinglish-numbers"
+  ],
+  "utterance": "Do hazaar for the phone bill",
+  "expect": {
+   "entries": [
+    {
+     "description": "phone bill",
+     "amount": 2000,
+     "payment": "UPI",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "₹2,000, phone bill, bills, UPI, T"
+ },
+ {
+  "id": 110,
+  "group": "indian-numbers",
+  "tags": [
+   "indian-numbers",
+   "hinglish-numbers"
+  ],
+  "utterance": "Saadhe teen hazaar on shopping",
+  "expect": {
+   "entries": [
+    {
+     "description": "shopping",
+     "amount": 3500,
+     "payment": "UPI",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "₹3,500, shopping, shopping, UPI, T"
+ },
+ {
+  "id": 111,
+  "group": "indian-numbers",
+  "tags": [
+   "indian-numbers",
+   "hinglish-numbers"
+  ],
+  "utterance": "I paid dhai sau for the cab",
+  "expect": {
+   "entries": [
+    {
+     "description": "cab",
+     "amount": 250,
+     "payment": "UPI",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "₹250, cab, transport, UPI, T"
+ },
+ {
+  "id": 112,
+  "group": "indian-numbers",
+  "tags": [
+   "indian-numbers",
+   "hinglish-numbers"
+  ],
+  "utterance": "Chai was bees rupees",
+  "expect": {
+   "entries": [
+    {
+     "description": "chai",
+     "amount": 20,
+     "payment": "UPI",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "₹20, chai, food/beverage, UPI, T"
+ },
+ {
+  "id": 113,
+  "group": "indian-numbers",
+  "tags": [
+   "indian-numbers",
+   "hinglish-numbers"
+  ],
+  "utterance": "Gave the maid panch hazaar this month",
+  "expect": {
+   "entries": [
+    {
+     "description": "maid",
+     "amount": 5000,
+     "payment": "UPI",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "₹5,000, maid, UPI, T"
+ },
+ {
+  "id": 114,
+  "group": "indian-numbers",
+  "tags": [
+   "indian-numbers",
+   "hinglish-numbers"
+  ],
+  "utterance": "Two and a half thousand for the repair",
+  "expect": {
+   "entries": [
+    {
+     "description": "repair",
+     "amount": 2500,
+     "payment": "UPI",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "₹2,500, repair, UPI, T"
+ },
+ {
+  "id": 115,
+  "group": "indian-numbers",
+  "tags": [
+   "indian-numbers",
+   "hinglish-numbers"
+  ],
+  "utterance": "Spent 2.5k on dinner",
+  "expect": {
+   "entries": [
+    {
+     "description": "dinner",
+     "amount": 2500,
+     "payment": "UPI",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "₹2,500, dinner, food, UPI, T"
+ },
+ {
+  "id": 116,
+  "group": "indian-numbers",
+  "tags": [
+   "indian-numbers",
+   "hinglish-numbers"
+  ],
+  "utterance": "Lunch 250 rupaye",
+  "expect": {
+   "entries": [
+    {
+     "description": "lunch",
+     "amount": 250,
+     "payment": "UPI",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "₹250, lunch, food, UPI, T"
+ },
+ {
+  "id": 117,
+  "group": "indian-numbers",
+  "tags": [
+   "indian-numbers",
+   "hinglish-numbers"
+  ],
+  "utterance": "Ek hazaar do sau for medicines",
+  "expect": {
+   "entries": [
+    {
+     "description": "medicines",
+     "amount": 1200,
+     "payment": "UPI",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "₹1,200, medicines, health, UPI, T"
+ },
+ {
+  "id": 118,
+  "group": "indian-numbers",
+  "tags": [
+   "indian-numbers",
+   "hinglish-numbers"
+  ],
+  "utterance": "Aadha lakh for the wedding gift",
+  "expect": {
+   "entries": [
+    {
+     "description": "wedding gift",
+     "amount": 50000,
+     "payment": "UPI",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "₹50,000, wedding gift, UPI, T"
+ },
+ {
+  "id": 119,
+  "group": "indian-numbers",
+  "tags": [
+   "indian-numbers",
+   "hinglish-numbers"
+  ],
+  "utterance": "Sattar rupees for parking",
+  "expect": {
+   "entries": [
+    {
+     "description": "parking",
+     "amount": 70,
+     "payment": "UPI",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "₹70, parking, transport, UPI, T"
+ },
+ {
+  "id": 120,
+  "group": "indian-numbers",
+  "tags": [
+   "indian-numbers",
+   "hinglish-numbers"
+  ],
+  "utterance": "Chhe sau pachhattar on the bill",
+  "expect": {
+   "entries": [
+    {
+     "description": "bill",
+     "amount": 675,
+     "payment": "UPI",
+     "dayOffset": 0
+    }
+   ]
+  },
+  "doc": "₹675, bill, UPI, T"
+ }
+]
