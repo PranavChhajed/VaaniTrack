@@ -38,7 +38,7 @@ export type RecorderResult =
 
 /** Safari (including iOS) cannot produce webm; it records mp4/aac. Chrome and
  *  Firefox prefer webm/opus. Ask the browser rather than sniffing the UA. */
-function pickMimeType(): string | undefined {
+export function pickMimeType(): string | undefined {
   if (typeof MediaRecorder === "undefined") return undefined;
   const candidates = [
     "audio/webm;codecs=opus",

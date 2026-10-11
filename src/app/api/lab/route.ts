@@ -27,10 +27,11 @@ const PREFIX = "lab";
 const base = () => process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/+$/, "") ?? null;
 const key = () => process.env.SUPABASE_SECRET_KEY ?? null;
 
-/** `<session>/<line id>__<condition>__<take>.<ext>`, nothing else is accepted. */
+/** `<session>/<line id>__<condition>__<take>__<variant>.<ext>`, nothing else is accepted. */
 const SESSION = /^[a-z0-9-]{1,40}$/;
 const LINE = /^[a-z0-9]{1,8}$/;
 const CONDITION = /^(quiet|noisy|moving|fast|mumbled)$/;
+const VARIANT = /^(plain|boost)$/;
 
 function extFor(mime: string): string {
   if (mime.includes("mp4") || mime.includes("m4a") || mime.includes("aac")) return "mp4";
@@ -75,15 +76,16 @@ export async function POST(request: Request) {
   const line = String(form?.get("line") ?? "");
   const condition = String(form?.get("condition") ?? "");
   const take = Number(form?.get("take") ?? 1);
+  const variant = String(form?.get("variant") ?? "plain");
   if (!(audio instanceof File) || audio.size < 800) {
     return NextResponse.json({ error: "No audio." }, { status: 400 });
   }
-  if (!SESSION.test(session) || !LINE.test(line) || !CONDITION.test(condition) || !(take >= 1 && take <= 9)) {
-    return NextResponse.json({ error: "Bad line, session or condition." }, { status: 400 });
+  if (!SESSION.test(session) || !LINE.test(line) || !CONDITION.test(condition) || !VARIANT.test(variant) || !(take >= 1 && take <= 9)) {
+    return NextResponse.json({ error: "Bad line, session, condition or variant." }, { status: 400 });
   }
 
   const mime = (audio.type || "audio/webm").split(";")[0].trim();
-  const path = `${PREFIX}/${session}/${line}__${condition}__${take}.${extFor(mime)}`;
+  const path = `${PREFIX}/${session}/${line}__${condition}__${take}__${variant}.${extFor(mime)}`;
   const res = await fetch(`${url}/storage/v1/object/${BUCKET}/${path}`, {
     method: "POST",
     headers: { apikey: secret, Authorization: `Bearer ${secret}`, "Content-Type": mime, "x-upsert": "true" },
@@ -100,7 +102,7 @@ export async function DELETE(request: Request) {
   const url = base(), secret = key();
   if (!url || !secret) return unconfigured();
   const { path } = (await request.json().catch(() => ({}))) as { path?: string };
-  if (!path || !new RegExp(`^[a-z0-9-]{1,40}/[a-z0-9]{1,8}__[a-z]+__[1-9]\\.(webm|mp4|ogg)$`).test(path)) {
+  if (!path || !new RegExp(`^[a-z0-9-]{1,40}/[a-z0-9]{1,8}__[a-z]+__[1-9]__[a-z]+\\.(webm|mp4|ogg)$`).test(path)) {
     return NextResponse.json({ error: "Bad path." }, { status: 400 });
   }
   const res = await fetch(`${url}/storage/v1/object/${BUCKET}/${PREFIX}/${path}`, {
