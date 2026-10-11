@@ -143,18 +143,29 @@ Windows and it is not an iOS audio session or a Home Screen app.
 
 ## Verified, and how
 
-On an Android 14 emulator (Google APIs with Chrome), with the APK signed by the
-real key and pointed at the branch preview:
+On an Android 14 emulator (Google APIs with Chrome, 4 GB), with the APK signed by
+the real key and pointed at the branch preview. The full list, with the browser
+side, is in `QA.md`.
 
-- The app opens full screen, with no browser bar, so the asset link verified.
-- The tile is offered by the widget picker (3 x 1), can be dropped on the home
-  screen, and tapping it opens the app and starts recording with no further tap.
-  The first time, Chrome and Android each ask once for the microphone.
-- Second use, from a cold start, goes straight to recording with no prompts.
-- The long-press shortcut does the same.
-- Opening by the app icon does not record.
-- A fresh install sees the tour and the recordings question first, and records
-  only after them.
+- The app opens full screen with no browser bar, so the asset link verified.
+- The tile is offered by the widget picker (2 x 2), can be dropped on the home
+  screen, and **moves**: five distinct frames across six captures.
+- Stretched to about 4 wide it becomes the full tile. Its microphone, **Type**,
+  **Journal** and **Insights** each open the right place; the tile as a whole
+  records, with no further tap. Five quick taps leave one task and one screen.
+- The long-press shortcut does the same as the tile. Opening by the app icon
+  does not record.
+- Upgrading the app in place keeps an already-placed widget and redraws it.
+- Back walks Insights, Journal, Capture, then leaves, with no trap or loop, and
+  relaunching straight after is fine.
+- Links to the site open in the app; a cold `/journal` goes to capture, and
+  `/journal?from=widget` stays.
+- A voice expense works end to end on the phone's microphone; a typed one
+  survives the app being killed; a revoked microphone leaves the app waiting on
+  Chrome's own prompt and recovers once allowed.
+- Large system text (130%, 200%), a 320dp-wide screen, a phone on its side, the
+  keyboard open, and dark mode all leave the app usable.
+- Only the internet permission is requested.
 
 ## Not verified
 

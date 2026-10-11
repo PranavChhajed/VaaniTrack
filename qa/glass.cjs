@@ -71,13 +71,13 @@ async function run(engineName, profile) {
   const nav = (label) => page.locator('nav[aria-label="Screens"]').getByText(label, { exact: true });
   let s = await tx();
   ok("Capture: lens at the first tab", s.x === 0 && s.op === 1, JSON.stringify(s));
-  await nav("Journal").tap(); await page.waitForTimeout(900);
+  await nav("Journal").tap(); await page.waitForURL(/journal/, { timeout: 20000 }); await page.waitForTimeout(900);
   s = await tx();
   ok("Journal: lens moved one tab", Math.abs(s.x - lensW) <= 2 && s.op === 1, JSON.stringify(s));
-  await nav("Insights").tap(); await page.waitForTimeout(900);
+  await nav("Insights").tap(); await page.waitForURL(/insights/, { timeout: 20000 }); await page.waitForTimeout(900);
   s = await tx();
   ok("Insights: lens moved two tabs", Math.abs(s.x - 2 * lensW) <= 3 && s.op === 1, JSON.stringify(s));
-  await nav("Capture").tap(); await page.waitForTimeout(900);
+  await nav("Capture").tap(); await page.waitForURL(/\/app/, { timeout: 20000 }); await page.waitForTimeout(900);
   s = await tx();
   ok("Capture again: lens came back", s.x === 0 && s.op === 1, JSON.stringify(s));
   await page.goto(BASE + "/you", { waitUntil: WAIT }); await page.waitForTimeout(900);
