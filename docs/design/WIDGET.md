@@ -98,6 +98,8 @@ website **the next time the app opens**.
 - Until it is collected, the tile says "N waiting for the app". Undo removes the
   last capture from the queue while it is still there.
 
+The queue is handed over when the app is **opened from its icon** (the launcher clears its task on launch, so this holds even when the app was left in recents). Resuming it from the app switcher does not run the launcher, so the tile’s expenses wait until the next icon open.
+
 **What the person sees:** an expense recorded from the tile is in the journal
 after they next open the app, not instantly. This is the cost of not having
 accounts or sync, and the tile says so.
