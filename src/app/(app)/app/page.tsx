@@ -6,6 +6,7 @@ import { CapturePanel } from "@/components/CapturePanel";
 import { FirstExpenseGuide } from "@/components/FirstExpenseGuide";
 import { TransactionDetail } from "@/components/TransactionDetail";
 import { TransactionList } from "@/components/TransactionList";
+import { prewarm } from "@/lib/prewarm";
 import { useAutoRecord } from "@/lib/useAutoRecord";
 import { useCapture } from "@/lib/useCapture";
 import { changedFields, reportDelete, reportEvent, reportTransactions } from "@/lib/report";
@@ -44,6 +45,18 @@ export default function Home() {
     start: auto.startByTap,
     error: auto.blocked ? null : captured.error,
   };
+
+  // Wake the server's capture functions now, while the person is looking at the screen, rather than
+  // on the first thing they say. Again when the app comes back from the background, where it will
+  // have been idle long enough for them to have stopped. See prewarm.ts.
+  useEffect(() => {
+    prewarm();
+    const onShow = () => {
+      if (document.visibilityState === "visible") prewarm();
+    };
+    document.addEventListener("visibilitychange", onShow);
+    return () => document.removeEventListener("visibilitychange", onShow);
+  }, []);
 
   // Reviews the Android widget could not decide on arrive as review cards,
   // exactly as if the app had been unsure on screen.
@@ -99,7 +112,7 @@ export default function Home() {
   );
 
   return (
-    <main className="mx-auto flex w-full max-w-[900px] flex-col gap-16 px-5 pb-36 pt-8 sm:gap-24 sm:px-8 sm:pt-12">
+    <main className="enter-children mx-auto flex w-full max-w-[900px] flex-col gap-16 px-5 pb-36 pt-8 sm:gap-24 sm:px-8 sm:pt-12">
       <AppHeader profile />
       <h1 className="sr-only">Capture an expense</h1>
 

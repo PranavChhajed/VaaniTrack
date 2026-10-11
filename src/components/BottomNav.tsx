@@ -92,7 +92,9 @@ export function BottomNav() {
                   <path key={d} d={d} />
                 ))}
               </svg>
-              {tab.label}
+              {/* Under 300px the three labels do not fit beside their icons; the icon stays and
+                  the name is kept for a screen reader. */}
+              <span className="max-[299px]:sr-only">{tab.label}</span>
             </Link>
           );
         })}

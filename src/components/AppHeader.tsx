@@ -41,21 +41,24 @@ export function AppHeader({
   signedIn = true,
 }: AppHeaderProps) {
   return (
-    <header className="flex items-center justify-between rounded-[var(--radius-pill)] border-2 border-vast-ink bg-paper-raised px-6 py-3">
-      <span className="flex items-center gap-3">
+    <header className="flex items-center justify-between gap-3 rounded-[var(--radius-pill)] border-2 border-vast-ink bg-paper-raised px-4 py-3 min-[360px]:px-6">
+      {/* min-w-0 and the controls' shrink-0: the name gives way, never the thing to press. Under
+          340px (a small phone, or a large "display size" setting) the name is dropped and the mark
+          carries the header, rather than the two running into each other. */}
+      <span className="flex min-w-0 items-center gap-3">
         {/* Full size where the header has only the mark to carry. Beside a
             navigation link, on a phone, the larger wordmark runs into it. */}
         <Logo size={navHref ? 36 : 44} />
         <span
           className={[
-            "display-type text-vast-ink",
+            "display-type truncate text-vast-ink max-[339px]:hidden",
             navHref ? "text-body-sm sm:text-subheading" : "text-subheading",
           ].join(" ")}
         >
           VaaniTrack
         </span>
       </span>
-      <span className="flex items-center gap-4">
+      <span className="flex shrink-0 items-center gap-4">
         {profile ? <ProfileLink /> : null}
         {!profile && !signedIn && (
           <Link
@@ -63,7 +66,7 @@ export function AppHeader({
             // Padded out to a thumb-sized target, and pulled back by the same
             // amount so the header does not grow: 44pt is the size Apple asks
             // for, and the bare text line is under half of it.
-            className="focus-ring -my-3 inline-block px-1 py-3 font-figtree text-body-sm text-fog underline underline-offset-4 hover:text-vast-ink"
+            className="focus-ring -my-3 inline-block px-2 py-3 font-figtree text-body-sm text-fog underline underline-offset-4 hover:text-vast-ink"
           >
             Sign in
           </Link>
@@ -71,7 +74,7 @@ export function AppHeader({
         {navHref ? (
           <Link
             href={navHref}
-            className="focus-ring -my-3 inline-block px-1 py-3 font-figtree text-body-sm text-charcoal underline underline-offset-4 hover:text-vast-ink"
+            className="focus-ring -my-3 inline-block whitespace-nowrap px-1 py-3 font-figtree text-body-sm text-charcoal underline underline-offset-4 hover:text-vast-ink"
           >
             {navLabel}
           </Link>

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Logo } from "@/components/Logo";
 import { signUp } from "@/lib/auth";
+import { hasOnboarded, replayTour, tourSeen } from "@/lib/device";
 import { EMAIL_RE, HeadingAccent, inputClass } from "../shared";
 
 const MIN_PASSWORD = 6;
@@ -41,6 +42,11 @@ export default function SignUp() {
     setSubmitting(false);
 
     if (result.ok) {
+      // A browser that already holds a device id counts as returning and would skip the tour, even
+      // if it never took it. Someone creating an account is new to the app, so show it: the
+      // explainers only, as from the You screen, since the recordings question may be answered.
+      // (A browser with no device id gets the full first-run flow by itself.)
+      if (hasOnboarded() && !tourSeen()) replayTour(true);
       router.push("/app");
     } else {
       setError(result.error);

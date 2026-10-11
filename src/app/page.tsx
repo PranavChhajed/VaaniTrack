@@ -80,7 +80,9 @@ export default function Landing() {
           Say what you spent.
           <span className="text-fog"> Check it. Done.</span>
         </h1>
-        <div className="mt-6">
+        {/* Full width, so the card does not take the width of whatever it says at the moment and
+            move the buttons below it every time the words change. */}
+        <div className="mt-6 w-full max-w-[420px]">
           <HeroDemo />
         </div>
         <p className="mt-4 max-w-[40ch] font-figtree text-caption italic text-fog">
@@ -189,13 +191,13 @@ export default function Landing() {
         <span className="flex items-center gap-4">
           <Link
             href="/app"
-            className="focus-ring inline-block py-3 font-figtree text-caption text-fog underline underline-offset-4 hover:text-vast-ink"
+            className="focus-ring inline-block px-2 py-3 font-figtree text-caption text-fog underline underline-offset-4 hover:text-vast-ink"
           >
             Open the app
           </Link>
           <Link
             href="/signin"
-            className="focus-ring inline-block py-3 font-figtree text-caption text-fog underline underline-offset-4 hover:text-vast-ink"
+            className="focus-ring inline-block px-2 py-3 font-figtree text-caption text-fog underline underline-offset-4 hover:text-vast-ink"
           >
             Sign in
           </Link>

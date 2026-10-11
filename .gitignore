@@ -64,3 +64,4 @@ android/local.properties
 /qa/package-lock.json
 /qa/*.png
 /qa/all.out
+qa/shots/

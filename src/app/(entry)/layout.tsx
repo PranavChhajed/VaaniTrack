@@ -12,7 +12,7 @@ import { Logo } from "@/components/Logo";
 export default function EntryLayout({ children }: { children: React.ReactNode }) {
   return (
     <main className="flex min-h-dvh flex-col bg-paper px-6 py-8">
-      <Link href="/" className="flex items-center gap-2">
+      <Link href="/" className="focus-ring -my-1 flex min-h-11 w-fit items-center gap-2">
         <Logo size={32} />
         <span className="display-type text-body-sm text-vast-ink">VaaniTrack</span>
       </Link>

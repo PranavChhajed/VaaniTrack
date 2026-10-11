@@ -22,11 +22,21 @@ const SIZES = [
     await test(`first run and the recordings question work at ${sz.name}`, async (t) => {
       const { page, go, close } = await open(engine, "desktop", { seed: "fresh", context: { viewport: { width: sz.w, height: sz.h }, hasTouch: true, isMobile: true } });
       await go("/app");
-      let n = 0;
-      while (!(await page.getByRole("button", { name: "No, don’t" }).count()) && n++ < 6) { await page.getByRole("button", { name: "Next" }).click({ timeout: 8000 }); await page.waitForTimeout(300); }
+      let n = 0, offscreen = 0;
+      while (!(await page.getByRole("button", { name: "No, don’t" }).count()) && n++ < 6) {
+        // Where it starts, before anything scrolls it into view for us.
+        const box = await page.getByRole("button", { name: "Next" }).boundingBox();
+        if (!box || box.y < 0 || box.y + box.height > sz.h) offscreen++;
+        await page.getByRole("button", { name: "Next" }).click({ timeout: 8000 }); await page.waitForTimeout(300);
+      }
       t.ok("every tour step's Next was reachable", n <= 4, `taps=${n}`);
-      const geo = await page.evaluate(() => { const b = [...document.querySelectorAll("button")].find((x) => x.textContent.includes("No, don")); const o = b.closest(".fixed"); return { reachable: o.scrollHeight >= b.getBoundingClientRect().bottom + o.scrollTop - 1, scrolls: getComputedStyle(o).overflowY }; });
-      t.ok("the overlay scrolls when it must", geo.scrolls === "auto" || geo.scrolls === "scroll", JSON.stringify(geo));
+      t.eq("and on screen to begin with, at every step", offscreen, 0);
+      // The two answers are pinned to the bottom: on screen without scrolling, at every size.
+      const geo = await page.evaluate(() => {
+        const rect = (label) => { const b = [...document.querySelectorAll("button")].find((x) => x.textContent.includes(label)); const r = b.getBoundingClientRect(); return { top: Math.round(r.top), bottom: Math.round(r.bottom) }; };
+        return { vh: window.innerHeight, yes: rect("Yes, keep"), no: rect("No, don") };
+      });
+      t.ok("both answers are on screen without scrolling", geo.yes.top >= 0 && geo.no.bottom <= geo.vh, JSON.stringify(geo));
       await page.getByRole("button", { name: "No, don’t" }).click({ timeout: 8000 }); await page.waitForTimeout(500);
       t.eq("answered", await page.evaluate(() => localStorage.getItem("vaanitrack.audioConsent")), "denied");
       const fit = await page.evaluate(() => ({ side: document.documentElement.scrollWidth - innerWidth, guide: !!document.querySelector('section[aria-label="Your first expense"]') }));

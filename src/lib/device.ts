@@ -99,6 +99,20 @@ export function hasOnboarded(): boolean {
  * browser new?"; by the time it returns, the answer would always be yes.
  * This is read-only, purely for that question.
  */
+/**
+ * Whether the welcome tour itself has been taken here, which `hasOnboarded()` does not say: it is
+ * also true for a browser that merely used the app before the tour existed. A person who creates an
+ * account is a new person whichever it is, so sign-up asks this one.
+ */
+export function tourSeen(): boolean {
+  if (typeof window === "undefined") return true;
+  try {
+    return window.localStorage.getItem(ONBOARDED_KEY) === "true";
+  } catch {
+    return true;
+  }
+}
+
 function hasExistingDevice(): boolean {
   if (typeof window === "undefined") return false;
   try {

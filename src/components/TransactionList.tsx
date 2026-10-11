@@ -66,7 +66,7 @@ export function TransactionList({
           otherwise a corrected date looks like a deleted transaction. */}
       <Link
         href="/journal"
-        className="focus-ring mt-8 inline-block font-figtree text-body-sm text-haze underline underline-offset-4 hover:text-paper"
+        className="focus-ring -mb-3 mt-5 inline-flex min-h-11 items-center font-figtree text-body-sm text-haze underline underline-offset-4 hover:text-paper"
       >
         See earlier days in the journal
       </Link>

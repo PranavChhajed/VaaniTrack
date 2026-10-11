@@ -59,7 +59,7 @@ export function DatePicker({
           type="button"
           onClick={() => onMonthChange(shiftMonth(month, -1))}
           aria-label="Previous month"
-          className="focus-ring flex h-10 w-10 items-center justify-center rounded-[var(--radius-button)] border-2 border-vast-ink bg-paper font-figtree text-body-sm active:bg-mint-whisper"
+          className="focus-ring flex h-11 w-11 items-center justify-center rounded-[var(--radius-button)] border-2 border-vast-ink bg-paper font-figtree text-body-sm active:bg-mint-whisper"
         >
           &lsaquo;
         </button>
@@ -78,7 +78,7 @@ export function DatePicker({
           type="button"
           onClick={() => onMonthChange(shiftMonth(month, 1))}
           aria-label="Next month"
-          className="focus-ring flex h-10 w-10 items-center justify-center rounded-[var(--radius-button)] border-2 border-vast-ink bg-paper font-figtree text-body-sm active:bg-mint-whisper"
+          className="focus-ring flex h-11 w-11 items-center justify-center rounded-[var(--radius-button)] border-2 border-vast-ink bg-paper font-figtree text-body-sm active:bg-mint-whisper"
         >
           &rsaquo;
         </button>

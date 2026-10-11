@@ -78,8 +78,12 @@ const STEPS: Step[] = [
 const CONSENT_STEP = STEPS.length;
 const TOTAL_STEPS = STEPS.length + 1;
 
+/* A fixed-height column: header on top, the footer (progress and the one big button) pinned to
+   the bottom, and only the middle scrolls. The button used to sit at the end of a taller-than-the-
+   screen column, so on a short phone, or on its side, the one thing to press began off-screen. */
 const shell =
-  "fixed inset-0 z-[70] flex min-h-dvh flex-col overflow-y-auto overscroll-contain px-6 pb-[calc(2rem+env(safe-area-inset-bottom))] pt-8";
+  "fixed inset-0 z-[70] flex h-dvh flex-col overscroll-contain px-6 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-[calc(1.25rem+env(safe-area-inset-top))] sm:px-10";
+const middle = "min-h-0 flex-1 overflow-y-auto overscroll-contain";
 const quietLink =
   "focus-ring -my-3 inline-block px-1 py-3 font-figtree text-body-sm text-charcoal underline underline-offset-4 hover:text-vast-ink";
 
@@ -156,6 +160,12 @@ export function Onboarding() {
     if (showing) heading.current?.focus();
   }, [step, showing]);
 
+  // The launch veil (FirstRunVeil.tsx) only has to cover the gap until this has read the device.
+  // The tour sits above it; once the answer is known, whichever it is, the veil is done.
+  useEffect(() => {
+    if (onboarded !== null) document.documentElement.removeAttribute("data-first-run");
+  }, [onboarded]);
+
   if (!showing) return null;
 
   const finish = (consent: "granted" | "denied") => {
@@ -178,7 +188,10 @@ export function Onboarding() {
     return (
       <div role="dialog" aria-modal="true" aria-label="Welcome to VaaniTrack" className={`${shell} bg-paper`}>
         <FlowHeader onBack={() => setStep(CONSENT_STEP - 1)} />
-        <div className="mt-10 flex flex-1 flex-col items-start justify-center [@media(max-height:680px)]:mt-5">
+        <div className={`${middle} mt-6 flex flex-col`}>
+         {/* my-auto centres this when there is room and lets it scroll from the top when there is not;
+             justify-center would cut the top off a column taller than its box. */}
+         <div className="my-auto">
           <p className="display-type text-subheading text-charcoal">One question first.</p>
           <h2 ref={heading} tabIndex={-1} className="display-type mt-2 text-heading-sm text-vast-ink outline-none">
             Can we keep your recordings?
@@ -192,8 +205,9 @@ export function Onboarding() {
             <li>&middot; Only you and the developer can access them.</li>
             <li>&middot; You can say no and everything still works.</li>
           </ul>
+         </div>
         </div>
-        <div className="mt-6 flex flex-col gap-3">
+        <div className="mt-4 flex shrink-0 flex-col gap-3">
           <Progress step={step} total={TOTAL_STEPS} />
           <div className="flex flex-col gap-3 sm:flex-row">
             <button
@@ -230,28 +244,32 @@ export function Onboarding() {
         skipLabel={firstRun ? "Skip" : "Close"}
       />
 
-      <div key={at} className="rise mt-10 [@media(max-height:680px)]:mt-5">
-        <p className="font-figtree text-caption font-semibold uppercase tracking-[0.08em] text-charcoal">
-          {String(at + 1).padStart(2, "0")} / {String(STEPS.length).padStart(2, "0")}
-        </p>
-        <h1
-          ref={heading}
-          tabIndex={-1}
-          className="mt-3 max-w-[16ch] font-figtree text-heading-sm font-bold text-vast-ink outline-none sm:text-heading"
-        >
-          {current.heading}
-        </h1>
-        <p className="mt-4 max-w-[38ch] font-figtree text-body text-charcoal">{current.body}</p>
-        <p className="mt-2 max-w-[38ch] font-figtree text-body-sm text-charcoal">{current.note}</p>
-      </div>
+      <div className={`${middle} mt-6 flex flex-col [@media(max-height:620px)]:mt-3`}>
+        <div key={at} className="rise">
+          <p className="font-figtree text-caption font-semibold uppercase tracking-[0.08em] text-charcoal">
+            {String(at + 1).padStart(2, "0")} / {String(STEPS.length).padStart(2, "0")}
+          </p>
+          <h1
+            ref={heading}
+            tabIndex={-1}
+            className="mt-3 max-w-[16ch] font-figtree text-heading-sm font-bold text-vast-ink outline-none sm:text-heading"
+          >
+            {current.heading}
+          </h1>
+          <p className="mt-4 max-w-[38ch] font-figtree text-body text-charcoal">{current.body}</p>
+          <p className="mt-2 max-w-[38ch] font-figtree text-body-sm text-charcoal">{current.note}</p>
+        </div>
 
-      <div className="flex flex-1 items-center justify-center py-6">
-        <div key={at} className="w-full max-w-[320px]">
-          <Art />
+        {/* The picture takes whatever room is left, and gives way first: on a short screen it
+            is the part that goes, never the words or the button. */}
+        <div className="flex flex-1 items-center justify-center py-5 [@media(max-height:640px)]:hidden">
+          <div key={at} className="w-full max-w-[320px]">
+            <Art />
+          </div>
         </div>
       </div>
 
-      <div className="flex flex-col gap-4">
+      <div className="mt-3 flex shrink-0 flex-col gap-4">
         <Progress step={at} total={total} />
         <button
           type="button"

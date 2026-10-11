@@ -23,6 +23,16 @@
 const memory = new Map<string, string | null>();
 const listeners = new Set<() => void>();
 
+/**
+ * Whether the phone has ever refused a write this session. It is the one case where the app keeps
+ * working and quietly stops being safe: what is added from then on lives in memory and goes when
+ * the app closes. Something has to say so (StorageNotice.tsx), and this is what it reads.
+ */
+let refused = false;
+export function storageRefused(): boolean {
+  return refused;
+}
+
 export function readLocal(key: string): string | null {
   if (memory.has(key)) return memory.get(key) ?? null;
   if (typeof window === "undefined") return null;
@@ -39,6 +49,7 @@ export function writeLocal(key: string, value: string): void {
     memory.delete(key);
   } catch {
     memory.set(key, value);
+    refused = true;
   }
   notifyLocal();
 }

@@ -1,6 +1,8 @@
 import { AudioConsentGate } from "@/components/AudioConsent";
 import { BottomNav } from "@/components/BottomNav";
+import { FirstRunVeil } from "@/components/FirstRunVeil";
 import { Onboarding } from "@/components/Onboarding";
+import { StorageNotice } from "@/components/StorageNotice";
 import { WidgetInbox } from "@/components/WidgetInbox";
 import { TransactionsProvider } from "@/lib/useTransactions";
 
@@ -31,12 +33,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <BottomNav />
       {/* Expenses the Android widget captured while the app was closed. */}
       <WidgetInbox />
+      {/* Only when the phone refuses to keep what is written: see StorageNotice.tsx. */}
+      <StorageNotice />
       <AudioConsentGate />
       {/* First-run flow, above the consent gate (z-[70] > z-[60]). Its own
           last step asks the same consent question, so a genuinely new
           browser only ever sees one of the two overlays at a time, see
           Onboarding.tsx and hasOnboarded()'s existing-device check. */}
       <Onboarding />
+      {/* In the HTML, and only shown to a first visit (globals.css): covers the app until the
+          tour above is ready. See LaunchState.tsx. */}
+      <FirstRunVeil />
     </TransactionsProvider>
   );
 }

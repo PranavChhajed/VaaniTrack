@@ -86,6 +86,11 @@ async function installMocks(ctx, state) {
     const p = url.pathname;
     const body = (() => { try { return JSON.parse(req.postData() || "{}"); } catch { return {}; } })();
     if (state.netDown) return route.abort("internetdisconnected");
+    if (req.method() === "OPTIONS") {
+      // The warm-up the capture screen sends when it opens (src/lib/prewarm.ts); not a capture.
+      state.warmups = (state.warmups || 0) + 1;
+      return route.fulfill({ status: 204, body: "" });
+    }
     if (p === "/api/extract") {
       state.extract.push(body);
       const r = (state.onExtract || defaultExtract)(body);
@@ -164,4 +169,4 @@ function summary() {
   return bad.length;
 }
 
-module.exports = { pw, BASE, WAIT, DEVICE, txn, open, test, summary, closeAll, defaultExtract };
+module.exports = { seedScript, pw, BASE, WAIT, DEVICE, txn, open, test, summary, closeAll, defaultExtract };
