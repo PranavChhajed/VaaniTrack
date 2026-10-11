@@ -230,6 +230,23 @@ async function record(p, ms = 1500) {
     t.ok("and the guide says so", /your first one/i.test(await text(page)));
     await close();
   });
+  await test("the server is warmed as recording starts, and that is not a capture", async (t) => {
+    const { page, go, state, close } = await open(engine, profile, { init: WRAP });
+    await go("/app");
+    await rec(page).click();
+    await page.waitForFunction(() => /Tap to finish/.test(document.querySelector("main button")?.textContent || ""), null, { timeout: 8000 });
+    await page.waitForTimeout(400);
+    t.eq("one warm-up request went out while recording", state.warmups, 1);
+    t.eq("and it was not counted as a capture", state.transcribe.length, 0);
+    await page.waitForTimeout(1200);
+    await rec(page).click();
+    await page.waitForFunction(() => document.body.innerText.includes("Logged"), null, { timeout: 8000 });
+    t.eq("the capture itself was sent once", state.transcribe.length, 1);
+    await rec(page).click();
+    await page.waitForFunction(() => /Tap to finish/.test(document.querySelector("main button")?.textContent || ""), null, { timeout: 8000 });
+    t.eq("a second take within a minute does not warm again", state.warmups, 1);
+    await close();
+  });
   const bad = summary();
   await closeAll();
   process.exit(bad ? 1 : 0);

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { warmServer } from "./warm";
 
 /**
  * `warming` is the gap between the browser handing over a microphone track and
@@ -139,6 +140,7 @@ export function useRecorder() {
   useEffect(() => teardown, [teardown]);
 
   const start = useCallback(async () => {
+    warmServer();
     setError(null);
 
     // getUserMedia exists only in a secure context: HTTPS with a certificate

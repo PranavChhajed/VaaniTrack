@@ -32,14 +32,14 @@ export const PROMPT_V2 = `Convert one spoken expense note (Indian English, rupee
 RULES
 1. One entry per expense, in the order spoken. Never merge expenses. No expense at all -> {"transactions":[]}.
 2. Never invent. If it was not said and is not obvious, use null. A blank is better than a guess.
-3. amount: rupees, as a number. "two fifty"=250, "seven fifty"=750, "fifteen hundred"=1500, "1.5k"=1500, "dhai sau"=250, "ek lakh"=100000. A "$" or a price like "2.50" is the transcriber writing spoken digits as a price: "$2.50"=250, "$1.20"=120, "$15.00"=1500. If the speaker corrects themselves ("250, no wait, 280") give only the final amount, and one entry. If the amount cannot be read, null and ask.
+3. amount: rupees, as a number. "two fifty"=250, "seven fifty"=750, "fifteen hundred"=1500, "1.5k"=1500, "dhai sau"=250, "ek lakh"=100000. A "$" or a price like "2.50" is the transcriber writing spoken digits as a price: "$2.50"=250, "$1.20"=120, "$15.00"=1500. If the speaker corrects themselves ("250, no wait, 280") give only the final amount, and one entry. "About", "around" or "roughly" before an amount does not make it unreadable: "about five hundred" is 500. If the amount truly cannot be read, null and ask.
 4. description: what was bought or paid for, in the speaker's own word ("lunch", "auto", "phone bill"), else null.
 5. category: only when obvious (lunch, chai -> "food"; auto, uber, petrol -> "transport"), else null. Never "other" or "misc".
 6. payee: a person or shop that received the money, if named, else null. "Paid 500 to Rahul" -> payee "Rahul", amount 500, no ask.
-7. paymentMethod: "Cash", "Card" or "UPI" ONLY if the speaker said how it was paid (cash, card, UPI, Google Pay, PhonePe, Paytm), and only for the expenses it was said about. Otherwise null.
-8. dateWords: the exact words the speaker used for WHEN, copied as said ("yesterday", "last Friday", "3rd September", "two days ago", "this morning"). Otherwise null. Do not work out the date.
+7. paymentMethod: "Cash", "Card" or "UPI" ONLY if the speaker said how it was paid (cash, card, UPI, Google Pay, PhonePe, Paytm). A way of paying said once about the whole sentence ("300 lunch and 100 coffee in cash", "both cash") applies to every expense in it; one that names a single expense ("groceries was cash") applies to that one only. Otherwise null.
+8. dateWords: the exact words the speaker used for WHEN, copied as said ("yesterday", "last Friday", "3rd September", "two days ago", "this morning"). A day said once up front ("Yesterday I spent 400 on dinner and 100 on dessert") applies to every expense after it unless another day is given for one. Otherwise null. Do not work out the date.
 9. time: a clock time only if one was actually said ("5 pm" -> "17:00"). Otherwise null.
-10. ask: a short question, only when recording could create a wrong transaction: an amount and a person with no verb ("250 to Pushpa": paid? lent? owed?), or an unreadable amount. A missing description or category is NOT a reason. Otherwise null.
+10. ask: a short question, only when recording could create a wrong transaction: an amount and a person with no verb ("250 to Pushpa": paid? lent? owed?); it is unclear who paid whom ("Rahul paid 500", "I paid 500 for Rahul"); it refers to something earlier ("that was 200"); or the amount cannot be read. A missing description or category is NOT a reason, and "Paid 500 to Rahul" needs no question. Otherwise null.
 
 EXAMPLES
 "two fifty lunch" -> {"transactions":[{"amount":250,"description":"lunch","category":"food","payee":null,"paymentMethod":null,"dateWords":null,"time":null,"ask":null}]}
@@ -54,6 +54,8 @@ export type V2Options = {
   reasoningEffort?: "none" | "low" | "medium" | "high";
   /** Replaces PROMPT_V2, for the scoreboard's experiments. */
   prompt?: string;
+  /** How long to wait for an answer. The fast model is given little, and the careful one behind it the rest. */
+  timeoutMs?: number;
 };
 
 export type ExtractV2Result =
@@ -73,7 +75,10 @@ export async function extractV2(text: string, today: string, opts: V2Options): P
   const model = opts.model ?? EXTRACT_V2_MODEL;
   const started = Date.now();
   const elapsed = () => Date.now() - started;
-  const reasons = /gpt-oss|qwen3|deepseek-r1/i.test(model);
+  // Only the gpt-oss models take a reasoning effort. For the rest the reply is short and fixed in
+  // shape, so a ceiling on it also lowers the tokens Groq reserves against the per-minute limit
+  // (a request counts its prompt plus the longest reply it might write).
+  const reasons = /gpt-oss/i.test(model);
 
   let content: string | undefined;
   let usage: { prompt: number; completion: number } | null = null;
@@ -85,13 +90,14 @@ export async function extractV2(text: string, today: string, opts: V2Options): P
         model,
         temperature: 0,
         response_format: { type: "json_object" },
-        ...(reasons && opts.reasoningEffort ? { reasoning_effort: opts.reasoningEffort } : {}),
+        ...(reasons && opts.reasoningEffort && opts.reasoningEffort !== "none" ? { reasoning_effort: opts.reasoningEffort } : {}),
+        ...(reasons ? {} : { max_tokens: 400 }),
         messages: [
           { role: "system", content: opts.prompt ?? PROMPT_V2 },
           { role: "user", content: text },
         ],
       }),
-      signal: AbortSignal.timeout(15_000),
+      signal: AbortSignal.timeout(opts.timeoutMs ?? 15_000),
     });
     if (!response.ok) {
       const detail = await response.text();

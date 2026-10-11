@@ -91,7 +91,12 @@ export function finishRows(
 
   for (const row of list) {
     const rawAmount = typeof row.amount === "number" && Number.isFinite(row.amount) && row.amount >= 0 ? row.amount : null;
-    const amount = rawAmount === null ? null : Math.round(rawAmount * 100) / 100;
+    let amount = rawAmount === null ? null : Math.round(rawAmount * 100) / 100;
+    // The model gave up on the amount, but the words hold exactly one number and there is
+    // exactly one expense: that number is the amount ("about five hundred on dinner").
+    // It is code reading the speaker's own words, so it counts as said.
+    const distinct = [...new Set(reads.map((r) => r.value))];
+    if (amount === null && list.length === 1 && distinct.length === 1) amount = distinct[0];
     const check = checkAmount(amount, reads);
     checks.push(check);
 

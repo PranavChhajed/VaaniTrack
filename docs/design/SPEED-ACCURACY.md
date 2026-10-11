@@ -4,6 +4,7 @@
 |---|---|
 | **Status** | Built |
 | **Date** | 10 October 2026 |
+| **Continued in** | [`VOICE-PIPELINE.md`](VOICE-PIPELINE.md) (11 October): the plain-sentence route, the values-only extractor, the scoreboard |
 
 ---
 

@@ -32,6 +32,8 @@ import { buildSystemPrompt, extractTransactions } from "../src/lib/extract.ts";
 import { hear, lab, sessions } from "./eval-audio.ts";
 import { readAmounts } from "../src/lib/amounts.ts";
 import { extractV2, EXTRACT_V2_MODEL, PROMPT_V2 } from "../src/lib/extract2.ts";
+import { runExtraction, FAST_MODEL, FULL_MODEL } from "../src/lib/pipeline.ts";
+import { quickParse } from "../src/lib/quick.ts";
 import { shiftDay } from "../src/lib/dates.ts";
 import { gateFailures } from "../src/lib/report.ts";
 import type { ExtractedTransaction } from "../src/lib/types.ts";
@@ -70,6 +72,8 @@ type Result = {
   returned: ExtractedTransaction[];
   completion?: number;
   prompt?: number;
+  /** Which route answered: quick, fast, full or fast+full (the "pipeline" mode). */
+  route?: string;
   /** Audio mode: what the transcriber heard, whether every expected amount is among the numbers in it, and how long it took. */
   heard?: string;
   numberHeard?: boolean | null;
@@ -79,10 +83,18 @@ type Result = {
 };
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+let lastCall = 0;
+async function pace(ms: number) {
+  const wait = lastCall + ms - Date.now();
+  if (wait > 0) await sleep(wait);
+  lastCall = Date.now();
+}
 const arg = (name: string) => {
   const i = process.argv.indexOf(`--${name}`);
   return i >= 0 ? process.argv[i + 1] : undefined;
 };
+
+const PACE_MS = Number(arg("pace") ?? 13_000);
 
 function percentile(values: number[], p: number): number {
   if (values.length === 0) return 0;
@@ -115,8 +127,10 @@ function matchEntries(want: Entry[], got: ExtractedTransaction[]): { pairs: [Ent
 function fieldProblems(w: Entry, g: ExtractedTransaction): { amount: boolean; others: string[] } {
   const others: string[] = [];
   if (w.description) {
-    const d = (g.description ?? "").toLowerCase();
-    if (!d || !(d.includes(w.description) || w.description.includes(d))) others.push(`description "${g.description}" for "${w.description}"`);
+    // A person named as the recipient ("paid Rahul 500") is the payee, and counts as the description.
+    const said = [g.description, g.payee].map((v) => (v ?? "").toLowerCase()).filter(Boolean);
+    const want = w.description.toLowerCase();
+    if (!said.some((d) => d.includes(want) || want.includes(d))) others.push(`description "${g.description}" for "${w.description}"`);
   }
   const pay = (g.paymentMethod ?? "").toLowerCase();
   if (pay !== w.payment.toLowerCase()) others.push(`payment ${g.paymentMethod} for ${w.payment}`);
@@ -177,16 +191,19 @@ function score(c: Case, got: ExtractedTransaction[], failed: boolean, heardWell 
   return { outcome: allSaved ? "correct" : "correct_review", why: allSaved ? "" : "right, but asked" };
 }
 
-async function cached<T>(key: string, produce: () => Promise<T>): Promise<T> {
+async function cached<T extends { failed?: boolean }>(key: string, produce: () => Promise<T>): Promise<T> {
   const file = join(OUT, "cache", `${createHash("sha1").update(key).digest("hex")}.json`);
   try { return JSON.parse(await readFile(file, "utf8")) as T; } catch { /* not cached */ }
   const value = await produce();
-  await mkdir(join(OUT, "cache"), { recursive: true });
-  await writeFile(file, JSON.stringify(value));
+  // A failure is not an answer: caching one would hand the same failure to every later run.
+  if (!value.failed) {
+    await mkdir(join(OUT, "cache"), { recursive: true });
+    await writeFile(file, JSON.stringify(value));
+  }
   return value;
 }
 
-type Run = { transactions: ExtractedTransaction[]; ms: number; model: string; failed: boolean; completion?: number; prompt?: number };
+type Run = { transactions: ExtractedTransaction[]; ms: number; model: string; failed: boolean; completion?: number; prompt?: number; route?: string };
 
 /** Which pipeline to score, and with what. v1 is what ships today; v2 is the values-only extractor. */
 const PIPELINE = arg("pipeline") ?? "v1";
@@ -194,7 +211,11 @@ const MODEL = arg("model");
 const EFFORT = arg("effort") as "none" | "low" | "medium" | "high" | undefined;
 
 async function runText(text: string, apiKey: string, payment: "UPI"): Promise<Run> {
-  const key = PIPELINE === "v2"
+  const key = PIPELINE === "pipeline"
+    ? `pipeline|${FAST_MODEL}|${FULL_MODEL}|${PROMPT_V2}|${payment}|${TODAY}
+--
+${text}`
+    : PIPELINE === "v2"
     ? `v2|${MODEL ?? EXTRACT_V2_MODEL}|${EFFORT ?? "-"}|${PROMPT_V2}|${payment}|${TODAY}
 --
 ${text}`
@@ -203,6 +224,15 @@ ${text}`
 ${text}`;
   return cached(key, async () => {
     for (let attempt = 0; attempt < 8; attempt++) {
+      if (PIPELINE === "pipeline") {
+        // The free tier lets a model take about five of these a minute. A route that asks two
+        // models would otherwise spend its way into rate limits and score the limit, not the route.
+        if (!quickParse(text, TODAY, payment)) await pace(PACE_MS);
+        const r = await runExtraction(text, TODAY, { apiKey, defaultPayment: payment });
+        if (r.kind === "ok") return { transactions: r.transactions, ms: r.ms, model: r.model, failed: false, route: r.route };
+        if (r.kind === "error" && r.status === 429) { await sleep(15_000); continue; }
+        return { transactions: [], ms: r.ms, model: r.model, failed: true };
+      }
       if (PIPELINE === "v2") {
         const r = await extractV2(text, TODAY, { apiKey, defaultPayment: payment, model: MODEL, reasoningEffort: EFFORT });
         if (r.kind === "ok") return { transactions: r.transactions, ms: r.ms, model: r.model, failed: false, completion: r.usage?.completion, prompt: r.usage?.prompt };
@@ -239,6 +269,11 @@ function printReport(name: string, results: Result[]) {
   console.log(`\n=== ${name}: ${s.total} cases (${s.blocked} blocked on features not built)`);
   console.log(`right ${s.right}/${s.scored}   silent amount errors ${s.silent_amount_error}   silent field errors ${s.silent_field_error}   guessed ${s.guessed}`);
   console.log(`correct ${s.correct}   right-but-asked ${s.correct_review}   asked ${s.asked}   wrong-but-flagged ${s.wrong_flagged}   missed ${s.missed}`);
+  const routes = [...new Set(results.map((r) => r.route).filter(Boolean))] as string[];
+  for (const route of routes) {
+    const rs = results.filter((r) => r.route === route);
+    console.log(`  route ${route.padEnd(10)} ${String(rs.length).padStart(3)} cases   p50 ${percentile(rs.map((r) => r.ms), 0.5)} ms   p95 ${percentile(rs.map((r) => r.ms), 0.95)} ms`);
+  }
   console.log(`extraction time  p50 ${s.msP50} ms   p95 ${s.msP95} ms` + (s.completionP50 ? `   tokens per reply: prompt ${s.promptTokens}, written ${s.completionP50} (median)` : ""));
   const groups = [...new Set(results.map((r) => r.group))];
   console.log("\nby group (right / scored):");
@@ -368,7 +403,7 @@ async function main() {
     }
     const run = await runText(c.utterance, apiKey, "UPI");
     const { outcome, why } = score(c, run.transactions, run.failed);
-    results.push({ id: c.id, group: c.group, tags: c.tags, utterance: c.utterance, outcome, why, ms: run.ms, model: run.model, returned: run.transactions, completion: run.completion, prompt: run.prompt });
+    results.push({ id: c.id, group: c.group, tags: c.tags, utterance: c.utterance, outcome, why, ms: run.ms, model: run.model, returned: run.transactions, completion: run.completion, prompt: run.prompt, route: run.route });
     process.stdout.write(outcome === "correct" || outcome === "asked" ? "." : outcome === "correct_review" ? "r" : "X");
   }
   await mkdir(OUT, { recursive: true });

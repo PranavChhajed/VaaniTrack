@@ -3,6 +3,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { extensionFor, transcribeAudio } from "@/lib/asr";
 import { cleanPayment, extractTransactions } from "@/lib/extract";
+import { PIPELINE, runExtraction } from "@/lib/pipeline";
 import {
   recordCapture,
   recordAudioDecision,
@@ -86,6 +87,12 @@ function finiteDb(value: FormDataEntryValue | null): number | null {
   if (typeof value !== "string") return null;
   const n = Number(value);
   return Number.isFinite(n) && n <= 0 && n > -200 ? Number(n.toFixed(2)) : null;
+}
+
+/** Answered at once and does nothing: the app sends it as recording starts, so a function that
+ *  has been idle is awake by the time the audio arrives (lib/warm.ts). */
+export function OPTIONS() {
+  return new Response(null, { status: 204, headers: { "Cache-Control": "no-store" } });
 }
 
 export async function POST(request: Request) {
@@ -282,7 +289,12 @@ export async function POST(request: Request) {
   // Started, not awaited: the reply below begins with what was heard and
   // finishes with what was made of it, so the speaker sees their own words
   // while the slower half is still running.
-  const extracting = extractTransactions(asr.text, today, { apiKey, defaultPayment });
+  // The plain sentences are answered by code and the rest by the fast model, with the
+  // careful one behind it (lib/pipeline.ts). VOICE_PIPELINE=v1 is the old single-model route.
+  const extracting =
+    PIPELINE === "v1"
+      ? extractTransactions(asr.text, today, { apiKey, defaultPayment })
+      : runExtraction(asr.text, today, { apiKey, defaultPayment });
 
   // Registered here, while the request is still being handled, and left to
   // wait on the extraction itself. It runs once the reply has been sent.
@@ -344,6 +356,7 @@ export async function POST(request: Request) {
           confidence: Number(confidence.toFixed(2)),
           asrMs: asr.ms,
           extractMs: extraction.ms,
+          route: "route" in extraction ? extraction.route : "v1",
         },
       };
       controller.enqueue(

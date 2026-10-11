@@ -55,12 +55,31 @@ console.log("--- the amount");
   check("no amount: asks", [t.needsConfirmation, autoSaved(t)], [true, false]);
 }
 {
-  const [t] = one([{ amount: "250" as unknown as number, description: "lunch" }], "250 lunch");
+  const [t] = one([{ amount: "250" as unknown as number, description: "lunch" }], "lunch for the day");
   check("an amount that is not a number is none", t.amount, null);
 }
 {
-  const [t] = one([{ amount: -5, description: "x" }], "5 x");
+  const [t] = one([{ amount: -5, description: "x" }], "x for the day");
   check("a negative amount is none", t.amount, null);
+}
+
+console.log("--- the model gives up on the amount");
+{
+  const [t] = one([{ amount: null, description: "dinner", ask: "Is the amount correct?" }], "About five hundred on dinner");
+  check("the words hold one number: it is used, and said", [t.amount, t.amountProvenance], [500, "said"]);
+  check("the model's own question still holds the entry", t.needsConfirmation, true);
+}
+{
+  const rows = one([{ amount: null, description: "lunch" }, { amount: null, description: "coffee" }], "lunch and coffee 300");
+  check("two entries and one number: not guessed for either", rows.map((r) => r.amount), [null, null]);
+}
+{
+  const [t] = one([{ amount: null, description: "chai" }], "chai was bees rupees");
+  check("a Hindi round ten the reader knows", t.amount, 20);
+}
+{
+  const [t] = one([{ amount: null, description: "lunch" }], "250 or 300 for lunch");
+  check("two numbers and one expense: not guessed", t.amount, null);
 }
 
 console.log("--- said or inferred");

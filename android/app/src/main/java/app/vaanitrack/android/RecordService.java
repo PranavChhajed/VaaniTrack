@@ -128,6 +128,7 @@ public class RecordService extends Service {
             fail("Set up the widget first. Tap to open VaaniTrack.");
             return;
         }
+        new CaptureClient(this).warm();
         try {
             file = File.createTempFile("take", ".m4a", getCacheDir());
             recorder = Build.VERSION.SDK_INT >= 31 ? new MediaRecorder(this) : new MediaRecorder();

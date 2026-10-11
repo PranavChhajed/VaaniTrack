@@ -92,6 +92,11 @@ async function installMocks(ctx, state) {
       if (r.delay) await new Promise((res) => setTimeout(res, r.delay));
       return route.fulfill({ status: r.status, contentType: "application/json", body: JSON.stringify(r.json) });
     }
+    if (p === "/api/transcribe" && req.method() === "OPTIONS") {
+      // The warm-up the app sends as recording starts; it is not a capture.
+      state.warmups = (state.warmups || 0) + 1;
+      return route.fulfill({ status: 204, body: "" });
+    }
     if (p === "/api/transcribe") {
       state.transcribe.push({ size: (req.postData() || "").length });
       const r = (state.onTranscribe || (() => ({ text: "two fifty lunch", transactions: [txn({ amount: 250, description: "lunch" })] })))();

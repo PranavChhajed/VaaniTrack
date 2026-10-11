@@ -57,6 +57,29 @@ final class CaptureClient {
         api = context.getString(R.string.vaani_api_url);
     }
 
+    /**
+     * Wakes the server while the person is still speaking: a function that has been
+     * idle starts cold on its next request, which is time spent waiting after they
+     * stop talking. A tiny request at the start of a take has it ready. Fire and
+     * forget; nothing waits on it and nothing depends on it.
+     */
+    void warm() {
+        new Thread(() -> {
+            HttpURLConnection http = null;
+            try {
+                http = (HttpURLConnection) new URL(api + "/api/transcribe").openConnection();
+                http.setRequestMethod("OPTIONS");
+                http.setConnectTimeout(4_000);
+                http.setReadTimeout(4_000);
+                http.getResponseCode();
+            } catch (Exception ignored) {
+                // A warm-up that fails costs nothing but the warm-up.
+            } finally {
+                if (http != null) http.disconnect();
+            }
+        }, "vaani-warm").start();
+    }
+
     Result send(WidgetStore store, File audio, long audioMs, double peakDb, double meanDb,
                 long warmupMs, HeardListener listener) {
         Result result = new Result();
