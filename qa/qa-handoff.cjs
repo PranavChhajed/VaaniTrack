@@ -56,6 +56,7 @@ const dropBrowser = async () => { try { await browser?.close(); } catch {} brows
 const settled = async (p) => { await p.waitForFunction(() => document.readyState === "complete" && !!document.querySelector("main"), null, { timeout: 30000 }); await sleep(1200); };
 const stopAll = () => { try { shell(`am force-stop ${PKG}`); shell("am force-stop com.android.chrome"); } catch {} };
 const launch = (url) => shell(url ? `am start -a android.intent.action.VIEW -d '${url}' -n ${LAUNCHER}` : `am start -n ${LAUNCHER}`);
+const clearLog = () => sh("logcat -c");
 const home = () => shell("input keyevent KEYCODE_HOME");
 
 const results = [];
@@ -98,7 +99,7 @@ const journal = (p) => p.evaluate(() => JSON.parse(localStorage.getItem("vaanitr
     t.ok("with a Connect button", await link.isVisible());
     const href = await link.getAttribute("href");
     t.ok("that opens the app's own set-up link", /^intent:\/\/setup\?d=[0-9a-f-]{36}&c=granted&p=UPI&r=0#Intent;scheme=vaanitrack;package=app\.vaanitrack\.android;end$/.test(href), href);
-    await link.click();
+    await link.click({ noWaitAfter: true, timeout: 8000 }).catch(() => {});
     await until((x) => x.ready, 20000, "the tile becoming ready");
     t.ok("the tile is connected", true);
     await sleep(1500);
@@ -108,13 +109,13 @@ const journal = (p) => p.evaluate(() => JSON.parse(localStorage.getItem("vaanitr
   });
 
   await test("a changed setting makes the page offer an update", async (t) => {
-    await p.getByRole("button", { name: "Cash", exact: false }).first().click().catch(() => {});
+    await p.getByRole("radiogroup", { name: "Default payment method" }).getByText("Cash").click();
     await sleep(800);
     const behind = await p.getByText(/settings have changed since the widget was connected/).isVisible().catch(() => false);
     const update = await p.getByRole("link", { name: /Update the widget/ }).isVisible().catch(() => false);
     t.ok("says so", behind);
     t.ok("and the button now reads Update", update);
-    await p.getByRole("link", { name: /Update the widget/ }).click();
+    await p.getByRole("link", { name: /Update the widget/ }).click({ noWaitAfter: true, timeout: 8000 }).catch(() => {});
     await sleep(2500);
     await dropBrowser(); p = await page(); await settled(p);
     t.ok("back in step after updating", await p.getByText(/in step with your settings/).isVisible().catch(() => false));
@@ -124,7 +125,7 @@ const journal = (p) => p.evaluate(() => JSON.parse(localStorage.getItem("vaanitr
 
   await test("an expense recorded on the tile arrives in the journal, once", async (t) => {
     home(); await sleep(1500);
-    await get("/__mode?m=sure");
+    await get("/__mode?m=sure"); clearLog();
     shell(`input tap ${TILE[0]} ${TILE[1]}`);
     await until((x) => x.state === "RECORDING", 10000, "listening"); await sleep(700);
     shell(`input tap ${TILE[0]} ${TILE[1]}`);
@@ -157,6 +158,7 @@ const journal = (p) => p.evaluate(() => JSON.parse(localStorage.getItem("vaanitr
       const all = JSON.parse(localStorage.getItem("vaanitrack.transactions") || "[]").filter((r) => r.id !== id);
       localStorage.setItem("vaanitrack.transactions", JSON.stringify(all));
     }, mine.id);
+    await sleep(6000); // Chrome writes storage to disk a moment after the page changes it
     await dropBrowser(); stopAll(); await sleep(1500);
     launch(); p = await page(); await settled(p);
     t.eq("still gone after the next open", (await journal(p)).filter((r) => r.transcript === "250 lunch.").length, 0);
@@ -164,7 +166,7 @@ const journal = (p) => p.evaluate(() => JSON.parse(localStorage.getItem("vaanitr
 
   await test("an unsure result arrives as a review card and is never saved by the tile", async (t) => {
     home(); await sleep(1500);
-    await get("/__mode?m=unsure");
+    await get("/__mode?m=unsure"); clearLog();
     const before = (await journal(p)).length;
     shell(`input tap ${TILE[0]} ${TILE[1]}`);
     await until((x) => x.state === "RECORDING", 10000, "listening"); await sleep(700);

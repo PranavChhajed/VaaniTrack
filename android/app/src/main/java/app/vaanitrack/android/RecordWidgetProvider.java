@@ -246,8 +246,7 @@ public class RecordWidgetProvider extends AppWidgetProvider {
 
     private static PendingIntent toggle(Context context) {
         Intent intent = new Intent(context, RecordService.class).setAction(RecordService.ACTION_TOGGLE);
-        return PendingIntent.getForegroundService(
-                context, 1, intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        return RecordService.serviceIntent(context, 1, intent);
     }
 
     private static PendingIntent noop(Context context) {

@@ -226,6 +226,12 @@ notifications refused; animations off (the picture does not move); 150% system
 text; a revoked microphone; a bad set-up link; and an in-place update keeping
 the queue.
 
+`qa/qa-handoff.cjs` covers the other half inside the installed app: the You
+screen’s Connect and Update buttons, a tile capture reaching the journal once
+(and not again on the next open), a deleted entry staying deleted, and an unsure
+result arriving as a review card. Android lint is clean; below Android 8 the tile
+starts a plain service (a foreground one cannot be started there).
+
 ## Not verified
 
 - **Anything on a real phone.** Battery managers on some makes (Xiaomi, Oppo,
@@ -233,7 +239,4 @@ the queue.
   the emulator has none. How the animation feels, and how loud the microphone
   indicator and notification are, need a real handset.
 - **The microphone on a real phone's noise floor.** The emulator's is the PC's.
-- **That the inbox reaches the journal in the installed app**, end to end, is
-  covered in `QA.md` once the website side is deployed; the web half is unit
-  tested.
 - iOS in any form.

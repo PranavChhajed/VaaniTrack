@@ -402,8 +402,7 @@ public class RecordService extends Service {
             nm.createNotificationChannel(channel);
         }
         Intent toggle = new Intent(this, RecordService.class).setAction(ACTION_TOGGLE);
-        PendingIntent finish = PendingIntent.getForegroundService(
-                this, 9, toggle, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        PendingIntent finish = serviceIntent(this, 9, toggle);
         Notification.Builder b = Build.VERSION.SDK_INT >= 26
                 ? new Notification.Builder(this, CHANNEL) : new Notification.Builder(this);
         b.setSmallIcon(R.drawable.ic_waveform)
@@ -412,5 +411,13 @@ public class RecordService extends Service {
                 .setOngoing(true)
                 .setContentIntent(finish);
         return b.build();
+    }
+
+    /** A tap that starts this service: a foreground one from Android 8, where plain services stopped being allowed from the background. */
+    static PendingIntent serviceIntent(Context context, int code, Intent intent) {
+        int flags = PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE;
+        return Build.VERSION.SDK_INT >= 26
+                ? PendingIntent.getForegroundService(context, code, intent, flags)
+                : PendingIntent.getService(context, code, intent, flags);
     }
 }
