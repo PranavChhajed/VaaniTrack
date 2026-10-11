@@ -27,7 +27,7 @@ const sh = (c, opts = {}) => execSync(`${ADB} ${c}`, { encoding: "utf8", stdio: 
 const shell = (c) => sh(`shell "${c}"`);
 const shot = (name) => fs.writeFileSync(path.join(OUT, `widget-${name}.png`), execSync(`${ADB} exec-out screencap -p`, { maxBuffer: 1 << 26 }));
 
-const TILE = [540, 780];
+const TILE = (process.env.TILE || "540,780").split(",").map(Number);
 const UNDO = [678, 606];
 const tap = ([x, y]) => shell(`input tap ${x} ${y}`);
 /** Open a link on the phone. (The whole command is one quoted argument; the link is single-quoted inside it, so & survives.) */
@@ -122,7 +122,7 @@ async function connect() {
   shell("settings put global animator_duration_scale 1");
   shell("settings put system font_scale 1.0");
   // A clean slate: no queue, no set-up, no permissions. The tile stays where it was placed.
-  shell(`pm clear ${PKG}`);
+  if (!process.env.NOCLEAR) shell(`pm clear ${PKG}`);
   shell(`pm grant ${PKG} android.permission.RECORD_AUDIO`);
   shell(`pm grant ${PKG} android.permission.POST_NOTIFICATIONS`);
   await connect(); await sleep(2500); home(); await sleep(1500);

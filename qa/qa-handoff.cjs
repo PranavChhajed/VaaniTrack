@@ -19,7 +19,7 @@ const HOST = new URL(SITE).host;
 const MOCK = process.env.MOCK || "http://localhost:4010";
 const PKG = "app.vaanitrack.android";
 const LAUNCHER = `${PKG}/.AppLauncher`;
-const TILE = [540, 780];
+const TILE = (process.env.TILE || "540,780").split(",").map(Number);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const sh = (c, o = {}) => execSync(`${ADB} ${c}`, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], maxBuffer: 1 << 24, ...o }).trim();
 const shell = (c) => sh(`shell "${c}"`);
