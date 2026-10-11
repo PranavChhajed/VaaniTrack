@@ -21,6 +21,7 @@
              and from here when there is not (the app icon). -->
         <activity
             android:name=".AppLauncher"
+            android:clearTaskOnLaunch="true"
             android:exported="true">
 
             <meta-data

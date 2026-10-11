@@ -134,9 +134,14 @@ const journal = (p) => p.evaluate(() => JSON.parse(localStorage.getItem("vaanitr
     t.ok("and says it is waiting for the app", saved.waiting >= 1, saved.waiting);
 
     await dropBrowser(); stopAll(); await sleep(1500);
-    launch(); p = await page(); await settled(p);
-    await p.waitForFunction(() => document.querySelector('[role="status"]')?.textContent?.includes("from your widget"), null, { timeout: 8000 }).catch(() => {});
-    const notice = await p.locator('[role="status"]').first().textContent().catch(() => "");
+    launch(); p = await page();
+    // The line is up for six seconds from the moment the page loads: look for it straight away.
+    let notice = "";
+    for (let i = 0; i < 100 && !/from your widget/.test(notice); i++) {
+      notice = await p.evaluate(() => document.querySelector('[role="status"]')?.textContent || "").catch(() => "");
+      if (!/from your widget/.test(notice)) await sleep(150);
+    }
+    await settled(p);
     t.ok("a short line says what arrived", /1 logged from your widget/.test(notice || ""), notice);
     const rows = (await journal(p)).filter((r) => r.transcript === "250 lunch.");
     t.eq("exactly one entry", rows.length, 1);
