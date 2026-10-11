@@ -98,7 +98,13 @@ website **the next time the app opens**.
 - Until it is collected, the tile says "N waiting for the app". Undo removes the
   last capture from the queue while it is still there.
 
-The queue is handed over when the app is **opened from its icon** (the launcher clears its task on launch, so this holds even when the app was left in recents). Resuming it from the app switcher does not run the launcher, so the tile’s expenses wait until the next icon open.
+The queue is handed over when the app is **launched**. An app left in the recent apps
+is not launched again, only brought back, so the moment the tile queues something it
+closes the app’s own screens (`RecordService.startFresh`); the next tap on the icon is
+a clean start that carries the queue. With nothing waiting, nothing is closed and the
+app just resumes where it was. (An earlier build forced a restart on every icon tap
+(`clearTaskOnLaunch`); that made the first tap do nothing and the second open the app
+with glitches, and was removed.)
 
 **What the person sees:** an expense recorded from the tile is in the journal
 after they next open the app, not instantly. This is the cost of not having

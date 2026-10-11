@@ -1,6 +1,7 @@
 package app.vaanitrack.android;
 
 import android.Manifest;
+import android.app.ActivityManager;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -280,6 +281,10 @@ public class RecordService extends Service {
             return;
         }
 
+        // Something now waits for the app. Let the app start fresh next time it is
+        // opened from its icon, so what waits rides in on that launch.
+        if (saved > 0 || checks > 0) startFresh();
+
         if (saved > 0) {
             store.setLastSaved(savedIds);
             StringBuilder line = new StringBuilder();
@@ -294,6 +299,24 @@ public class RecordService extends Service {
                     checks > 1 ? checks + " to check" : "Tap to check it");
         }
         finishSoon();
+    }
+
+    /**
+     * Closes the app’s own screens if they are still in the background.
+     *
+     * What the tile records waits in a queue that is handed to the website only
+     * when the app is launched. An app left in the recent apps is not launched
+     * again, it is just brought back, so the queue would sit there unseen. Closing
+     * it here means the next tap on the icon is a clean start that carries the
+     * queue, with nothing to do on the way back in when nothing is waiting.
+     */
+    private void startFresh() {
+        try {
+            ActivityManager am = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+            for (ActivityManager.AppTask task : am.getAppTasks()) task.finishAndRemoveTask();
+        } catch (RuntimeException ignored) {
+            // Nothing to close, or the phone would not let us: the queue still goes in on the next cold start.
+        }
     }
 
     private void fail(String message) {

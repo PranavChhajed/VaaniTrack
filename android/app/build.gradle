@@ -58,8 +58,8 @@ android {
         applicationId 'app.vaanitrack.android'
         minSdk 24
         targetSdk 34
-        versionCode 3
-        versionName '1.2'
+        versionCode 4
+        versionName '1.2.1'
 
         manifestPlaceholders = [vaaniHost: vaaniHost, vaaniCleartext: cleartext.toString()]
         // The one address, spelled once and used in three places: the launch
