@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 12 and up: buttons use the system's inner radius, so they nest
+     evenly inside the tile's corners. -->
+<ripple xmlns:android="http://schemas.android.com/apk/res/android"
+    android:color="#55CFEAD9">
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="#1FFFFFFF" />
+            <stroke
+                android:width="1dp"
+                android:color="#2EFFFFFF" />
+            <corners android:radius="@android:dimen/system_app_widget_inner_radius" />
+        </shape>
+    </item>
+</ripple>

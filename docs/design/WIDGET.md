@@ -79,7 +79,17 @@ the one thing that gives a smooth loop. `tools/make_widget_frames.py` draws 12
 frames of the app's own record button (a mint disc with five ink bars that breathe
 as a wave travels across them, and a ring that swells and fades once per loop);
 the flipper shows each for 140ms, so the loop is 1.7 seconds. It only runs while
-the widget is on screen.
+the widget is on screen, and stops when animations are off or battery saver is on.
+
+**Made to behave like a good widget** (second pass, 11 Oct, after a review as a widget designer):
+
+- *Bigger microphone.* In the compact tile the microphone fills the space above the label instead of sitting at a fixed 64dp in a much larger tile. It scales down, never the text, on a short tile.
+- *Breathing halo* behind the button, one more layer in each of the 12 frames.
+- *Android 12 and up:* the tile uses the system widget corner radius (and the buttons the inner radius), and its root is `@android:id/background`, so the launcher can round it and animate it open like other widgets.
+- *Animations off, or battery saver on:* the microphone stays on its first frame. The tile refreshes every 30 minutes (`updatePeriodMillis`) so it picks a change up; an in-place update does immediately. Checked: 6 distinct frames with animations on, 1 with them off.
+- *Large text:* above 115% system text the full tile drops the second line and caps the button labels, so nothing is cut off. Checked at 150%.
+- *Orientation:* the launcher reports a tile's size for both ways of holding the phone. The first version always read the landscape height and so hid the hint on a tall tile held upright; it now reads the pair that matches the orientation.
+- A picture for the widget list on Android 11 and older (`widget_preview.png`), and an even right edge on the three buttons.
 
 **What it cannot do.** It cannot listen: Android does not let a widget hold the
 microphone, so a tap opens the app, which records. It cannot show your totals:

@@ -3,7 +3,7 @@
      three small buttons. The tile as a whole still records; the buttons go
      elsewhere. -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/widget_root"
+    android:id="@android:id/background"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@drawable/widget_background"
@@ -110,6 +110,7 @@
             android:orientation="vertical">
 
             <TextView
+                android:id="@+id/title"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:ellipsize="end"
@@ -120,6 +121,7 @@
                 android:textSize="17sp" />
 
             <TextView
+                android:id="@+id/hint"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="8dp"
@@ -153,6 +155,7 @@
                     android:src="@drawable/ic_chip_type" />
 
                 <TextView
+                    android:id="@+id/label_type"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:maxLines="1"
@@ -179,6 +182,7 @@
                     android:src="@drawable/ic_chip_journal" />
 
                 <TextView
+                    android:id="@+id/label_journal"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:maxLines="1"
@@ -191,7 +195,6 @@
                 android:id="@+id/chip_insights"
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
-                android:layout_marginEnd="4dp"
                 android:layout_weight="1"
                 android:background="@drawable/widget_chip"
                 android:contentDescription="@string/chip_insights"
@@ -205,6 +208,7 @@
                     android:src="@drawable/ic_chip_insights" />
 
                 <TextView
+                    android:id="@+id/label_insights"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:maxLines="1"
