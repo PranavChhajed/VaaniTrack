@@ -9,7 +9,7 @@ const ADB = process.env.ADB || "adb";
 const SITE = process.env.SITE || "https://vaanitrack-git-feature-record-pranavchhajed842-2598s-projects.vercel.app";
 const HOST = new URL(SITE).host;
 const PKG = "app.vaanitrack.android";
-const LAUNCHER = `${PKG}/com.google.androidbrowserhelper.trusted.LauncherActivity`;
+const LAUNCHER = `${PKG}/.AppLauncher`;
 const OUT = __dirname;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const sh = (c) => execSync(`${ADB} ${c}`, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
@@ -202,23 +202,11 @@ const nav = (p, l) => p.locator('nav[aria-label="Screens"]').getByText(l, { exac
     shell("cmd uimode night no");
   });
 
-  await test("tapping the widget five times quickly opens the app once, not five", async (t) => {
-    // The tile was placed earlier by hand; this finds it by where the launcher drew it.
-    stopAll(); await sleep(1200); await dropBrowser(); home(); await sleep(1500);
-    for (let i = 0; i < 5; i++) { shell("input tap 448 829"); await sleep(120); }
-    await sleep(4000); p = await page(); await settled(p);
-    await p.waitForFunction(() => /Tap to finish/.test(document.querySelector("main button")?.textContent || ""), null, { timeout: 20000 }).catch(() => {});
-    const apps = shell("dumpsys activity activities | grep -oE 'Task\{[0-9a-f]+ #[0-9]+ type=standard A=[0-9]+:app.vaanitrack.android' | sort -u | wc -l");
-    const s = await probe(p); t.ok("the app is up", s.path === "/app");
-    t.eq("recording once", s.button, REC);
-    t.eq("one task holds the app", Number(apps), 1);
-  });
-
-  await test("nothing unexpected is asked of the phone", async (t) => {
+  await test("only what the widget needs is asked of the phone", async (t) => {
     const perms = shell(`dumpsys package ${PKG} | grep -E 'android.permission.[A-Z_]+: granted' | sed 's/:.*//' | sort -u | tr '\\n' ' '`);
-    t.ok("only the internet (and Android's own no-op) permissions", !/RECORD_AUDIO|CAMERA|LOCATION|CONTACTS|STORAGE|SMS|PHONE/.test(perms), perms);
+    t.ok("nothing beyond the internet, the microphone, its service and notices", !/CAMERA|LOCATION|CONTACTS|STORAGE|SMS|PHONE|CALENDAR|SENSORS/.test(perms), perms);
     const entry = shell(`cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.LAUNCHER ${PKG}`);
-    t.ok("a launcher entry exists", /LauncherActivity/.test(entry), entry);
+    t.ok("a launcher entry exists", /AppLauncher/.test(entry), entry);
   });
 
   await dropBrowser();

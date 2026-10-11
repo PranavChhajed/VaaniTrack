@@ -5,6 +5,11 @@ plugins {
 // Where the app points, taken from -PvaaniUrl or gradle.properties.
 def vaaniUrl = (project.findProperty('vaaniUrl') ?: 'https://vaanitrack.vercel.app').toString().replaceAll('/+$', '')
 def vaaniHost = new URI(vaaniUrl).host
+// Where the widget sends a recording. The same site by default; a test build
+// can point it at a stand-in server (-PvaaniApi=http://10.0.2.2:4010), which
+// is plain http and so also switches cleartext traffic on for that build only.
+def vaaniApi = (project.findProperty('vaaniApi') ?: vaaniUrl).toString().replaceAll('/+$', '')
+def cleartext = vaaniApi.startsWith('http://')
 
 // The signing key lives beside this file and is never committed. Without it
 // the release build is unsigned and will not install.
@@ -36,7 +41,7 @@ tasks.register('generateShortcuts') {
         <intent
             android:action="android.intent.action.VIEW"
             android:data="${vaaniUrl}/app?record=1"
-            android:targetClass="com.google.androidbrowserhelper.trusted.LauncherActivity"
+            android:targetClass="app.vaanitrack.android.AppLauncher"
             android:targetPackage="app.vaanitrack.android" />
     </shortcut>
 </shortcuts>
@@ -53,17 +58,16 @@ android {
         applicationId 'app.vaanitrack.android'
         minSdk 24
         targetSdk 34
-        versionCode 1
-        versionName '1.0'
+        versionCode 2
+        versionName '1.1'
 
-        manifestPlaceholders = [vaaniHost: vaaniHost]
+        manifestPlaceholders = [vaaniHost: vaaniHost, vaaniCleartext: cleartext.toString()]
         // The one address, spelled once and used in three places: the launch
         // URL, the widget's tap target, and the site this app vouches for.
         resValue 'string', 'vaani_record_url', "${vaaniUrl}/app?record=1"
+        resValue 'string', 'vaani_api_url', vaaniApi
         resValue 'string', 'vaani_open_url', "${vaaniUrl}/app"
-        resValue 'string', 'vaani_type_url', "${vaaniUrl}/app?type=1"
-        resValue 'string', 'vaani_journal_url', "${vaaniUrl}/journal?from=widget"
-        resValue 'string', 'vaani_insights_url', "${vaaniUrl}/insights"
+        resValue 'string', 'vaani_you_url', "${vaaniUrl}/you"
         resValue 'string', 'asset_statements',
                 '[{\\"relation\\": [\\"delegate_permission/common.handle_all_urls\\"], \\"target\\": {\\"namespace\\": \\"web\\", \\"site\\": \\"' + vaaniUrl + '\\"}}]'
     }

@@ -43,13 +43,13 @@ const SIZES = [
     });
   }
 
-  await test("nothing is left hidden under the glass bar at the bottom of any screen", async (t) => {
+  await test("nothing is left hidden under the bottom bar at the bottom of any screen", async (t) => {
     const { page, go, close } = await open(engine, profile, { seed: "full" });
     for (const [label, route] of [["Capture", "/app"], ["Journal", null], ["Insights", null], ["You", "/you"]]) {
       if (route) await go(route); else { await nav(page, label).click(); await page.waitForTimeout(800); }
       await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight)); await page.waitForTimeout(300);
       const g = await page.evaluate(() => {
-        const bar = document.querySelector(".glass-bar").getBoundingClientRect();
+        const bar = document.querySelector('nav[aria-label="Screens"] > div').getBoundingClientRect();
         const kids = [...document.querySelectorAll("main > *")].filter((e) => e.getBoundingClientRect().height > 0);
         const last = kids[kids.length - 1].getBoundingClientRect();
         return { barTop: Math.round(bar.top), lastBottom: Math.round(last.bottom) };
@@ -115,10 +115,10 @@ const SIZES = [
     await go("/app");
     await nav(page, "Journal").click(); await page.waitForTimeout(700);
     await nav(page, "Insights").click(); await page.waitForTimeout(700);
-    const state = () => page.evaluate(() => ({ path: location.pathname, cur: document.querySelector('nav a[aria-current="page"]')?.textContent?.trim(), lens: Math.round(new DOMMatrix(getComputedStyle(document.querySelector(".glass-lens")).transform).m41) }));
+    const state = () => page.evaluate(() => ({ path: location.pathname, cur: document.querySelector('nav a[aria-current="page"]')?.textContent?.trim(), lens: Math.round(new DOMMatrix(getComputedStyle(document.querySelector(".nav-lens")).transform).m41) }));
     let s = await state(); t.eq("Insights", [s.path, s.cur], ["/insights", "Insights"]);
     await page.goBack(); await page.waitForTimeout(900); s = await state(); t.eq("Back → Journal", [s.path, s.cur], ["/journal", "Journal"]);
-    const w = await page.evaluate(() => Math.round(document.querySelector(".glass-lens").getBoundingClientRect().width));
+    const w = await page.evaluate(() => Math.round(document.querySelector(".nav-lens").getBoundingClientRect().width));
     t.ok("the lens moved with it", Math.abs(s.lens - w) <= 2, JSON.stringify(s));
     await page.goBack(); await page.waitForTimeout(900); s = await state(); t.eq("Back → Capture", [s.path, s.cur], ["/app", "Capture"]);
     t.eq("the lens is home", s.lens, 0);
@@ -142,7 +142,7 @@ const SIZES = [
   await test("reduced motion: the lens does not travel, the app still works", async (t) => {
     const { page, go, state, close } = await open(engine, profile, { seed: "full", context: { reducedMotion: "reduce" } });
     await go("/app");
-    const tp = await page.evaluate(() => getComputedStyle(document.querySelector(".glass-lens")).transitionProperty);
+    const tp = await page.evaluate(() => getComputedStyle(document.querySelector(".nav-lens")).transitionProperty);
     t.ok("no transform transition", !/transform|all/.test(tp), tp);
     await nav(page, "Journal").click(); await page.waitForTimeout(1200);
     t.ok("navigation works", /Expenses/.test(await text(page)));

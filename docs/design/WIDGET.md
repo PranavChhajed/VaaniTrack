@@ -1,106 +1,173 @@
 # One-tap record: shortcut, Android widget, iPhone route
 
-The goal: tap something on the home screen and be recording today's expense,
-through the same pipeline as everything else.
+The goal: tap something on the home screen and record today's expense, through
+the same pipeline as everything else.
+
+**Rewritten 11 October.** The first widget only opened the app and was styled
+off-brand (a gradient, glass buttons, three extra shortcuts). The widget now
+records the expense *on the tile itself*, follows `docs/DESIGN.md` exactly, and
+has one control. This file describes the current one.
 
 ## What a widget can and cannot be
 
-A web app cannot make a home-screen widget. On both Android and iPhone a widget
-is native code, and on both a widget cannot hold the microphone. So the honest
-shape is: **the tile opens VaaniTrack already listening.** Everything after the
-tap is the website's own capture screen, so the tile cannot drift from the app.
+A web app cannot make a home-screen widget; on Android it is native code. A
+widget also cannot hold the microphone itself. So the tile does what a widget
+*can* do: a tap starts a small foreground service (`RecordService`) that records,
+sends the take to the same `/api/transcribe` the website uses, and tells the
+tile how it went. No app window opens.
 
 ## Layers
 
 | Layer | Who | How |
 |---|---|---|
 | `/app?record=1` | everyone | The capture screen starts listening by itself. `src/lib/useAutoRecord.ts` |
-| Long-press icon shortcut | Android | `shortcuts` in `src/app/manifest.ts` |
-| Home-screen tile | Android | The app in `android/` (below) |
+| Long-press icon shortcut | Android | `shortcuts` in `src/app/manifest.ts`, and a generated `shortcuts.xml` in the app |
+| Home-screen tile that records in place | Android | The app in `android/` (below) |
 | "Start listening when I open the app" | everyone, **the iPhone route** | A setting on You. `useAutoRecord` listens when the app is opened on capture, never when you tap around to it |
 | Native tile | iPhone | **Not built.** See "iPhone" |
 
-## `/app?record=1`
+## The tile
 
-- Waits until the first-run tour is finished and the recordings question is
-  answered. Recording under an overlay would put the microphone on with nobody
-  able to see it.
-- Tries **once**. The query is removed from the address before the attempt, so a
-  reload or coming back to the tab never records again.
-- Logs to today: the capture screen has no `captureDate`, which is the
-  extractor's own default.
-- Browsers differ on whether a page may open the microphone without a tap. Where
-  it may not, the screen says "Tap the button to start speaking" in plain words
-  and the tap works. A real refusal (permission blocked, no microphone, an
-  insecure page) is not softened: the tap shows the real error.
+One control, however big it is. Paper card, 2px ink border, 32dp corners; the
+mint record button; flat colour; no gradient, shadow or glow (`DESIGN.md` §4).
+It drops in as 2 × 2 (a little bigger than an app icon) and can be stretched.
 
-## Android app (`android/`)
+### Its states: the web button's, plus what happens after
+
+| State | Picture | Words | Tap does |
+|---|---|---|---|
+| idle | mint disc, ink bars | "Say what you spent", "Tap, then speak" (or "N waiting for the app") | starts listening |
+| warming | ember at 80% | "Getting the mic ready…" | nothing |
+| recording | ember, bars moving | "Tap to finish", "Listening" | finishes the take |
+| reading | mint, bars sweeping | "Reading it back…", then **what was heard** underneath | nothing |
+| logged | forest-ink tick | the amount in **Garamond**, what it was, "Logged ✓", and **Undo** | starts a new take |
+| check this | paper, "?" | "Check this", the amount, "Tap to check it" | opens the app's review card |
+| failed | paper, red "!" | "Tap to try again" and why, in plain words | tries again |
+| not set up | mint | "Connect VaaniTrack" | opens the You screen |
+
+Rules carried over from the design file, and why they matter here:
+
+- **"Tap to finish" appears only once sound is really arriving** (§7). The
+  service polls the recorder's level and shows "Getting the mic ready…" until it
+  rises above silence (or 1.4 s pass). The same dead-start problem the web button
+  guards against applies to a phone's microphone.
+- **Ember means the microphone is live, and nothing else** (§2). Reading is mint,
+  not ember: nothing is listening then.
+- **An unsure result is shown, never saved.** The widget runs the web's own gate
+  (`gateFailures` in `src/lib/report.ts`, ported to `CaptureClient.sure`): the
+  extractor flagged it, the amount was not *said*, the transcript was shaky
+  (mean log-probability below -0.9), or "always let me check" is on. Any of
+  those gives "Check this" and nothing is written.
+- **Money is Garamond** (§3, the `.money` rule). A text view in a widget cannot
+  use a custom font (the launcher draws it in the system font; the first build
+  quietly did that), so the amount is drawn into a picture with the app's own EB
+  Garamond and tabular figures (`AmountImage.java`). The words around it use the
+  system font. A screen reader gets the whole tile as one description.
+
+### How it moves
+
+Android runs no animation code in a widget; a `ViewFlipper` cycling pre-drawn
+frames is the one thing that loops. `android/tools/make_widget_frames.py` draws
+the two loops (listening: ember bars breathing as a wave travels across them, 12
+frames at 75 ms, the web's 900 ms `.wave-bar`; reading: mint bars sweeping) and
+the still states. It only moves while recording or reading, which is also the
+battery argument for not animating an idle tile. With animations switched off or
+battery saver on, the listening picture is still.
+
+## Saving: the inbox
+
+The tile cannot write to the journal: that lives in Chrome's storage for the
+site, which native code cannot reach. So a widget capture waits in a small queue
+on the phone (`WidgetStore`, in the app's private storage) and is handed to the
+website **the next time the app opens**.
+
+- `AppLauncher` (the app's launcher activity) puts the queue on the address it
+  opens: `?inbox=<base64url of a JSON list>`.
+- `WidgetInbox` (mounted in `(app)/layout.tsx`) reads it on any screen, takes the
+  parameter off the address, and puts what is *saved* into the journal and what
+  is *to check* on the capture screen as review cards. `src/lib/widgetInbox.ts`.
+- Nothing in the address is trusted: each item is rebuilt by the same
+  `sanitizeTransaction` the journal uses for damaged storage.
+- **There is no acknowledgement back**, so an item is offered on every open until
+  it is 14 days old (queue capped at 40), and the website skips ids it has already
+  seen. Remembered ids outlive the entry, so deleting an expense does not bring
+  it back. An earlier version dropped an item after two hand-overs; a first open
+  that failed (offline) would then have lost it.
+- A review is remembered only once the capture screen has taken it, so a reload
+  in between cannot lose one.
+- Until it is collected, the tile says "N waiting for the app". Undo removes the
+  last capture from the queue while it is still there.
+
+**What the person sees:** an expense recorded from the tile is in the journal
+after they next open the app, not instantly. This is the cost of not having
+accounts or sync, and the tile says so.
+
+## Setting it up
+
+The website knows three things the tile needs and cannot read: the phone's
+anonymous id, whether recordings may be kept, and the default payment method
+(and "always let me check"). On **You → Home-screen widget** (only shown inside
+the Android app) the **Connect the widget** button opens
+`intent://setup?d=…&c=…&p=…&r=…` which lands in `SetupActivity`. That stores
+them, asks once for the microphone (and notification) permission, says what
+happened in a toast, and returns to the page. It is refused for anything that is
+not a UUID or an unanswered recordings question.
+
+If the settings change afterwards, the You screen says "Your settings have
+changed since the widget was connected" and the button reads **Update the
+widget**. (`src/lib/shell.ts`: a fingerprint of the four values.)
+
+The Android app is recognised from the first load's referrer
+(`android-app://app.vaanitrack.android`), noted once in storage.
+
+## Why a foreground service, and what it costs
+
+A widget tap is allowed to start a foreground service of the microphone type even
+when the permission was granted only "while using the app" (verified on Android
+14). The cost: Android shows its own microphone indicator and the service's
+notification while it listens, and a short notification after ("Logged ₹250")
+while the result shows. The service stays in the foreground for those few
+seconds because a process with nothing running is frozen within seconds, and a
+frozen process cannot put the tile back to idle. Neither indicator can or should
+be hidden.
+
+## The Android app (`android/`)
 
 A Trusted Web Activity: the website shown full screen, as an app. It runs in
 Chrome, so it **shares storage with the installed PWA and the journal is still
-there**. A Capacitor-style shell would have had its own empty storage.
+there**.
 
-- The widget is `RecordWidgetProvider` (see "The widget" below). Its taps open
-  the launcher activity with an address on the site as the intent data.
+- `AppLauncher` is the launcher activity (it extends the library's, adding the
+  inbox to the address).
 - The site's half of the link is `public/.well-known/assetlinks.json`, naming the
   app's package and the **public fingerprint** of its signing key. Without it
   Android shows a browser bar instead of full screen.
 - The address is a build setting: `-PvaaniUrl=https://...` (default production).
+  `-PvaaniApi=` points only the widget's uploads somewhere else, for testing
+  against a stand-in server (it also switches cleartext on for that build only).
 - The signing key (`android/vaanitrack-release.jks`, password in
   `android/keystore.properties`) is **ignored by git and is the app's identity**.
   Lose it and installed copies cannot be updated. Back it up somewhere safe.
 - Build: `cd android && ./gradlew assembleRelease` (JDK 17, an Android SDK with
   platform 34). Output: `android/app/build/outputs/apk/release/app-release.apk`.
-- Long-pressing the app icon also offers "Record an expense". Android does not
-  resolve a string reference inside a shortcut's `data`, so Gradle writes
-  `shortcuts.xml` at build time with the real address in it
-  (`generateShortcuts` in `app/build.gradle`). The first version used a
-  reference and registered with an empty address; the system's own shortcut
-  dump (`adb shell dumpsys shortcut`) is what showed it.
+- Long-pressing the app icon offers "Record an expense", which opens the app
+  listening. Android does not resolve a string reference inside a shortcut's
+  `data`, so Gradle writes `shortcuts.xml` at build time.
+- Permissions: internet, **microphone**, **foreground service (microphone)**,
+  **notifications**. The app now asks for the microphone, which it did not
+  before; it does so only from the widget's set-up.
 
-### The widget
+### Tile details that were learnt the hard way
 
-It drops in as a **2 x 2 tile** (a little bigger than an app icon) and becomes
-the **full tile** when it is stretched to about 4 wide. `onAppWidgetOptionsChanged`
-picks the layout from the width it has been given (270dp and up is full), so the
-two sizes behave the same on every launcher.
-
-| Size | Layout | Tap targets |
-|---|---|---|
-| compact | `widget_small.xml`: the animated microphone, "Say it / Tap to record" | the whole tile records |
-| full | `widget_wide.xml`: the microphone, "Say what you spent", and three buttons | the tile records; **Type** opens `/app?type=1` with the cursor in the box; **Journal** opens `/journal?from=widget`; **Insights** opens `/insights` |
-
-Every target has its own press ripple, and its own `PendingIntent` request code
-(or Android hands all four the same intent).
-
-**How it moves.** Android does not run animation code in a widget: the home screen
-draws it from a description, and a ViewFlipper cycling through pre-drawn frames is
-the one thing that gives a smooth loop. `tools/make_widget_frames.py` draws 12
-frames of the app's own record button (a mint disc with five ink bars that breathe
-as a wave travels across them, and a ring that swells and fades once per loop);
-the flipper shows each for 140ms, so the loop is 1.7 seconds. It only runs while
-the widget is on screen, and stops when animations are off or battery saver is on.
-
-**Made to behave like a good widget** (second pass, 11 Oct, after a review as a widget designer):
-
-- *Bigger microphone.* In the compact tile the microphone fills the space above the label instead of sitting at a fixed 64dp in a much larger tile. It scales down, never the text, on a short tile.
-- *Breathing halo* behind the button, one more layer in each of the 12 frames.
-- *Android 12 and up:* the tile uses the system widget corner radius (and the buttons the inner radius), and its root is `@android:id/background`, so the launcher can round it and animate it open like other widgets.
-- *Animations off, or battery saver on:* the microphone stays on its first frame. The tile refreshes every 30 minutes (`updatePeriodMillis`) so it picks a change up; an in-place update does immediately. Checked: 6 distinct frames with animations on, 1 with them off.
-- *Large text:* above 115% system text the full tile drops the second line and caps the button labels, so nothing is cut off. Checked at 150%.
-- *Orientation:* the launcher reports a tile's size for both ways of holding the phone. The first version always read the landscape height and so hid the hint on a tall tile held upright; it now reads the pair that matches the orientation.
-- A picture for the widget list on Android 11 and older (`widget_preview.png`), and an even right edge on the three buttons.
-
-**What it cannot do.** It cannot listen: Android does not let a widget hold the
-microphone, so a tap opens the app, which records. It cannot show your totals:
-they are in Chrome's storage for the site, which a native widget cannot read. It
-cannot hold a real live waveform for the same reason. Showing today's total on
-the tile would need the journal to be somewhere the widget can reach, which means
-accounts and sync.
-
-**The site's side.** `/journal` normally sends a cold open to capture (an old
-pinned shortcut once pointed there), so the Journal button's address carries
-`from=widget`, which `OpenOnCapture` lets through.
+- Revoking the microphone while the tile still shows its old face would crash the
+  service (Android refuses a microphone service without the permission). The
+  service checks first and, if it is missing, shows "Set up the widget first".
+- A tile that says "Tap to finish" with no service alive is a process that was
+  killed. Every redraw checks `RecordService.alive`, and an alarm booked at the
+  start of each take and each result redraws it even if the process is gone.
+- A tap while it is warming or reading does nothing; two quick taps from idle
+  start one take (the second finds it already running).
+- Large system text: above 115% the full tile drops its second line.
 
 ### Building the two APKs
 
@@ -123,68 +190,50 @@ before release; use the default (production) for the real one. Install with
 `/app?record=1`. On iPhone, Shortcuts' "Open URL" opens **Safari**, never an
 installed Home Screen app, and Safari and the Home Screen icon each keep their
 own website storage. Expenses recorded through such a button would have landed
-in a second, empty journal. The first version of the You > Help text told people
-to do exactly that; it was corrected after this was caught. The rule that follows
-for iPhone: **keep to one icon.**
+in a second, empty journal. The rule that follows for iPhone: **keep to one
+icon.**
 
 **What is not possible without native code:**
 
 - A Home Screen widget tile. iPhone widgets are written in SwiftUI (WidgetKit),
-  cannot hold the microphone, and can only open an app.
+  cannot hold the microphone, and can only open an app. So even a native iPhone
+  widget would not record in place the way the Android one does.
 - An iPhone app that carries the existing journal. A native shell has its own
   storage, so it would start empty until an "import my journal" feature (built on
   the CSV export in `src/lib/exportCsv.ts`) existed.
 - Building any of it from Windows. It needs a Mac with Xcode, and a paid Apple
   Developer account (about $99 a year) to run on a phone for more than a week.
 
-**Things that are iPhone's to decide, and not verified here:** whether a page may
-open the microphone without a tap (if not, the screen says "Tap the button to
-start speaking"), and whether a Home Screen app asks for microphone permission
-every time it is launched (it has historically). Both are covered by the fallback.
-
-**Needs iOS 16.4 or newer.** The styling framework the app is built on needs it,
-so an older iPhone would show a broken layout.
-
-**Testing without an iPhone:** the app was run in WebKit (Safari's engine, which
-every iPhone browser must use) with iPhone 14 and iPhone SE profiles: layout of
-every screen, tap targets, text-box zoom, storage across reloads, and every
-launch scenario. That is the engine, not iOS: it has no microphone API on
-Windows and it is not an iOS audio session or a Home Screen app.
+**Needs iOS 16.4 or newer.** The styling framework the app is built on needs it.
 
 ## Verified, and how
 
-On an Android 14 emulator (Google APIs with Chrome, 4 GB), with the APK signed by
-the real key and pointed at the branch preview. The full list, with the browser
-side, is in `QA.md`.
+All on an Android 14 emulator, with a stand-in server (`qa/widget-mock.cjs`)
+answering `/api/transcribe`, because the point is the tile, and a real voice and
+transcriber are not reproducible. `qa/qa-widget.cjs` drives the real installed
+tile by tapping it and reads the one line it logs per redraw. The microphone is
+the host's.
 
-- The app opens full screen with no browser bar, so the asset link verified.
-- The tile is offered by the widget picker (2 x 2), can be dropped on the home
-  screen, and **moves**: five distinct frames across six captures.
-- Stretched to about 4 wide it becomes the full tile. Its microphone, **Type**,
-  **Journal** and **Insights** each open the right place; the tile as a whole
-  records, with no further tap. Five quick taps leave one task and one screen.
-- The long-press shortcut does the same as the tile. Opening by the app icon
-  does not record.
-- Upgrading the app in place keeps an already-placed widget and redraws it.
-- Back walks Insights, Journal, Capture, then leaves, with no trap or loop, and
-  relaunching straight after is fine.
-- Links to the site open in the app; a cold `/journal` goes to capture, and
-  `/journal?from=widget` stays.
-- A voice expense works end to end on the phone's microphone; a typed one
-  survives the app being killed; a revoked microphone leaves the app waiting on
-  Chrome's own prompt and recovers once allowed.
-- Large system text (130%, 200%), a 320dp-wide screen, a phone on its side, the
-  keyboard open, and dark mode all leave the app usable.
-- Only the internet permission is requested.
+It covers: every state in order (and that "Tap to finish" is never shown while
+warming); what was sent (the phone's id, the recordings answer, the default
+payment, the speaker's date, real mp4 audio, how long, the warm-up time); a
+single and a double expense; Undo; an unsure result and a shaky transcript and
+"review everything" all held for review and not saved; no amount in what was
+heard; the transcriber hearing nothing; the server erroring, answering with
+HTML, and dropping the connection; taps while warming, while reading, and a
+double tap; the 45-second automatic finish; the app being killed mid-take;
+notifications refused; animations off (the picture does not move); 150% system
+text; a revoked microphone; a bad set-up link; and an in-place update keeping
+the queue.
 
 ## Not verified
 
-- Microphone behaviour on real phones. The emulator's microphone is the host's.
-  An iPhone is expected to ask for a tap; the fallback covers it, but it was
-  only simulated.
-- That the existing journal carries over into the app. It should, because a
-  Trusted Web Activity shares Chrome's storage for the site, but the emulator
-  had no earlier journal to carry.
-- Start-up time on a real phone. The emulator took about 30 seconds to paint
-  after a cold start.
+- **Anything on a real phone.** Battery managers on some makes (Xiaomi, Oppo,
+  Samsung's "sleeping apps") are known to restrict background microphone use;
+  the emulator has none. How the animation feels, and how loud the microphone
+  indicator and notification are, need a real handset.
+- **The microphone on a real phone's noise floor.** The emulator's is the PC's.
+- **That the inbox reaches the journal in the installed app**, end to end, is
+  covered in `QA.md` once the website side is deployed; the web half is unit
+  tested.
 - iOS in any form.

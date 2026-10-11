@@ -1,19 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Drops in as a compact 2 x 2 tile, a little bigger than an app icon, and
-     becomes the full tile with shortcuts when it is stretched wider. -->
+<!-- Drops in as a 2 x 2 card, a little bigger than an app icon, and can be
+     stretched. It is one control however big it is: tap to record. -->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
     android:description="@string/widget_description"
-    android:initialLayout="@layout/widget_small"
+    android:initialLayout="@layout/widget_tile"
     android:maxResizeHeight="220dp"
     android:maxResizeWidth="400dp"
     android:minHeight="110dp"
     android:minResizeHeight="110dp"
     android:minResizeWidth="110dp"
     android:minWidth="110dp"
-    android:previewLayout="@layout/widget_small"
+    android:previewImage="@drawable/widget_preview"
+    android:previewLayout="@layout/widget_tile"
     android:resizeMode="horizontal|vertical"
     android:targetCellHeight="2"
     android:targetCellWidth="2"
-    android:previewImage="@drawable/widget_preview"
     android:updatePeriodMillis="1800000"
     android:widgetCategory="home_screen" />

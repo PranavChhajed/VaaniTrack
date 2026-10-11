@@ -124,7 +124,8 @@ A sheet travels the height of *itself*, not the 8px a banner gets, so it reads a
 | `TransactionRow` | Built for scanning. Falls back to payee as the primary label when there is no description. Starts with an `ExpenseIcon` |
 | `ExpenseIcon` | A line icon on a forest tile, chosen from the row's words by `lib/icon.ts`. A picture only: it is never written to the category. Line art, not emoji, so it is the same drawing on every phone |
 | `ProfileLink` | The profile icon in the header (the person's initial, or a plain figure): the way to the You screen. Replaces the in-app "Sign in" link |
-| `BottomNav` | The three tabs, Capture, Journal and Insights, fixed under the thumb. Mounted once in `(app)/layout.tsx`; sits below the sheets |
+| `BottomNav` | The three tabs, Capture, Journal and Insights, fixed under the thumb: a raised-paper pill in a 2px ink border, with a **solid ink pill (paper text) under the current tab** that slides to the next. Mounted once in `(app)/layout.tsx`; sits below the sheets |
+| `WidgetInbox` | Collects what the Android widget recorded while the app was closed: logged ones go into the journal, unsure ones arrive as review cards. No face but a one-line notice |
 | `TransactionDetail` | Full record with provenance, edit and delete |
 | `DatePicker` | Month grid, always open in the journal; each populated day carries its total, future days are disabled |
 | `DayCapture` | The sheet that records onto a chosen past day |
@@ -133,7 +134,16 @@ A sheet travels the height of *itself*, not the 8px a banner gets, so it reads a
 
 **Provenance belongs in the detail view, not on the row.** On a row it is noise; on the detail it answers the question a financial record has to answer.
 
-## 9. What is outside this system
+## 9. The Android home-screen tile
+
+It is a native widget, not a web screen, and it follows the same rules: raised
+paper, 2px ink border, a 32dp card corner, flat colour, the mint record button,
+Ember only while the microphone is live, the amount in Garamond, and the §7
+states in their order ("Tap to finish" only once sound is arriving). It has one
+control. An unsure result is shown on it as "Check this" and never saved. The
+mechanics are in `docs/design/WIDGET.md`.
+
+## 10. What is outside this system
 
 `/portal`, `/diag` and `/diag/mic` are **developer-facing diagnostic surfaces** and deliberately do not follow the above. They are dense, table-heavy and optimised for reading many rows quickly. They are tools, not product, and holding them to the design language would make them worse at their job.
 

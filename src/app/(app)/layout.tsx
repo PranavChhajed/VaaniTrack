@@ -1,6 +1,7 @@
 import { AudioConsentGate } from "@/components/AudioConsent";
 import { BottomNav } from "@/components/BottomNav";
 import { Onboarding } from "@/components/Onboarding";
+import { WidgetInbox } from "@/components/WidgetInbox";
 import { TransactionsProvider } from "@/lib/useTransactions";
 
 /**
@@ -28,6 +29,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {/* The way between the two screens. Here rather than on each page so it
           does not remount, and so its active tab is one decision. */}
       <BottomNav />
+      {/* Expenses the Android widget captured while the app was closed. */}
+      <WidgetInbox />
       <AudioConsentGate />
       {/* First-run flow, above the consent gate (z-[70] > z-[60]). Its own
           last step asks the same consent question, so a genuinely new

@@ -20,6 +20,7 @@ import {
   todayISO,
 } from "../src/lib/journal.ts";
 import { iconFor } from "../src/lib/icon.ts";
+import { decodeInbox, inboxParam, markSeen, takeNew } from "../src/lib/widgetInbox.ts";
 import { wantsRecord, wantsType, isLaunchOfCapture, shouldAutoRecord } from "../src/lib/useAutoRecord.ts";
 import {
   addDays,

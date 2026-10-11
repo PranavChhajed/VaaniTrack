@@ -2,19 +2,25 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- The widget records an expense without opening the app. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:supportsRtl="true"
+        android:usesCleartextTraffic="${vaaniCleartext}"
         android:theme="@style/Theme.VaaniTrack">
 
         <!-- The website, full screen, as an app. The launch address comes from
              the intent when there is one (the widget sends the record address),
              and from here when there is not (the app icon). -->
         <activity
-            android:name="com.google.androidbrowserhelper.trusted.LauncherActivity"
+            android:name=".AppLauncher"
             android:exported="true">
 
             <meta-data
@@ -51,6 +57,29 @@
             android:name="asset_statements"
             android:resource="@string/asset_statements" />
 
+        <!-- Listens for an expense when the tile is tapped. A foreground
+             service of the microphone kind: Android shows its own indicator. -->
+        <service
+            android:name=".RecordService"
+            android:exported="false"
+            android:foregroundServiceType="microphone" />
+
+        <!-- Connects the tile to the website's settings. It has no screen of its
+             own: the You screen opens it with a link and it hands straight back. -->
+        <activity
+            android:name=".SetupActivity"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="vaanitrack" android:host="setup" />
+            </intent-filter>
+        </activity>
+
         <!-- The home-screen tile. -->
         <receiver
             android:name=".RecordWidgetProvider"
@@ -58,6 +87,8 @@
             android:label="@string/widget_label">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="app.vaanitrack.android.UNDO" />
+                <action android:name="app.vaanitrack.android.NOOP" />
             </intent-filter>
             <meta-data
                 android:name="android.appwidget.provider"

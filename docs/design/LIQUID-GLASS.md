@@ -1,5 +1,15 @@
 # The liquid-glass bottom bar
 
+> **Superseded on 11 October.** The glass bar was built and measured, and then
+> taken out: `DESIGN.md` §4 says the app is deliberately shadowless (separation
+> only by a 2px ink border, a paper value step and hairlines), and frosted glass
+> breaks that rule on every count. The weakest part was also the "you are here"
+> cue, a brighter pane of glass on glass. The bar is back to raised paper in an
+> ink border, with a **solid ink pill under the current tab** that slides with the
+> same small overshoot. This file is kept for what it measured, not for what
+> ships. Checked by `qa/nav.cjs`.
+
+
 `src/components/BottomNav.tsx`, styled by `.glass-bar` and `.glass-lens` in
 `src/app/globals.css`.
 

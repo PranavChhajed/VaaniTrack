@@ -1,51 +1,50 @@
 package app.vaanitrack.android;
 
+import android.Manifest;
+import android.app.AlarmManager;
 import android.app.PendingIntent;
 import android.appwidget.AppWidgetManager;
 import android.appwidget.AppWidgetProvider;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
-import android.content.res.Configuration;
+import android.content.pm.PackageManager;
 import android.net.Uri;
-import android.os.Bundle;
 import android.os.PowerManager;
+import android.os.SystemClock;
 import android.provider.Settings;
-import android.util.TypedValue;
+import android.util.Log;
 import android.view.View;
 import android.widget.RemoteViews;
 
-import com.google.androidbrowserhelper.trusted.LauncherActivity;
+import org.json.JSONArray;
 
 /**
- * The home-screen tile.
+ * The home-screen tile: one control, the record button.
  *
- * A widget cannot listen: Android does not let one hold the microphone, and it
- * cannot run animation code either; the home screen draws it from a
- * description. What it can do is open the app on the address that starts
- * listening, which is what the big tap does. Everything after that is the
- * website's ordinary capture screen, so the tile cannot drift from the app.
+ * Tapping it records an expense right there. It never opens the app for that:
+ * `RecordService` listens, sends the take to the server and reports back, and
+ * this class only draws where that has got to. The tile moves through the
+ * website's own record-button states (docs/DESIGN.md section 7):
  *
- * It comes in two sizes, picked from the room it has been given:
+ *   idle        mint        "Say what you spent"
+ *   warming     ember 80%   "Getting the mic ready..."
+ *   recording   ember       "Tap to finish", bars moving
+ *   reading     mint        "Reading it back...", what was heard underneath
+ *   saved       forest      the amount in Garamond, "Logged", and Undo
+ *   check       paper       "Check this": opens the app's review card
+ *   failed      paper, red  says what went wrong; a tap tries again
  *
- *   compact   about 2 x 2: the animated microphone, one tap target
- *   full      stretched wider: the microphone, a headline, and three small
- *             buttons for typing an expense, the journal and insights
- *
- * Both follow the system: its corner radius on Android 12 and up, a still
- * microphone when animations are off or battery saver is on, and a shorter
- * layout when text is large. Both look the same on every phone because the layouts, not the launcher,
- * decide how they are drawn. The microphone's movement is a ViewFlipper cycling
- * through pre-drawn frames (tools/make_widget_frames.py).
+ * The one place it does open the app is when it is not set up yet, or when the
+ * app was unsure: an unsure result is shown to the person, never saved.
  */
 public class RecordWidgetProvider extends AppWidgetProvider {
 
-    /** Width, in dp, from which the full tile has room for its three buttons. */
-    private static final int FULL_FROM_DP = 270;
+    static final String ACTION_UNDO = "app.vaanitrack.android.UNDO";
+    static final String ACTION_NOOP = "app.vaanitrack.android.NOOP";
+    static final String ACTION_CHECK = "app.vaanitrack.android.CHECK";
 
-    /** Below this height, in dp, the full tile drops its second line of text. */
-    private static final int ROOMY_FROM_DP = 125;
-
-    /** A flip interval so long that the microphone stays on its first frame. */
+    /** A flip interval so long that the picture stays on its first frame. */
     private static final int STILL = Integer.MAX_VALUE / 2;
 
     @Override
@@ -55,63 +54,183 @@ public class RecordWidgetProvider extends AppWidgetProvider {
         }
     }
 
-    /** Called as the tile is stretched or shrunk: draw whichever layout now fits. */
     @Override
-    public void onAppWidgetOptionsChanged(
-            Context context, AppWidgetManager manager, int appWidgetId, Bundle newOptions) {
-        render(context, manager, appWidgetId);
+    public void onReceive(Context context, Intent intent) {
+        if (ACTION_UNDO.equals(intent.getAction())) {
+            undo(context);
+            return;
+        }
+        if (ACTION_NOOP.equals(intent.getAction())) return;
+        if (ACTION_CHECK.equals(intent.getAction())) {
+            refresh(context);
+            return;
+        }
+        super.onReceive(context, intent);
+    }
+
+    /** Redraw every placed tile from the stored state. */
+    static void refresh(Context context) {
+        AppWidgetManager manager = AppWidgetManager.getInstance(context);
+        int[] ids = manager.getAppWidgetIds(new ComponentName(context, RecordWidgetProvider.class));
+        for (int id : ids) {
+            render(context, manager, id);
+        }
+    }
+
+    /**
+     * Ask for a redraw a little later, whatever happens to this process.
+     *
+     * If Android kills the app mid-take, nothing is left to tell the tile, and
+     * it would go on saying "Tap to finish". An alarm survives that: when it
+     * fires, `render` sees there is no listening service and draws idle.
+     */
+    static void checkLater(Context context, long delayMs) {
+        AlarmManager alarms = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+        if (alarms == null) return;
+        Intent check = new Intent(context, RecordWidgetProvider.class).setAction(ACTION_CHECK);
+        PendingIntent pending = PendingIntent.getBroadcast(
+                context, 6, check, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        alarms.setAndAllowWhileIdle(
+                AlarmManager.ELAPSED_REALTIME, SystemClock.elapsedRealtime() + delayMs, pending);
+    }
+
+    private static void undo(Context context) {
+        WidgetStore store = new WidgetStore(context);
+        JSONArray ids = store.lastSaved();
+        for (int i = 0; i < ids.length(); i++) {
+            store.undoLast(ids.optString(i));
+        }
+        store.setLastSaved(new JSONArray());
+        store.setState(WidgetStore.State.IDLE, "");
+        refresh(context);
     }
 
     private static void render(Context context, AppWidgetManager manager, int appWidgetId) {
-        Bundle options = manager.getAppWidgetOptions(appWidgetId);
-        // The launcher reports the tile's size in both orientations: the narrow
-        // width and tall height belong to portrait, the wide width and short
-        // height to landscape. Use the pair for the way the phone is held.
-        boolean landscape = context.getResources().getConfiguration().orientation
-                == Configuration.ORIENTATION_LANDSCAPE;
-        int widthDp = options.getInt(landscape
-                ? AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH
-                : AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 0);
-        int heightDp = options.getInt(landscape
-                ? AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT
-                : AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 0);
-        boolean full = widthDp >= FULL_FROM_DP;
-
-        RemoteViews views = new RemoteViews(
-                context.getPackageName(),
-                full ? R.layout.widget_wide : R.layout.widget_small);
-
-        // The tile as a whole records.
-        views.setOnClickPendingIntent(android.R.id.background, open(context, 1, R.string.vaani_record_url));
-
-        if (full) {
-            views.setOnClickPendingIntent(R.id.chip_type, open(context, 2, R.string.vaani_type_url));
-            views.setOnClickPendingIntent(R.id.chip_journal, open(context, 3, R.string.vaani_journal_url));
-            views.setOnClickPendingIntent(R.id.chip_insights, open(context, 4, R.string.vaani_insights_url));
+        WidgetStore store = new WidgetStore(context);
+        boolean mic = context.checkSelfPermission(Manifest.permission.RECORD_AUDIO)
+                == PackageManager.PERMISSION_GRANTED;
+        boolean ready = store.connected() && mic;
+        WidgetStore.State state = store.state();
+        // "Listening" or "reading" with no service alive is a process that was
+        // killed. Believe the facts, not the leftover.
+        boolean inFlight = state == WidgetStore.State.WARMING
+                || state == WidgetStore.State.RECORDING || state == WidgetStore.State.READING;
+        if (inFlight && !RecordService.alive) {
+            state = WidgetStore.State.IDLE;
+            store.setState(WidgetStore.State.IDLE, "");
         }
 
-        // Large text on a short tile would clip the buttons: keep the headline and
-        // the buttons, drop the second line.
-        boolean cramped = heightDp > 0 && heightDp < ROOMY_FROM_DP;
-        float fontScale = context.getResources().getConfiguration().fontScale;
-        if (full && (cramped || fontScale > 1.15f)) {
-            views.setViewVisibility(R.id.hint, View.GONE);
-        }
-        // The buttons are a fixed height, so their words stop growing with the
-        // system text size a little early (about 130%) rather than clip.
-        if (full && fontScale > 1.15f) {
-            views.setTextViewTextSize(R.id.title, TypedValue.COMPLEX_UNIT_DIP, 17 * 1.15f);
-            for (int label : new int[] {R.id.label_type, R.id.label_journal, R.id.label_insights}) {
-                views.setTextViewTextSize(label, TypedValue.COMPLEX_UNIT_DIP, 12 * 1.1f);
+        RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_tile);
+
+        int picture = R.id.mic_idle;
+        String title = context.getString(R.string.widget_title);
+        String sub = context.getString(R.string.widget_hint);
+        String amount = "";
+        PendingIntent tap;
+
+        if (!ready) {
+            // Not set up: the tap goes to where it is set up.
+            title = "Connect VaaniTrack";
+            sub = store.connected() ? "Allow the microphone to start" : "Tap to set up the widget";
+            tap = openApp(context, R.string.vaani_you_url);
+        } else {
+            switch (state) {
+                case WARMING:
+                    picture = R.id.mic_warm;
+                    title = "Getting the mic ready…";
+                    sub = "One moment";
+                    tap = noop(context);
+                    break;
+                case RECORDING:
+                    picture = R.id.flip_rec;
+                    title = "Tap to finish";
+                    sub = "Listening";
+                    tap = toggle(context);
+                    break;
+                case READING:
+                    picture = R.id.flip_read;
+                    title = "Reading it back…";
+                    sub = store.line().isEmpty() ? "" : "“" + store.line() + "”";
+                    tap = noop(context);
+                    break;
+                case SAVED:
+                    picture = R.id.mic_saved;
+                    amount = store.amount();
+                    title = store.what().isEmpty() ? "Logged" : store.what();
+                    sub = store.line().isEmpty() ? "Logged ✓" : "Logged ✓ · " + store.line();
+                    tap = toggle(context);
+                    break;
+                case CHECK:
+                    picture = R.id.mic_check;
+                    amount = store.amount();
+                    title = "Check this";
+                    sub = store.line();
+                    tap = openApp(context, R.string.vaani_open_url);
+                    break;
+                case FAILED:
+                    picture = R.id.mic_fail;
+                    title = "Tap to try again";
+                    sub = store.line();
+                    tap = toggle(context);
+                    break;
+                default:
+                    int waiting = store.waiting();
+                    if (waiting > 0) {
+                        sub = waiting + " waiting for the app";
+                    }
+                    tap = toggle(context);
             }
         }
 
-        // A phone that has animations turned off or is saving battery gets a
-        // still microphone. The home screen redraws it on its next refresh.
-        if (!animationsWanted(context)) {
-            views.setInt(R.id.wave, "setFlipInterval", STILL);
-            views.setDisplayedChild(R.id.wave, 0);
+        for (int id : new int[] {R.id.mic_idle, R.id.mic_warm, R.id.flip_rec, R.id.flip_read,
+                R.id.mic_saved, R.id.mic_check, R.id.mic_fail}) {
+            views.setViewVisibility(id, id == picture ? View.VISIBLE : View.GONE);
         }
+
+        views.setTextViewText(R.id.title, title);
+        views.setTextViewText(R.id.sub, sub);
+        views.setViewVisibility(R.id.sub, sub.isEmpty() ? View.GONE : View.VISIBLE);
+        // Money is Garamond (docs/DESIGN.md), which a text view cannot show here.
+        if (!amount.isEmpty()) {
+            views.setImageViewBitmap(R.id.amount, AmountImage.draw(context, amount));
+        }
+        views.setViewVisibility(R.id.amount, amount.isEmpty() ? View.GONE : View.VISIBLE);
+
+        boolean undoable = ready && state == WidgetStore.State.SAVED;
+        views.setViewVisibility(R.id.undo, undoable ? View.VISIBLE : View.GONE);
+        if (undoable) {
+            Intent undo = new Intent(context, RecordWidgetProvider.class).setAction(ACTION_UNDO);
+            views.setOnClickPendingIntent(R.id.undo, PendingIntent.getBroadcast(
+                    context, 5, undo, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE));
+        }
+
+        views.setOnClickPendingIntent(android.R.id.background, tap);
+        views.setContentDescription(android.R.id.background,
+                (amount.isEmpty() ? "" : amount + ". ") + title + (sub.isEmpty() ? "" : ". " + sub));
+
+        // A phone with animations turned off, or saving battery, gets a still
+        // picture. The home screen redraws it on its next refresh.
+        if (!animationsWanted(context)) {
+            for (int flipper : new int[] {R.id.flip_rec, R.id.flip_read}) {
+                views.setInt(flipper, "setFlipInterval", STILL);
+                views.setDisplayedChild(flipper, 0);
+            }
+        }
+
+        // A result is only for a few seconds. Whoever drew it (the service, a
+        // permission change, the launcher) also books the redraw that ends it, so
+        // it cannot outlive its time because a timer somewhere was lost.
+        boolean result = state == WidgetStore.State.SAVED || state == WidgetStore.State.CHECK
+                || state == WidgetStore.State.FAILED;
+        if (result) {
+            checkLater(context, Math.max(1_500, WidgetStore.RESULT_MS + 3_000 - store.stateAge() + 500));
+        }
+
+        // One line per redraw, so the tile's state can be followed (and tested)
+        // without reading pixels: `adb logcat -s VaaniWidget`.
+        Log.i("VaaniWidget", "ready=" + ready + " state=" + state + " title=" + title
+                + " sub=" + sub + " amount=" + amount + " waiting=" + store.waiting()
+                + " undo=" + undoable);
 
         manager.updateAppWidget(appWidgetId, views);
     }
@@ -123,15 +242,25 @@ public class RecordWidgetProvider extends AppWidgetProvider {
         return scale > 0f && (power == null || !power.isPowerSaveMode());
     }
 
-    /** Opens the website at one of its addresses. Each target has its own
-     *  request code, or Android would hand the same PendingIntent to all four. */
-    static PendingIntent open(Context context, int requestCode, int addressRes) {
+    // ---- the taps ------------------------------------------------------------------
+
+    private static PendingIntent toggle(Context context) {
+        Intent intent = new Intent(context, RecordService.class).setAction(RecordService.ACTION_TOGGLE);
+        return PendingIntent.getForegroundService(
+                context, 1, intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+    }
+
+    private static PendingIntent noop(Context context) {
+        Intent intent = new Intent(context, RecordWidgetProvider.class).setAction(ACTION_NOOP);
+        return PendingIntent.getBroadcast(
+                context, 2, intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+    }
+
+    /** Opens the website, at one of its addresses (the launcher adds anything waiting). */
+    private static PendingIntent openApp(Context context, int addressRes) {
         Uri address = Uri.parse(context.getString(addressRes));
-        Intent open = new Intent(Intent.ACTION_VIEW, address, context, LauncherActivity.class);
+        Intent open = new Intent(Intent.ACTION_VIEW, address, context, AppLauncher.class);
         return PendingIntent.getActivity(
-                context,
-                requestCode,
-                open,
-                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+                context, 3, open, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
     }
 }

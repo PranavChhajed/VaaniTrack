@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { AppHeader } from "@/components/AppHeader";
 import { CapturePanel } from "@/components/CapturePanel";
 import { TransactionDetail } from "@/components/TransactionDetail";
@@ -10,6 +10,13 @@ import { useCapture } from "@/lib/useCapture";
 import { changedFields, reportDelete, reportEvent, reportTransactions } from "@/lib/report";
 import { useToday } from "@/lib/useToday";
 import { useTransactions } from "@/lib/useTransactions";
+import {
+  clearReviews,
+  markSeen,
+  reviewServerSnapshot,
+  reviewSnapshot,
+  subscribeReviews,
+} from "@/lib/widgetInbox";
 import type { Transaction } from "@/lib/types";
 
 export default function Home() {
@@ -36,6 +43,24 @@ export default function Home() {
     start: auto.startByTap,
     error: auto.blocked ? null : captured.error,
   };
+
+  // Reviews the Android widget could not decide on arrive as review cards,
+  // exactly as if the app had been unsure on screen.
+  const widgetReviews = useSyncExternalStore(subscribeReviews, reviewSnapshot, reviewServerSnapshot);
+  const { adopt } = captured;
+  useEffect(() => {
+    if (widgetReviews.length === 0) return;
+    adopt(
+      widgetReviews.map((item) => ({
+        transaction: item.transaction,
+        needsConfirmation: item.needsConfirmation,
+        confirmationReason: item.reason,
+        captureId: item.captureId,
+      })),
+    );
+    markSeen(widgetReviews.map((item) => item.transaction.id));
+    clearReviews();
+  }, [widgetReviews, adopt]);
 
   /**
    * This screen is today, and only today.

@@ -10,6 +10,7 @@ import { csvFileName, toCsv } from "@/lib/exportCsv";
 import { sinceLine, todayISO } from "@/lib/journal";
 import { notifyLocal } from "@/lib/localStore";
 import { NAME_MAX, saveSettings, useSettings } from "@/lib/settings";
+import { markWidgetSynced, useAndroidShell, useWidgetSync, widgetLink } from "@/lib/shell";
 import { PAYMENT_OPTIONS } from "@/lib/types";
 import { useHydrated, useLocalValue } from "@/lib/useLocalValue";
 import { useTransactions } from "@/lib/useTransactions";
@@ -147,6 +148,11 @@ export default function You() {
   const hydrated = useHydrated();
   const settings = useSettings();
   const consent = useAudioConsent();
+  const androidApp = useAndroidShell();
+  const widgetSync = useWidgetSync();
+  // Read as it stands on screen: a change to payment, review mode or recordings
+  // redraws this page, which is what brings the link up to date.
+  const link = androidApp && consent !== null ? widgetLink() : null;
   const { transactions } = useTransactions();
   const session = useLocalValue<string | null>(
     () => currentSession()?.email ?? null,
@@ -338,6 +344,43 @@ export default function You() {
               hint="Opens ready for today’s expense, so one tap on the icon is all it takes. Your phone may still ask for permission, or for a tap, before it opens the microphone."
             />
           </Card>
+
+          {androidApp ? (
+            <Card
+              title="Home-screen widget"
+              intro="Record an expense from your home screen without opening the app. Add the VaaniTrack widget (press and hold the home screen, then Widgets), then connect it here once."
+            >
+              {link ? (
+                <>
+                  <a
+                    href={link}
+                    onClick={markWidgetSynced}
+                    className={`${widgetSync === "current" ? buttonQuiet : buttonMint} self-start text-center`}
+                  >
+                    {widgetSync === "never"
+                      ? "Connect the widget"
+                      : widgetSync === "behind"
+                        ? "Update the widget"
+                        : "Reconnect the widget"}
+                  </a>
+                  <p className="max-w-[52ch] font-figtree text-caption text-fog">
+                    {widgetSync === "behind"
+                      ? "Your settings have changed since the widget was connected. Update it so it uses them."
+                      : widgetSync === "current"
+                        ? "Connected, and in step with your settings."
+                        : "Your phone asks once to let VaaniTrack use the microphone."}
+                  </p>
+                </>
+              ) : (
+                <p className="max-w-[52ch] font-figtree text-body-sm text-fog">
+                  Answer the recordings question first (it appears when you record), then come back here.
+                </p>
+              )}
+              <p className="max-w-[52ch] font-figtree text-caption text-fog">
+                What the widget records shows up in your journal the next time you open the app. Until then it tells you how many are waiting. If it is unsure of one, it opens here as a card for you to check, and never saves it on a guess.
+              </p>
+            </Card>
+          ) : null}
 
           <Card title="Your voice">
             <Switch

@@ -44,11 +44,11 @@ async function send(page, s) { await typed(page).fill(s); await add(page).click(
     const body = await text(page);
     t.ok("a review card is up", /Save/.test(body) && /Discard/.test(body), body.slice(0, 100));
     const clear = await page.evaluate(() => {
-      const nav = document.querySelector('nav[aria-label="Screens"] .glass-bar').getBoundingClientRect();
+      const nav = document.querySelector('nav[aria-label="Screens"] > div').getBoundingClientRect();
       const save = [...document.querySelectorAll("button")].find((b) => b.textContent.trim() === "Save").getBoundingClientRect();
       return { navTop: Math.round(nav.top), saveTop: Math.round(save.top), saveBottom: Math.round(save.bottom), vh: innerHeight };
     });
-    t.ok("Save is fully visible and clear of the glass bar", clear.saveBottom <= clear.navTop && clear.saveTop >= 0, JSON.stringify(clear));
+    t.ok("Save is fully visible and clear of the bottom bar", clear.saveBottom <= clear.navTop && clear.saveTop >= 0, JSON.stringify(clear));
     t.ok("an unsure expense opens ready to edit", (await page.locator("input[inputmode=decimal]").count()) === 1);
     await page.locator("input[inputmode=decimal]").first().fill("550");
     await page.getByRole("button", { name: "Save", exact: true }).click(); await page.waitForTimeout(700);

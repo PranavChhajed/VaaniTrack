@@ -16,11 +16,11 @@ import { usePathname } from "next/navigation";
  * sheet is somewhere you are in the middle of, and the way out of it is its own
  * close button, not a tab.
  *
- * It is a floating pill of liquid glass (`.glass-bar` in globals.css). The
- * selected tab is a second pane of glass, the lens, that slides to the new
- * tab. Every tab is the same width, so the lens moves by whole multiples of
- * its own width and needs no measuring. On a screen that is not a tab (You)
- * the lens is simply hidden.
+ * It is a pill of raised paper in a 2px ink border, like every other control
+ * (docs/DESIGN.md: flat, no shadow). The selected tab is a solid ink pill, the
+ * lens (`.nav-lens` in globals.css), that slides to the new tab. Every tab is
+ * the same width, so the lens moves by whole multiples of its own width and
+ * needs no measuring. On a screen that is not a tab (You) the lens is hidden.
  */
 const TABS = [
   {
@@ -53,15 +53,15 @@ export function BottomNav() {
   return (
     <nav
       aria-label="Screens"
-      // The strip itself does not catch taps, so the thin margins either side
-      // of the pill stay part of the page beneath.
-      className="pointer-events-none fixed inset-x-0 bottom-0 z-40 px-5 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3"
+      // The strip behind the pill is nearly opaque, so a list scrolling under
+      // it never fights the tab labels.
+      className="fixed inset-x-0 bottom-0 z-40 bg-paper/90 px-5 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3"
     >
-      <div className="glass-bar pointer-events-auto relative mx-auto grid w-full max-w-[420px] grid-cols-3 rounded-[var(--radius-pill)] p-1">
+      <div className="relative mx-auto grid w-full max-w-[420px] grid-cols-3 rounded-[var(--radius-pill)] border-2 border-vast-ink bg-paper-raised p-1">
         <span
           aria-hidden="true"
           className={[
-            "glass-lens pointer-events-none absolute bottom-1 left-1 top-1 w-[calc((100%-0.5rem)/3)] rounded-[var(--radius-pill)]",
+            "nav-lens pointer-events-none absolute bottom-1 left-1 top-1 w-[calc((100%-0.5rem)/3)] rounded-[var(--radius-pill)]",
             active === -1 ? "opacity-0" : "opacity-100",
           ].join(" ")}
           style={{ transform: `translateX(${Math.max(active, 0) * 100}%)` }}
@@ -76,7 +76,8 @@ export function BottomNav() {
               className={[
                 "focus-ring relative z-10 flex h-12 items-center justify-center gap-2 rounded-[var(--radius-pill)]",
                 "font-figtree text-body-sm transition-[color,transform] duration-200 active:scale-95",
-                current ? "font-semibold text-vast-ink" : "font-medium text-charcoal",
+                current ? "text-paper" : "text-charcoal",
+                "font-medium",
               ].join(" ")}
             >
               <svg

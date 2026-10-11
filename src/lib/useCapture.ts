@@ -548,6 +548,12 @@ export function useCapture({
     [onLogged, pending],
   );
 
+  /** Take in reviews captured elsewhere (the Android widget), to be confirmed here. */
+  const adopt = useCallback((items: Pending[]) => {
+    if (items.length === 0) return;
+    setPending((prev) => [...prev, ...items]);
+  }, []);
+
   const discard = useCallback(
     (index: number) => {
       const item = pending[index];
@@ -619,6 +625,7 @@ export function useCapture({
     submitTyped,
     commit,
     discard,
+    adopt,
     undo,
     amend,
     forget,

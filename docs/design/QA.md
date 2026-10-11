@@ -14,7 +14,9 @@ real database.
 | `qa3` | four small and sideways screen sizes; nine widths; large text; keyboard-only use; Back/Forward; hammering the tabs; reduced motion; a day rolling over at midnight; 3,000 entries; damaged storage; the server's input checks |
 | `qa4` | the voice path with a fake microphone: every result and every failure, and that the microphone is released |
 | `qa5` | an accessibility audit (axe) of 20 screens and states |
-| `qa-android` | the installed app: Back, deep links, `?record=1`, a restart, voice, a revoked microphone, large system text, a 320dp screen, the keyboard, dark mode, five quick widget taps, requested permissions |
+| `qa-android` | the installed app: Back, deep links, `?record=1`, a restart, voice, a revoked microphone, large system text, a 320dp screen, the keyboard, dark mode, requested permissions |
+| `qa-widget` | the home-screen tile, recording in place, against a stand-in server: every state, every failure, taps in the wrong order, killed processes, permissions, animations off, large text, an in-place update (23 tests) |
+| `nav` | the bottom bar: flat, ink border, the ink pill under the current tab, readable text on both |
 
 Run across five engine and size combinations, the browser suites are about 4,000
 checks. Alongside them: 184 unit checks in three time zones, type-check, lint,
@@ -32,6 +34,19 @@ the production build, and Android lint.
 | **At large text sizes the You switches and the Insights day labels pushed the page sideways.** | Layout broke for anyone who enlarges text. | Switch rows wrap; day labels shrink to two letters. |
 | **The record button's spoken name did not match its words**; the tour's progress bar, the landing demo and the day sheet's Done button were unnamed or misnamed; capture had no heading; calendar cells did not start with what is printed on them. | Voice control and screen readers. | All named from their visible words. Audit: zero issues. |
 | `/favicon.ico` returned 404. | A 404 on every visit in Safari. | Added. |
+
+### The widget rebuild (11 October), found by `qa-widget` and by looking at the tile
+
+| Found | Why it mattered | Fix |
+|---|---|---|
+| **The amount was in the system font, not Garamond.** A text view in a widget ignores a custom font. | `DESIGN.md` makes money Garamond; the amount is what the tile is for. | The amount is drawn into a picture with the app's own font (`AmountImage`). |
+| **Revoking the microphone while the tile still showed its old face crashed the app** on the next tap (Android refuses a microphone service without the permission). | A crash from a stale tile, with no explanation. | The service checks the permission first and says "Set up the widget first". |
+| **After a result, the tile sometimes stayed on "Logged" or an error indefinitely.** The service ended and Android froze the idle process, so its timer never ran. | A stale "Logged ₹250 Undo" on the home screen. | The service stays in the foreground while the result shows; each redraw of a result books its own expiry redraw. |
+| **A tile that said "Tap to finish" after the app was killed.** | Lies about the microphone being on. | Every redraw checks a service is really alive; an alarm redraws it if the process is gone. |
+| **Queued expenses were dropped after two hand-overs.** I found this by opening the app twice against a website that did not yet collect them. | A first open that failed (offline) would have lost the expense for good. | Items stay (up to 40, 14 days) and are offered on every open; the website skips ids it has seen. |
+| **A review could be lost by a reload** between arriving and being shown. | An unsure result the person never saw. | A review is remembered only once the capture screen has taken it. |
+| The Undo button overlapped the tick. | Touching the thing it sat on. | The tick is drawn at 80%. |
+| (Earlier round) the tile hid its second line on a tall tile held upright. | Read the landscape height. | Reads the size for the way the phone is held. |
 
 ## Looked like bugs, were not
 
@@ -52,4 +67,6 @@ the production build, and Android lint.
   Store.
 - Preview links show Vercel's own comment toolbar (a dark circle at the edge).
   The real site does not.
-- Not tested on a real iPhone or a real Android phone. See `WIDGET.md`.
+- Not tested on a real iPhone or a real Android phone. See `WIDGET.md`. The widget in particular needs a
+  real handset: some makes restrict background microphone use, which an emulator does not.
+- The widget suite uses a stand-in for the server, so it proves the tile, not the transcriber.
