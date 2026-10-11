@@ -72,7 +72,25 @@ returning by design (`hasOnboarded()` in `device.ts`), and still is.
 
 ## 4. Results
 
-(Filled in at the end of each phase; see section 5.)
+Re-run after the changes, production build, same scripts.
+
+| Check | Before | After |
+|---|---|---|
+| Tour buttons starting off-screen (6 sizes) | "Next" cut off on 5 of 6 sizes, "No, don't" on 3 | **none** |
+| Capture screen visible and tappable to a first-time visitor, slow phone (400 ms, 4x CPU) | **5 s** before the tour covered it | **never** (a veil from the first paint) |
+| First-run flows (straight, via landing, via sign-up, used-but-never-toured browser signing up, returning, after the tour) | sign-up on a used browser: no tour | **9 of 9 show the right thing** |
+| Header and bottom bar at 280 and 320 px | wordmark overlapped | clean (name dropped under 340 px, bar icon-only under 300 px) |
+| Layout/flow audit across 12 sizes | 7 kinds of finding | none left except calendar day cells on a 280 px phone (27 px wide, seven to a row) |
+| Regression suites qa1, qa2, qa3, nav on Chromium/iPhone SE and WebKit/iPhone 14, qa4 voice path, qa5 accessibility | | **all pass** (13/13, 19/19, 29/29 after replacing one assertion that encoded the old overlay, 13/13, 0 issues) |
+| Warm-up | | one `OPTIONS` to each capture endpoint when the capture screen opens, once a minute at most |
+
+**Speed.** Pages are light (about 180 KB of JavaScript, 300 KB in all; nothing is blocking). On a
+mid-range phone's CPU (4x slower) and slow 4G: capture opens in about 1.0 s to first paint, the
+journal tab in 0.7 s with 60 entries and 1.0-1.4 s with 1,500. A CPU profile of saving an expense
+and of opening the journal found no function worth rewriting: most of the time is the browser
+laying out and painting, and the app's own scripts are small. So the waiting a person feels beyond
+this is server time, which is the voice pipeline (`VOICE-PIPELINE.md`, on `feature/voice`), not the
+screens. The warm-up here removes the cold-start part of it for the first typed or spoken entry.
 
 ## 5. Not done, and why
 
