@@ -1748,7 +1748,14 @@
   ],
   "utterance": "Paid Rahul 500.",
   "expect": {
-   "clarify": true
+   "entries": [
+    {
+     "amount": 500,
+     "description": null,
+     "payment": "UPI",
+     "dayOffset": 0
+    }
+   ]
   },
   "doc": "Determine whether this is money paid to Rahul or potentially another interpretation if transaction direction matters"
  },

@@ -1,3 +1,4 @@
+import { hasAmount } from "./amounts";
 import type { AsrVerdict } from "./observe";
 
 const GROQ_URL = "https://api.groq.com/openai/v1/audio/transcriptions";
@@ -115,10 +116,13 @@ function normalise(text: string): string {
     .trim();
 }
 
-/** No digits anywhere means no amount, which means no expense. */
-function hasNumber(text: string): boolean {
-  return /\d/.test(text) || /\b(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand|lakh|crore|k)\b/i.test(text);
-}
+/**
+ * No amount anywhere means no expense. The check is `hasAmount` (amounts.ts),
+ * which knows the whole number vocabulary: this used to be a list of words that
+ * stopped at "twelve", so "chai was fifteen rupees" was rejected as having no
+ * number in it.
+ */
+const hasNumber = hasAmount;
 
 export type Segment = {
   no_speech_prob?: number;

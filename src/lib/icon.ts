@@ -80,6 +80,21 @@ const BY_CATEGORY: Record<string, IconKind> = {
   utilities: "bills",
 };
 
+/** The kind of thing a word or short phrase names ("lunch", "ice cream"), or null if it is not a known item. */
+export function itemKind(text: string): IconKind | null {
+  for (const [kind, pattern] of PATTERNS) if (pattern.test(text)) return kind;
+  return null;
+}
+
+/** Like itemKind, but the whole text must be the item: "ice cream" yes, "pachhattar bill" no. */
+export function itemKindWhole(text: string): IconKind | null {
+  const t = text.trim();
+  for (const [kind, words] of RULES) {
+    if (new RegExp("^(?:" + words.join("|") + ")(?:s|es)?$", "i").test(t)) return kind;
+  }
+  return null;
+}
+
 export function iconFor(t: Transaction): IconKind {
   const description = t.description.value;
   if (description) {

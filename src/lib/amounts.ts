@@ -81,9 +81,9 @@ const MONTHS = new Set([
   "sept", "oct", "nov", "dec",
 ]);
 
-type Token = { kind: "num" | "word" | "punct"; text: string };
+export type Token = { kind: "num" | "word" | "punct"; text: string };
 
-function tokenise(text: string): Token[] {
+export function tokenise(text: string): Token[] {
   const out: Token[] = [];
   const pattern = /\d+(?:,\d{2,3})*(?:\.\d+)?|[a-z]+|\S/g;
   for (const match of text.toLowerCase().replace(/₹/g, " rs ").replace(/\/-/g, " ").matchAll(pattern)) {
@@ -246,6 +246,14 @@ function wordsAt(tokens: Token[], i: number): { value: number; next: number } | 
   const half = andAHalf(tokens, j, total + cur);
   if (half) return half;
   return { value: total + cur, next: j };
+}
+
+/** Whether a word belongs to how an amount is spoken, so a caller can set the amount’s words aside. */
+export function isNumberWord(w: string): boolean {
+  return (
+    w in UNITS || w in TEENS || w in TENS || HUNDRED.has(w) || w in MULT || w in FRACTION ||
+    CURRENCY.has(w) || ["and", "point", "half", "paune", "saadhe", "sadhe", "oh"].includes(w)
+  );
 }
 
 /** Every amount in the text, in the order spoken. */

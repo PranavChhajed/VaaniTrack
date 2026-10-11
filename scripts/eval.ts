@@ -29,6 +29,8 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import { join } from "node:path";
 import { buildSystemPrompt, extractTransactions } from "../src/lib/extract.ts";
+import { hear, lab, sessions } from "./eval-audio.ts";
+import { readAmounts } from "../src/lib/amounts.ts";
 import { extractV2, EXTRACT_V2_MODEL, PROMPT_V2 } from "../src/lib/extract2.ts";
 import { shiftDay } from "../src/lib/dates.ts";
 import { gateFailures } from "../src/lib/report.ts";
@@ -40,7 +42,7 @@ const OUT = join(process.cwd(), ".captures", "eval");
 
 type Entry = { amount: number | null; description?: string | null; payment: string; dayOffset: number | null; calendar?: string };
 type Case = {
-  id: number;
+  id: number | string;
   group: string;
   tags: string[];
   utterance: string;
@@ -49,15 +51,15 @@ type Case = {
 
 export type Outcome =
   | "correct" | "correct_review" | "asked" | "wrong_flagged" | "missed"
-  | "guessed" | "silent_field_error" | "silent_amount_error" | "blocked";
+  | "guessed" | "silent_field_error" | "silent_amount_error" | "blocked" | "rejected";
 
 const SEVERITY: Outcome[] = [
-  "silent_amount_error", "silent_field_error", "guessed", "missed", "wrong_flagged",
+  "silent_amount_error", "silent_field_error", "guessed", "missed", "rejected", "wrong_flagged",
   "correct_review", "asked", "correct", "blocked",
 ];
 
 type Result = {
-  id: number;
+  id: number | string;
   group: string;
   tags: string[];
   utterance: string;
@@ -68,6 +70,12 @@ type Result = {
   returned: ExtractedTransaction[];
   completion?: number;
   prompt?: number;
+  /** Audio mode: what the transcriber heard, whether every expected amount is among the numbers in it, and how long it took. */
+  heard?: string;
+  numberHeard?: boolean | null;
+  asrMs?: number;
+  condition?: string;
+  variant?: string;
 };
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -82,7 +90,7 @@ function percentile(values: number[], p: number): number {
   return s[Math.min(s.length - 1, Math.floor(p * s.length))];
 }
 
-const saved = (row: ExtractedTransaction) => gateFailures(row, true, false).length === 0;
+const saved = (row: ExtractedTransaction, heardWell = true) => gateFailures(row, heardWell, false).length === 0;
 
 function matchEntries(want: Entry[], got: ExtractedTransaction[]): { pairs: [Entry, ExtractedTransaction | null][] } {
   const used = new Set<number>();
@@ -119,12 +127,12 @@ function fieldProblems(w: Entry, g: ExtractedTransaction): { amount: boolean; ot
   return { amount: g.amount !== w.amount, others };
 }
 
-function score(c: Case, got: ExtractedTransaction[], failed: boolean): { outcome: Outcome; why: string } {
+function score(c: Case, got: ExtractedTransaction[], failed: boolean, heardWell = true): { outcome: Outcome; why: string } {
   if (c.expect.conversation) return { outcome: "blocked", why: "needs a spoken correction of an earlier entry" };
   if (failed) return { outcome: "missed", why: "the call failed" };
 
   if (c.expect.clarify) {
-    const guessed = got.filter((g) => saved(g));
+    const guessed = got.filter((g) => saved(g, heardWell));
     return guessed.length === 0
       ? { outcome: "asked", why: got.length ? "sent to review" : "nothing recorded" }
       : { outcome: "guessed", why: `saved ${guessed.map((g) => g.amount).join(", ")} without asking` };
@@ -134,11 +142,11 @@ function score(c: Case, got: ExtractedTransaction[], failed: boolean): { outcome
     if (got.length === 0) return { outcome: "missed", why: "nothing came back" };
     const g = got[0];
     if (g.amount !== c.expect.amountOnly) {
-      return { outcome: saved(g) ? "silent_amount_error" : "wrong_flagged", why: `amount ${g.amount}` };
+      return { outcome: saved(g, heardWell) ? "silent_amount_error" : "wrong_flagged", why: `amount ${g.amount}` };
     }
     const invented = g.category && g.categoryProvenance !== "unknown";
-    if (invented && saved(g)) return { outcome: "silent_field_error", why: `invented category ${g.category}` };
-    return { outcome: saved(g) ? "correct" : "correct_review", why: "" };
+    if (invented && saved(g, heardWell)) return { outcome: "silent_field_error", why: `invented category ${g.category}` };
+    return { outcome: saved(g, heardWell) ? "correct" : "correct_review", why: "" };
   }
 
   const want = c.expect.entries ?? [];
@@ -153,14 +161,14 @@ function score(c: Case, got: ExtractedTransaction[], failed: boolean): { outcome
   if (got.length !== want.length) {
     anyWrong = true;
     problems.push(`${got.length} entries for ${want.length}`);
-    if (got.some(saved)) otherWrongSaved = true;
+    if (got.some((x) => saved(x, heardWell))) otherWrongSaved = true;
   }
   for (const [w, g] of pairs) {
     if (!g) { anyWrong = true; problems.push(`no entry for ${w.amount}`); continue; }
     const p = fieldProblems(w, g);
-    if (!saved(g)) allSaved = false;
-    if (p.amount) { anyWrong = true; problems.push(`amount ${g.amount} for ${w.amount}`); if (saved(g)) amountWrongSaved = true; }
-    if (p.others.length) { anyWrong = true; problems.push(...p.others); if (saved(g)) otherWrongSaved = true; }
+    if (!saved(g, heardWell)) allSaved = false;
+    if (p.amount) { anyWrong = true; problems.push(`amount ${g.amount} for ${w.amount}`); if (saved(g, heardWell)) amountWrongSaved = true; }
+    if (p.others.length) { anyWrong = true; problems.push(...p.others); if (saved(g, heardWell)) otherWrongSaved = true; }
   }
   if (c.expect.clarifyOk && !anyWrong) return { outcome: allSaved ? "correct" : "asked", why: "" };
   if (amountWrongSaved) return { outcome: "silent_amount_error", why: problems.join("; ") };
@@ -183,25 +191,25 @@ type Run = { transactions: ExtractedTransaction[]; ms: number; model: string; fa
 /** Which pipeline to score, and with what. v1 is what ships today; v2 is the values-only extractor. */
 const PIPELINE = arg("pipeline") ?? "v1";
 const MODEL = arg("model");
-const EFFORT = arg("effort") as "low" | "medium" | "high" | undefined;
+const EFFORT = arg("effort") as "none" | "low" | "medium" | "high" | undefined;
 
-async function runCase(c: Case, apiKey: string, payment: "UPI"): Promise<Run> {
+async function runText(text: string, apiKey: string, payment: "UPI"): Promise<Run> {
   const key = PIPELINE === "v2"
     ? `v2|${MODEL ?? EXTRACT_V2_MODEL}|${EFFORT ?? "-"}|${PROMPT_V2}|${payment}|${TODAY}
 --
-${c.utterance}`
+${text}`
     : `${buildSystemPrompt(TODAY, payment)}
 --
-${c.utterance}`;
+${text}`;
   return cached(key, async () => {
     for (let attempt = 0; attempt < 8; attempt++) {
       if (PIPELINE === "v2") {
-        const r = await extractV2(c.utterance, TODAY, { apiKey, defaultPayment: payment, model: MODEL, reasoningEffort: EFFORT });
+        const r = await extractV2(text, TODAY, { apiKey, defaultPayment: payment, model: MODEL, reasoningEffort: EFFORT });
         if (r.kind === "ok") return { transactions: r.transactions, ms: r.ms, model: r.model, failed: false, completion: r.usage?.completion, prompt: r.usage?.prompt };
         if (r.kind === "error" && r.status === 429) { await sleep(15_000); continue; }
         return { transactions: [], ms: r.ms, model: r.model, failed: true };
       }
-      const r = await extractTransactions(c.utterance, TODAY, { apiKey, defaultPayment: payment });
+      const r = await extractTransactions(text, TODAY, { apiKey, defaultPayment: payment });
       if (r.kind === "ok") return { transactions: r.transactions, ms: r.ms, model: r.model, failed: false };
       if (r.kind === "error" && r.status === 429) { await sleep(20_000); continue; }
       return { transactions: [], ms: r.ms, model: r.model, failed: true };
@@ -245,6 +253,63 @@ function printReport(name: string, results: Result[]) {
   for (const r of bad) console.log(`  #${String(r.id).padEnd(3)} ${r.outcome.padEnd(20)} "${r.utterance}"  ${r.why}`);
 }
 
+async function loadCases(): Promise<Case[]> {
+  const written = JSON.parse(await readFile(join(process.cwd(), "qa", "voice-cases.json"), "utf8")) as Case[];
+  const extra = JSON.parse(await readFile(join(process.cwd(), "qa", "voice-cases-extra.json"), "utf8")) as Omit<Case, "tags">[];
+  return [...written, ...extra.map((c) => ({ ...c, tags: [c.group, "extra"] }))];
+}
+
+/** Audio mode: the lab's recordings, through the transcriber and then the same reading and scoring. */
+async function audioMode(apiKey: string) {
+  const sessionName = arg("session");
+  if (!sessionName) { console.log("sessions in storage:", (await sessions()).join(", ") || "(none)"); console.log("usage: scripts/eval.ts audio --session s-2026-10-12 [--variant plain] [--condition quiet] [--name n]"); return; }
+  const variant = arg("variant") ?? "plain";
+  const condition = arg("condition");
+  const cases = new Map((await loadCases()).map((c) => [String(c.id).startsWith("x") ? String(c.id) : `c${c.id}`, c]));
+  let takes = (await lab(sessionName)).filter((t) => t.variant === variant && (!condition || t.condition === condition));
+  const only = arg("ids")?.split(",");
+  if (only) takes = takes.filter((t) => only.includes(t.line));
+  takes.sort((a, b) => a.line.localeCompare(b.line, undefined, { numeric: true }));
+  const name = arg("name") ?? `audio-${sessionName}-${variant}${condition ? `-${condition}` : ""}`;
+  console.log(`audio: ${takes.length} takes, session ${sessionName}, variant ${variant}${condition ? `, condition ${condition}` : ""}; extraction ${PIPELINE}`);
+  const results: Result[] = [];
+  for (const t of takes) {
+    const c = cases.get(t.line);
+    if (!c) continue;
+    const { asr, bytes } = await hear(t, apiKey);
+    const base = { id: t.line, group: c.group, tags: c.tags, utterance: c.utterance, condition: t.condition, variant: t.variant };
+    if (asr.kind === "error") { results.push({ ...base, outcome: "missed", why: `transcriber: ${asr.error}`, ms: 0, model: "-", returned: [], heard: "" }); process.stdout.write("E"); continue; }
+    const wantsAsk = c.expect.clarify === true || c.expect.conversation !== undefined;
+    const asrMs = asr.ms;
+    if (asr.kind === "rejected") {
+      const outcome: Outcome = wantsAsk ? "asked" : "rejected";
+      results.push({ ...base, outcome, why: `${asr.reason}: "${asr.text}"`, ms: asrMs, asrMs, model: asr.model, returned: [], heard: asr.text, numberHeard: null });
+      process.stdout.write(outcome === "asked" ? "." : "R");
+      continue;
+    }
+    const run = await runText(asr.text, apiKey, "UPI");
+    const heardWell = (asr.avgLogprob ?? 0) > -0.9;
+    const { outcome, why } = score(c, run.transactions, run.failed, heardWell);
+    const wantAmounts = (c.expect.entries ?? []).map((e) => e.amount).filter((a): a is number => a !== null);
+    const reads = readAmounts(asr.text).map((r) => r.value);
+    const numberHeard = wantAmounts.length ? wantAmounts.every((a) => reads.includes(a)) : null;
+    results.push({ ...base, outcome, why: why + (numberHeard === false ? ` [heard "${asr.text}"]` : ""), ms: asrMs + run.ms, asrMs, model: run.model, returned: run.transactions, completion: run.completion, prompt: run.prompt, heard: asr.text, numberHeard });
+    process.stdout.write(outcome === "correct" || outcome === "asked" ? "." : outcome === "correct_review" ? "r" : "X");
+    void bytes;
+  }
+  await mkdir(OUT, { recursive: true });
+  await writeFile(join(OUT, `${name}.json`), JSON.stringify({ at: new Date().toISOString(), today: TODAY, results }, null, 1));
+  printReport(name, results);
+  const heardNumbers = results.filter((r) => r.numberHeard !== undefined && r.numberHeard !== null);
+  const rej = results.filter((r) => r.outcome === "rejected").length;
+  console.log(`
+transcriber: rejected ${rej}/${results.length} (${Math.round((100 * rej) / Math.max(1, results.length))}%); every amount heard right in ${heardNumbers.filter((r) => r.numberHeard).length}/${heardNumbers.length} of the rest`);
+  const asrTimes = results.map((r) => r.asrMs ?? 0).filter(Boolean);
+  console.log(`transcription time p50 ${percentile(asrTimes, 0.5)} ms   p95 ${percentile(asrTimes, 0.95)} ms`);
+  const byCond = [...new Set(results.map((r) => r.condition))];
+  if (byCond.length > 1) { console.log("\nby condition (right / lines):"); for (const cnd of byCond) { const rs = results.filter((r) => r.condition === cnd); console.log(`  ${String(cnd).padEnd(10)} ${rs.filter((r) => ["correct", "correct_review", "asked"].includes(r.outcome)).length}/${rs.length}`); } }
+}
+
 async function main() {
   const mode = process.argv[2];
   if (mode === "diff") {
@@ -264,6 +329,20 @@ async function main() {
     }
     return;
   }
+  if (mode === "rescore") {
+    const file = join(OUT, `${process.argv[3]}.json`);
+    const saved = JSON.parse(await readFile(file, "utf8")) as { at: string; today: string; results: Result[] };
+    const byId = new Map((await loadCases()).map((c) => [String(c.id), c]));
+    for (const r of saved.results) {
+      const c = byId.get(String(r.id));
+      if (!c || r.outcome === "rejected") continue;
+      Object.assign(r, score(c, r.returned, false, true));
+    }
+    await writeFile(file, JSON.stringify(saved, null, 1));
+    printReport(`${process.argv[3]} (re-scored)`, saved.results);
+    return;
+  }
+  if (mode === "audio") { await audioMode(process.env.GROQ_API_KEY ?? ""); return; }
   if (mode !== "text") {
     console.log("usage: scripts/eval.ts text [--name n] [--ids 1,2] [--tag t] [--group g]  |  scripts/eval.ts diff a b");
     process.exit(1);
@@ -271,11 +350,11 @@ async function main() {
 
   const apiKey = process.env.GROQ_API_KEY ?? "";
   if (!apiKey) { console.error("GROQ_API_KEY is not set (use --env-file=.env.local)"); process.exit(1); }
-  let cases = JSON.parse(await readFile(join(process.cwd(), "qa", "voice-cases.json"), "utf8")) as Case[];
-  const ids = arg("ids")?.split(",").map(Number);
+  let cases = await loadCases();
+  const ids = arg("ids")?.split(",");
   const tag = arg("tag");
   const group = arg("group");
-  if (ids) cases = cases.filter((c) => ids.includes(c.id));
+  if (ids) cases = cases.filter((c) => ids.includes(String(c.id)));
   if (tag) cases = cases.filter((c) => c.tags.includes(tag));
   if (group) cases = cases.filter((c) => c.group === group);
 
@@ -287,7 +366,7 @@ async function main() {
       results.push({ id: c.id, group: c.group, tags: c.tags, utterance: c.utterance, ...score(c, [], false), ms: 0, model: "-", returned: [] });
       continue;
     }
-    const run = await runCase(c, apiKey, "UPI");
+    const run = await runText(c.utterance, apiKey, "UPI");
     const { outcome, why } = score(c, run.transactions, run.failed);
     results.push({ id: c.id, group: c.group, tags: c.tags, utterance: c.utterance, outcome, why, ms: run.ms, model: run.model, returned: run.transactions, completion: run.completion, prompt: run.prompt });
     process.stdout.write(outcome === "correct" || outcome === "asked" ? "." : outcome === "correct_review" ? "r" : "X");

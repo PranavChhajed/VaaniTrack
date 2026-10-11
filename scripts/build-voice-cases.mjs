@@ -89,7 +89,9 @@ set(69, conv([E(250, "lunch")], "Change that to 300.", [E(300, "lunch")]));
 set(70, conv([E(100, "chai")], "Actually, make it 120 cash.", [E(120, "chai", "Cash")]));
 
 // Ambiguity: scored on not guessing. `clarify: true` means a review (or a blank) is the right answer.
-for (const id of [81, 82, 85, 86, 87]) set(id, { clarify: true });
+// 81 "Paid Rahul 500" is a payment with a verb and a person, which the app records (PRD FR-1); 82, 85-87 really are ambiguous.
+for (const id of [82, 85, 86, 87]) set(id, { clarify: true });
+set(81, { entries: [E(500, null)] });
 set(83, { amountOnly: 500 });
 set(84, { amountOnly: 300 });
 set(90, { amountOnly: 300 });

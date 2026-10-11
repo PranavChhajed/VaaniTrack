@@ -51,7 +51,7 @@ export type V2Options = {
   model?: string;
   defaultPayment?: PaymentMethod;
   /** Only for models that reason (the gpt-oss family). Other models reject it. */
-  reasoningEffort?: "low" | "medium" | "high";
+  reasoningEffort?: "none" | "low" | "medium" | "high";
   /** Replaces PROMPT_V2, for the scoreboard's experiments. */
   prompt?: string;
 };
