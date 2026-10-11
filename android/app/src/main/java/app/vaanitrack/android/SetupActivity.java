@@ -2,6 +2,8 @@ package app.vaanitrack.android;
 
 import android.Manifest;
 import android.app.Activity;
+import android.appwidget.AppWidgetManager;
+import android.content.ComponentName;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
@@ -74,9 +76,35 @@ public class SetupActivity extends Activity {
 
     private void done() {
         boolean mic = checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED;
-        Toast.makeText(this, mic ? R.string.setup_ok : R.string.setup_no_mic, Toast.LENGTH_LONG).show();
+        int said = mic ? R.string.setup_ok : R.string.setup_no_mic;
+        if (mic && !placed() && !offerToPlace()) said = R.string.setup_add;
+        Toast.makeText(this, said, Toast.LENGTH_LONG).show();
         RecordWidgetProvider.refresh(this);
         finish();
+    }
+
+    /** Whether a tile is already on a home screen. */
+    private boolean placed() {
+        int[] ids = AppWidgetManager.getInstance(this)
+                .getAppWidgetIds(new ComponentName(this, RecordWidgetProvider.class));
+        return ids != null && ids.length > 0;
+    }
+
+    /**
+     * Has Android offer to put the tile on the home screen, so nobody has to
+     * find the widget list. False where the launcher cannot do that (before
+     * Android 8, and some makes), and the person is told the long way instead.
+     */
+    private boolean offerToPlace() {
+        if (Build.VERSION.SDK_INT < 26) return false;
+        try {
+            AppWidgetManager manager = AppWidgetManager.getInstance(this);
+            if (!manager.isRequestPinAppWidgetSupported()) return false;
+            return manager.requestPinAppWidget(
+                    new ComponentName(this, RecordWidgetProvider.class), null, null);
+        } catch (RuntimeException e) {
+            return false;
+        }
     }
 
     /** Safety net: if the activity is relaunched with a new link, handle it too. */

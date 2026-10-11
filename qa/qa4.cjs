@@ -194,6 +194,42 @@ async function record(p, ms = 1500) {
     await close();
   }, { timeout: 120000 });
 
+  await test("first run: the guide follows a spoken first expense, word for word", async (t) => {
+    const { page, go, close } = await open(engine, profile, { seed: "fresh", init: WRAP });
+    await go("/app");
+    await page.getByRole("button", { name: "Skip" }).click(); await page.waitForTimeout(400);
+    await page.getByRole("button", { name: "Yes, keep them" }).click(); await page.waitForTimeout(600);
+    const guide = page.locator('section[aria-label="Your first expense"]');
+    const button = page.getByRole("button", { name: /Say what you spent|Getting the mic ready|Tap to finish/ });
+    t.ok("at rest: record your first one", /Record your first one/.test(await guide.innerText()));
+    await button.click();
+    await page.waitForFunction(() => /Tap to finish/.test(document.body.innerText), null, { timeout: 8000 });
+    await page.waitForTimeout(300);
+    t.ok("while listening: say it, then tap to finish", /Say it, then tap to finish/.test(await guide.innerText()), await guide.innerText());
+    t.ok("never before the microphone is live", !/Record your first one/.test(await guide.innerText()));
+    await page.waitForTimeout(1200);
+    await button.click();
+    await page.waitForFunction(() => /your first one/i.test(document.body.innerText), null, { timeout: 10000 });
+    t.eq("the expense is in the journal", (await store(page)).length, 1);
+    t.eq("spoken, not typed", (await store(page))[0]?.source, "voice");
+    t.eq("the guide moved on", await page.evaluate(() => localStorage.getItem("vaanitrack.firstRun")), "next");
+    t.eq("the microphone was let go", await live(page), 0);
+    await close();
+  });
+
+  await test("first run: a refused microphone points to typing, and typing finishes it", async (t) => {
+    const { page, go, close } = await open(engine, profile, { seed: "fresh", init: WRAP + "; window.__deny = 'NotAllowedError';" });
+    await go("/app");
+    await page.getByRole("button", { name: "Skip" }).click(); await page.waitForTimeout(400);
+    await page.getByRole("button", { name: "Yes, keep them" }).click(); await page.waitForTimeout(600);
+    const guide = page.locator('section[aria-label="Your first expense"]');
+    await page.getByRole("button", { name: /Say what you spent/ }).click(); await page.waitForTimeout(1200);
+    t.ok("the guide points to typing", /type it/i.test(await guide.innerText()), await guide.innerText());
+    await typed(page).fill("250 lunch"); await add(page).click(); await page.waitForTimeout(1200);
+    t.eq("typed and saved", (await store(page)).length, 1);
+    t.ok("and the guide says so", /your first one/i.test(await text(page)));
+    await close();
+  });
   const bad = summary();
   await closeAll();
   process.exit(bad ? 1 : 0);

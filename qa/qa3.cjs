@@ -29,6 +29,12 @@ const SIZES = [
       t.ok("the overlay scrolls when it must", geo.scrolls === "auto" || geo.scrolls === "scroll", JSON.stringify(geo));
       await page.getByRole("button", { name: "No, don’t" }).click({ timeout: 8000 }); await page.waitForTimeout(500);
       t.eq("answered", await page.evaluate(() => localStorage.getItem("vaanitrack.audioConsent")), "denied");
+      const fit = await page.evaluate(() => ({ side: document.documentElement.scrollWidth - innerWidth, guide: !!document.querySelector('section[aria-label="Your first expense"]') }));
+      t.ok("the first-expense guide is shown and nothing scrolls sideways", fit.guide && fit.side <= 1, JSON.stringify(fit));
+      await page.locator("[data-typed-entry]").fill("250 lunch"); await page.locator("form button[type=submit]").click({ timeout: 8000 }); await page.waitForTimeout(1000);
+      t.ok("the first expense can be made at this size", /your first one/i.test(await page.locator("body").innerText()));
+      const after = await page.evaluate(() => { const c = document.querySelector('section[aria-label="What next"]'); const b = c && [...c.querySelectorAll("button")].pop(); const r = b && b.getBoundingClientRect(); return { side: document.documentElement.scrollWidth - innerWidth, inCard: !!r && r.right <= innerWidth + 1 && r.left >= -1 }; });
+      t.ok("the suggestion fits, with its way out on screen", after.side <= 1 && after.inCard, JSON.stringify(after));
       await close();
     });
 

@@ -115,6 +115,14 @@ them, asks once for the microphone (and notification) permission, says what
 happened in a toast, and returns to the page. It is refused for anything that is
 not a UUID or an unanswered recordings question.
 
+**It also puts the tile on the home screen.** Once the settings are stored and the
+microphone is allowed, and if no tile is placed yet, `SetupActivity` asks Android to
+offer its own "Add to home screen" prompt (`requestPinAppWidget`, Android 8 and up,
+where the launcher supports it). Where it cannot, the toast gives the long way: press
+and hold the home screen, Widgets, VaaniTrack. The same button is offered right after
+a new person's first expense (`FirstExpenseGuide`), so nobody has to find the You
+screen to get the widget.
+
 If the settings change afterwards, the You screen says "Your settings have
 changed since the widget was connected" and the button reads **Update the
 widget**. (`src/lib/shell.ts`: a fingerprint of the four values.)

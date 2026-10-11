@@ -48,6 +48,116 @@ const nameBox = (p) => p.locator("main input:not([type=radio]):not([type=checkbo
     await close();
   });
 
+  await test("the tour: Back goes back, and it reads 01 to 03", async (t) => {
+    const { page, go, close } = await open(engine, profile, { seed: "fresh" });
+    await go("/app");
+    t.ok("starts at 01 / 03", /01 \/ 03/.test(await text(page)));
+    t.eq("no Back on the first step", await page.getByRole("button", { name: "Back" }).count(), 0);
+    t.ok("says what is true about language", /English for now/.test(await text(page)) && /dhai sau/.test(await text(page)));
+    await page.getByRole("button", { name: "Next" }).click(); await page.waitForTimeout(350);
+    t.ok("step 2", /02 \/ 03/.test(await text(page)));
+    t.ok("step 2 no longer promises a check before every save", !/Check it before/.test(await text(page)) && /saved at once, with Undo/.test(await text(page)));
+    await page.getByRole("button", { name: "Back" }).click(); await page.waitForTimeout(350);
+    t.ok("Back returns to step 1", /01 \/ 03/.test(await text(page)));
+    await page.getByRole("button", { name: "Next" }).click(); await page.waitForTimeout(300);
+    await page.getByRole("button", { name: "Next" }).click(); await page.waitForTimeout(350);
+    t.ok("step 3 names the Journal and Insights", /03 \/ 03/.test(await text(page)) && /Journal/.test(await text(page)) && /Insights/.test(await text(page)));
+    t.eq("focus is on the step's heading", await page.evaluate(() => document.activeElement?.tagName), "H1");
+    await page.getByRole("button", { name: "Next" }).click(); await page.waitForTimeout(350);
+    t.eq("then the question", await page.getByRole("button", { name: "No, don’t" }).count(), 1);
+    t.eq("which cannot be skipped", await page.getByRole("button", { name: "Skip" }).count(), 0);
+    await page.getByRole("button", { name: "Back" }).click(); await page.waitForTimeout(350);
+    t.ok("Back from the question returns to step 3", /03 \/ 03/.test(await text(page)));
+    t.eq("and nothing was stored", await ls(page, "vaanitrack.audioConsent"), null);
+    await close();
+  });
+
+  await test("after the tour: help with the first expense, then one suggestion", async (t) => {
+    const { page, go, state, close } = await open(engine, profile, { seed: "fresh" });
+    await go("/app");
+    await page.getByRole("button", { name: "Skip" }).click(); await page.waitForTimeout(400);
+    await page.getByRole("button", { name: "No, don’t" }).click(); await page.waitForTimeout(600);
+    t.eq("the guide has started", await ls(page, "vaanitrack.firstRun"), "guide");
+    t.ok("it says what to do", /Record your first one/.test(await text(page)));
+    const guide = page.locator('section[aria-label="Your first expense"]');
+    const button = page.getByRole("button", { name: /Say what you spent/ });
+    const gb = await guide.boundingBox(), bb = await button.boundingBox();
+    t.ok("it sits above the record button, not over it", gb && bb && gb.y + gb.height <= bb.y + 1, JSON.stringify({ gb, bb }));
+    await send(page, "250 lunch");
+    t.eq("the expense is in the journal", (await store(page)).length, 1);
+    t.eq("the guide moved on", await ls(page, "vaanitrack.firstRun"), "next");
+    t.ok("it says so", /That’s your first one/i.test(await text(page)));
+    t.ok("a browser is offered the home-screen tip, not the widget", /Keep it one tap away/.test(await text(page)) && !/Add the widget/.test(await text(page)));
+    await page.getByRole("button", { name: "Start listening when I open the app" }).click(); await page.waitForTimeout(400);
+    t.eq("the switch is saved", (await settings(page)).openToRecord, true);
+    t.ok("and it says it is on", /It will listen as it opens/.test(await text(page)));
+    await page.locator('section[aria-label="What next"]').getByRole("button", { name: "Done" }).click(); await page.waitForTimeout(400);
+    t.eq("finished, nothing left stored", await ls(page, "vaanitrack.firstRun"), null);
+    t.ok("the card is gone", !/your first one/i.test(await text(page)));
+    await page.reload({ waitUntil: "load" }); await page.waitForTimeout(900);
+    t.ok("and stays gone", !/first one/i.test(await text(page)) && !/first expense/i.test(await text(page)));
+    t.eq("no script errors", state.errors.filter((e) => !/getUserMedia|NotAllowed|Permission/i.test(e)), []);
+    await close();
+  });
+
+  await test("the guide walks an unsure first expense through, and can be put away", async (t) => {
+    const { page, go, close } = await open(engine, profile, { seed: "fresh" });
+    await go("/app");
+    await page.getByRole("button", { name: "Skip" }).click(); await page.waitForTimeout(400);
+    await page.getByRole("button", { name: "Yes, keep them" }).click(); await page.waitForTimeout(600);
+    await send(page, "250 unsure thing");
+    t.eq("nothing saved on a guess", (await store(page)).length, 0);
+    t.ok("the guide says to check it", /Check it, then save/.test(await text(page)));
+    t.eq("still guiding", await ls(page, "vaanitrack.firstRun"), "guide");
+    await page.locator('section[aria-label="Your first expense"]').getByRole("button", { name: "Not now" }).click(); await page.waitForTimeout(400);
+    t.eq("Not now ends it", await ls(page, "vaanitrack.firstRun"), null);
+    t.ok("the review card is still there to finish", (await page.getByRole("button", { name: /^Save/ }).count()) > 0);
+    await page.reload({ waitUntil: "load" }); await page.waitForTimeout(900);
+    t.ok("it does not come back", !/Record your first one/.test(await text(page)));
+    await close();
+  });
+
+  await test("in the Android app the suggestion is the widget, with the set-up link", async (t) => {
+    const { page, go, close } = await open(engine, profile, { seed: "fresh" });
+    await go("/app");
+    await page.evaluate(() => localStorage.setItem("vaanitrack.shell", "android"));
+    await page.getByRole("button", { name: "Skip" }).click(); await page.waitForTimeout(400);
+    await page.getByRole("button", { name: "Yes, keep them" }).click(); await page.waitForTimeout(600);
+    await send(page, "40 chai");
+    t.ok("offers the widget", /Put the record button on your home screen/.test(await text(page)));
+    const link = page.getByRole("link", { name: "Add the widget" });
+    const href = await link.getAttribute("href");
+    t.ok("with the app's own set-up link, carrying the answer just given", /^intent:\/\/setup\?d=[0-9a-f-]{36}&c=granted&p=UPI&r=0#Intent;scheme=vaanitrack;package=app\.vaanitrack\.android;end$/.test(href || ""), href);
+    await page.evaluate(() => { const s = localStorage; s.setItem("vaanitrack.widgetSynced", [s.getItem("vaanitrack.device"), "granted", "UPI", "0"].join("|")); });
+    await page.reload({ waitUntil: "load" }); await page.waitForTimeout(900);
+    t.ok("once connected it says so, and how to add it by hand", /The widget is connected/.test(await text(page)) && /press and hold your home screen/.test(await text(page)));
+    await page.locator('section[aria-label="What next"]').getByRole("button", { name: "Done" }).click(); await page.waitForTimeout(400);
+    t.eq("finished", await ls(page, "vaanitrack.firstRun"), null);
+    await close();
+  });
+
+  await test("someone who already uses the app sees no guide, and can replay the tour", async (t) => {
+    const { page, go, close } = await open(engine, profile, { seed: "ready" });
+    await go("/app");
+    t.ok("no guide on capture", !/first expense/i.test(await text(page)) && !/first one/i.test(await text(page)));
+    t.eq("nothing stored for it", await ls(page, "vaanitrack.firstRun"), null);
+    await go("/you");
+    await page.getByRole("button", { name: "See the welcome tour again" }).click(); await page.waitForTimeout(500);
+    t.ok("the tour opens at step 1", /01 \/ 03/.test(await text(page)));
+    t.eq("with Close, not Skip", [await page.getByRole("button", { name: "Close" }).count(), await page.getByRole("button", { name: "Skip" }).count()], [1, 0]);
+    await page.getByRole("button", { name: "Next" }).click(); await page.waitForTimeout(300);
+    await page.getByRole("button", { name: "Next" }).click(); await page.waitForTimeout(300);
+    t.eq("it ends on Done, not on a question", [await page.getByRole("button", { name: "Done" }).count(), await page.getByRole("button", { name: "Yes, keep them" }).count()], [1, 0]);
+    await page.getByRole("button", { name: "Done" }).click(); await page.waitForTimeout(400);
+    t.ok("and closes", !/0\d \/ 03/.test(await text(page)));
+    t.eq("the recordings answer is untouched", await ls(page, "vaanitrack.audioConsent"), "granted");
+    t.eq("no guide was started", await ls(page, "vaanitrack.firstRun"), null);
+    await page.getByRole("button", { name: "See the welcome tour again" }).click(); await page.waitForTimeout(400);
+    await page.getByRole("button", { name: "Close" }).click(); await page.waitForTimeout(400);
+    t.ok("Close closes it too", !/0\d \/ 03/.test(await text(page)));
+    await close();
+  });
+
   await test("returning browser that never answered is asked, once", async (t) => {
     const { page, go, close } = await open(engine, profile, { seed: "returning" });
     await go("/app");

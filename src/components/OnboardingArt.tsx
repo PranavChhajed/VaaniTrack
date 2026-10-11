@@ -1,15 +1,98 @@
 /**
- * The three onboarding illustrations. docs/design/THEME-ONBOARDING.md §79:
- * "if this reads as too thin once built, the fallback is an abstract mark";
- * it read as too thin, so this is that fallback, built.
+ * The welcome tour's three pictures. docs/design/THEME-ONBOARDING.md §5.
  *
- * One shared language, matching `Logo.tsx`: monoline strokes, Forest Ink,
- * round caps and joins, no fills except the receipt's own paper colour, no
- * characters. `ReceiptArt`'s middle row deliberately reuses the exact
- * squiggle path from `.prov-inferred` in globals.css, the app's one piece
- * of visual vocabulary with a real meaning already attached, placed on the
- * one screen that explains what checking a capture means.
+ * Each is a small piece of the real app rather than a drawing about it: the
+ * card a capture lands on, the two ways a capture can end, and the Insights
+ * week. They are built from the app's own classes (`.wave-bar`, `.money`,
+ * `.prov-inferred`, `.prov-unknown`), so what a new person sees here is what
+ * they meet a minute later, and a change to those classes changes these too.
+ *
+ * Pictures only: every one is hidden from a screen reader, which gets the
+ * step's heading and words instead. Nothing here is Ember, because nothing
+ * here is listening. Movement is the shared `.wave-bar` and `.rise`, both of
+ * which are already stilled when the phone asks for reduced motion.
  */
+
+const card =
+  "w-full rounded-[var(--radius-card)] border-2 border-vast-ink bg-paper-raised px-5 py-4";
+
+const BARS = [12, 20, 28, 20, 12];
+
+/** Step 1: what was said, and the entry it became. */
+export function SayItArt() {
+  return (
+    <div aria-hidden="true" className={card}>
+      <div className="flex items-center gap-3">
+        <span className="flex h-12 w-12 shrink-0 items-center justify-center gap-[3px] rounded-full border-2 border-vast-ink bg-mint-whisper">
+          {BARS.map((h, i) => (
+            <span
+              key={i}
+              className="wave-bar block w-[3px] rounded-full bg-vast-ink"
+              style={{ height: `${h}px`, animationDelay: `${i * 90}ms` }}
+            />
+          ))}
+        </span>
+        <span className="font-figtree text-body italic text-charcoal">&ldquo;250 lunch&rdquo;</span>
+      </div>
+      <div className="mt-4 border-t-2 border-paper-edge pt-3">
+        <p className="rise flex flex-wrap items-baseline gap-x-2 gap-y-1" style={{ animationDelay: "500ms" }}>
+          <span className="money text-heading-sm text-vast-ink">₹250</span>
+          <span className="font-figtree text-body-sm text-charcoal">Lunch ·</span>
+          <span className="prov-inferred font-figtree text-body-sm text-charcoal">Today</span>
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/** Step 2: the two ways a capture ends. Saved with Undo, or held to check. */
+export function SureArt() {
+  return (
+    <div aria-hidden="true" className="flex w-full flex-col gap-3">
+      <div className={`${card} flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1`}>
+        <span className="flex items-baseline gap-2">
+          <span className="money text-subheading text-vast-ink">₹250</span>
+          <span className="font-figtree text-body-sm text-charcoal">Lunch</span>
+        </span>
+        <span className="font-figtree text-caption text-forest-ink">
+          Saved ✓ <span className="ml-2 text-vast-ink underline underline-offset-4">Undo</span>
+        </span>
+      </div>
+      <div className={`${card} rise flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1`} style={{ animationDelay: "400ms" }}>
+        <span className="flex items-baseline gap-2">
+          <span className="prov-unknown money px-2 text-subheading">₹&nbsp;?</span>
+          <span className="font-figtree text-body-sm text-charcoal">To Pushpa</span>
+        </span>
+        <span className="font-figtree text-caption font-medium text-vast-ink">Check this</span>
+      </div>
+    </div>
+  );
+}
+
+const WEEK = [35, 60, 20, 80, 45, 30, 65];
+
+/** Step 3: the Insights week in miniature. Today's bar is the solid one. */
+export function WeekArt() {
+  return (
+    <div aria-hidden="true" className={card}>
+      <p className="font-figtree text-caption text-fog">Last 7 days</p>
+      <p className="money mt-1 text-heading-sm text-vast-ink">₹2,340</p>
+      <div className="mt-4 flex h-16 items-end gap-2">
+        {WEEK.map((h, i) => (
+          <span
+            key={i}
+            className={`rise flex-1 rounded-t-[4px] ${i === WEEK.length - 1 ? "bg-vast-ink" : "bg-vast-ink/20"}`}
+            style={{ height: `${h}%`, animationDelay: `${i * 60}ms` }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ---- The landing page’s three line drawings -------------------------
+   Monoline Forest Ink, matching `Logo.tsx`. The tour used these until it was
+   rebuilt around pieces of the real app; `/` still does. */
 
 const INK = "var(--color-forest-ink)";
 

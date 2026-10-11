@@ -126,6 +126,7 @@ A sheet travels the height of *itself*, not the 8px a banner gets, so it reads a
 | `ProfileLink` | The profile icon in the header (the person's initial, or a plain figure): the way to the You screen. Replaces the in-app "Sign in" link |
 | `BottomNav` | The three tabs, Capture, Journal and Insights, fixed under the thumb: a raised-paper pill in a 2px ink border, with a **solid ink pill (paper text) under the current tab** that slides to the next. Mounted once in `(app)/layout.tsx`; sits below the sheets |
 | `WidgetInbox` | Collects what the Android widget recorded while the app was closed: logged ones go into the journal, unsure ones arrive as review cards. No face but a one-line notice |
+| `FirstExpenseGuide` | After the welcome tour only: a raised-paper card above the record button that says the next thing to do, from the recorder's real state, until the first expense is in; then one suggestion (the widget in the Android app, the home-screen icon elsewhere). Shown once, never forced |
 | `TransactionDetail` | Full record with provenance, edit and delete |
 | `DatePicker` | Month grid, always open in the journal; each populated day carries its total, future days are disabled |
 | `DayCapture` | The sheet that records onto a chosen past day |

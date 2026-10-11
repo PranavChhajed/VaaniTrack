@@ -42,6 +42,11 @@ const nav = (p, l) => p.locator('nav[aria-label="Screens"]').getByText(l, { exac
   await c.go("/app"); await audit(c.page, "first-run tour step 1", found);
   await c.page.getByRole("button", { name: "Next" }).click(); await c.page.waitForTimeout(500); await audit(c.page, "first-run tour step 2", found);
   await c.page.getByRole("button", { name: "Skip" }).click(); await c.page.waitForTimeout(500); await audit(c.page, "first-run consent question", found);
+  await c.page.getByRole("button", { name: "Back" }).click(); await c.page.waitForTimeout(500); await audit(c.page, "first-run tour step 3", found);
+  await c.page.getByRole("button", { name: "Next" }).click(); await c.page.waitForTimeout(400);
+  await c.page.getByRole("button", { name: "Yes, keep them" }).click(); await c.page.waitForTimeout(700); await audit(c.page, "first-expense guide", found);
+  await c.page.locator("[data-typed-entry]").fill("250 lunch"); await c.page.locator("form button[type=submit]").click(); await c.page.waitForTimeout(1200); await audit(c.page, "after the first expense (home-screen tip)", found);
+  await c.page.evaluate(() => { localStorage.setItem("vaanitrack.firstRun", "next"); localStorage.setItem("vaanitrack.shell", "android"); }); await c.page.reload({ waitUntil: "load" }); await c.page.waitForTimeout(900); await audit(c.page, "after the first expense (widget offer)", found);
   await c.close();
   c = await open("chromium", profile, { seed: "returning" });
   await c.go("/app"); await audit(c.page, "returning-user consent card", found);

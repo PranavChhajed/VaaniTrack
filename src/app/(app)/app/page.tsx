@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { AppHeader } from "@/components/AppHeader";
 import { CapturePanel } from "@/components/CapturePanel";
+import { FirstExpenseGuide } from "@/components/FirstExpenseGuide";
 import { TransactionDetail } from "@/components/TransactionDetail";
 import { TransactionList } from "@/components/TransactionList";
 import { useAutoRecord } from "@/lib/useAutoRecord";
@@ -101,6 +102,12 @@ export default function Home() {
     <main className="mx-auto flex w-full max-w-[900px] flex-col gap-16 px-5 pb-36 pt-8 sm:gap-24 sm:px-8 sm:pt-12">
       <AppHeader profile />
       <h1 className="sr-only">Capture an expense</h1>
+
+      {/* After the welcome tour only: help with the first expense, then one
+          suggestion. Renders nothing for everyone else. */}
+
+      <FirstExpenseGuide capture={capture} entries={transactions.length} />
+
 
       {/* No headline here on purpose. This is the screen someone opens to
           log ₹250 at a shop counter, not the one that introduces the

@@ -1,38 +1,52 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Logo } from "@/components/Logo";
-import { LedgerArt, ReceiptArt, SpeechArt } from "@/components/OnboardingArt";
+import { SayItArt, SureArt, WeekArt } from "@/components/OnboardingArt";
 import {
   audioConsent,
-  useOnboarded,
+  replayTour,
   setAudioConsent,
   setOnboarded,
+  useOnboarded,
+  useTourReplay,
 } from "@/lib/device";
+import { setFirstRunStage, shouldGuide } from "@/lib/firstRun";
+import { useTransactions } from "@/lib/useTransactions";
 
 /**
  * The first-run flow. docs/design/AUTH-ONBOARDING.md §4.
  *
- * Three explainers, then the consent question as a fourth step rather than
- * an unexplained modal. Built as an overlay in the same shape as
- * `AudioConsentGate`: state starts `null`, storage is read in an effect, so
- * server and first client render agree and nothing flashes.
+ * Three explainers, then the recordings question as a fourth step rather than
+ * an unexplained modal. Each explainer is one thing a person does, not one
+ * feature: say it, trust what was saved, see where it went. What comes next
+ * (recording a first expense, and putting the app a tap away) is not told
+ * here but done, on the real capture screen: see `FirstExpenseGuide`.
+ *
+ * Built as an overlay in the same shape as `AudioConsentGate`: state starts
+ * `null`, storage is read in an effect, so server and first client render
+ * agree and nothing flashes.
  *
  * This does not replace `AudioConsentGate`. That component keeps working
- * unchanged for every browser that has already onboarded but never
- * answered consent (existing users). This overlay's own step 4 writes the
- * same `vaanitrack.audioConsent` key, so the two never both appear.
+ * unchanged for every browser that has already onboarded but never answered
+ * consent. This overlay's own last step writes the same
+ * `vaanitrack.audioConsent` key, so the two never both appear.
  *
  * The consent step is deliberately not a "Next" step: it keeps two
  * equal-weight buttons, because a Next that also means "I agree" is a dark
- * pattern the existing consent component goes out of its way to avoid.
- * Skip is offered on steps 1-3, in the header, and jumps straight to
- * consent; it never skips past it.
+ * pattern the consent component goes out of its way to avoid. Skip is offered
+ * on the explainers and jumps straight to consent; it never skips past it.
+ *
+ * Asked for again from the You screen, the same explainers are shown and the
+ * question is not: it has been answered, and a tour is not a reason to ask
+ * twice. That run ends on Done and stores nothing.
  */
 
 type Step = {
   heading: string;
   body: string;
+  /** A smaller line under the body: a limit or a promise worth stating once. */
+  note: string;
   tint: string;
   Art: () => React.JSX.Element;
 };
@@ -40,62 +54,81 @@ type Step = {
 const STEPS: Step[] = [
   {
     heading: "Say what you spent",
-    body: "Speak it the way you'd text yourself. “250 lunch” is a whole entry.",
+    body: "“250 lunch” is a whole entry. Speak it, or type it.",
+    note: "English for now. Amounts in Hindi, like “dhai sau”, are understood.",
     tint: "bg-mint-whisper",
-    Art: SpeechArt,
+    Art: SayItArt,
   },
   {
-    heading: "Check it before it's saved",
-    body: "Every field shows whether it was heard, worked out, or left blank. Nothing is guessed.",
+    heading: "Sure? Saved. Not sure? It asks.",
+    body: "A clear expense is saved at once, with Undo. If something wasn’t heard properly, it shows you first.",
+    note: "Nothing is guessed.",
     tint: "bg-tint-sage",
-    Art: ReceiptArt,
+    Art: SureArt,
   },
   {
-    heading: "Your money, in your words",
-    body: "The journal keeps the record readable, and correctable when it's wrong.",
+    heading: "See where it went",
+    body: "The Journal keeps every day. Insights adds up your week.",
+    note: "It stays on this phone. No account needed.",
     tint: "bg-paper",
-    Art: LedgerArt,
+    Art: WeekArt,
   },
 ];
 
-const CONSENT_STEP = STEPS.length; // index 3
+const CONSENT_STEP = STEPS.length;
 const TOTAL_STEPS = STEPS.length + 1;
 
-/** The wordmark row, on every step, with an optional Skip in the same row so
- *  the footer can stay down to a single action. Consent passes no `onSkip`:
- *  it is the one step that is never skippable. */
-function FlowHeader({ onSkip }: { onSkip?: () => void }) {
+const shell =
+  "fixed inset-0 z-[70] flex min-h-dvh flex-col overflow-y-auto overscroll-contain px-6 pb-[calc(2rem+env(safe-area-inset-bottom))] pt-8";
+const quietLink =
+  "focus-ring -my-3 inline-block px-1 py-3 font-figtree text-body-sm text-charcoal underline underline-offset-4 hover:text-vast-ink";
+
+/** The wordmark row, on every step, with Back and Skip in the same row so the
+ *  footer can stay down to a single action. Consent passes no `onSkip`: it is
+ *  the one step that is never skippable. */
+function FlowHeader({
+  onBack,
+  onSkip,
+  skipLabel = "Skip",
+}: {
+  onBack?: () => void;
+  onSkip?: () => void;
+  skipLabel?: string;
+}) {
   return (
-    <div className="flex items-center justify-between">
+    <div className="flex items-center justify-between gap-4">
       <span className="flex items-center gap-2">
         <Logo size={32} />
         <span className="display-type text-body-sm text-vast-ink">VaaniTrack</span>
       </span>
-      {onSkip && (
-        <button
-          type="button"
-          onClick={onSkip}
-          className="focus-ring -my-3 inline-block px-1 py-3 font-figtree text-body-sm text-fog underline underline-offset-4 hover:text-vast-ink"
-        >
-          Skip
-        </button>
-      )}
+      <span className="flex items-center gap-4">
+        {onBack && (
+          <button type="button" onClick={onBack} className={quietLink}>
+            Back
+          </button>
+        )}
+        {onSkip && (
+          <button type="button" onClick={onSkip} className={quietLink}>
+            {skipLabel}
+          </button>
+        )}
+      </span>
     </div>
   );
 }
 
-function Progress({ step }: { step: number }) {
+function Progress({ step, total }: { step: number; total: number }) {
   return (
     <div
       className="flex gap-2"
       role="progressbar"
       aria-label="Welcome tour"
-      aria-valuetext={`Step ${step + 1} of ${TOTAL_STEPS}`}
+      aria-valuetext={`Step ${step + 1} of ${total}`}
       aria-valuenow={step + 1}
       aria-valuemin={1}
-      aria-valuemax={TOTAL_STEPS}
+      aria-valuemax={total}
     >
-      {Array.from({ length: TOTAL_STEPS }, (_, i) => (
+      {Array.from({ length: total }, (_, i) => (
         <span
           key={i}
           className={`h-[4px] flex-1 rounded-full ${i <= step ? "bg-vast-ink" : "bg-vast-ink/20"}`}
@@ -110,26 +143,44 @@ export function Onboarding() {
   // AudioConsentGate's approach to avoiding a hydration mismatch),
   // true (done, render nothing), false (run the flow).
   const onboarded = useOnboarded();
+  const replay = useTourReplay();
+  const { transactions } = useTransactions();
   const [step, setStep] = useState(0);
 
-  if (onboarded === null || onboarded === true) return null;
+  // Each step is a new screen to someone who cannot see it change: put them
+  // at its heading, the way a page load would.
+  const heading = useRef<HTMLHeadingElement>(null);
+  const firstRun = onboarded === false;
+  const showing = firstRun || replay;
+  useEffect(() => {
+    if (showing) heading.current?.focus();
+  }, [step, showing]);
+
+  if (!showing) return null;
 
   const finish = (consent: "granted" | "denied") => {
-    // Only step 4 ever calls this, see the consent-step buttons below.
-    // Only write consent if it's genuinely still unknown: someone who
-    // reached onboarding after already answering (an edge case, not the
-    // common path) must not have that answer silently overwritten.
+    // Only the consent step ever calls this. Only write consent if it's
+    // genuinely still unknown: someone who reached onboarding after already
+    // answering must not have that answer silently overwritten.
     if (audioConsent() === "unknown") setAudioConsent(consent);
+    // Someone who already has expenses here does not need showing how.
+    if (shouldGuide(transactions.length)) setFirstRunStage("guide");
     setOnboarded();
+    setStep(0);
   };
 
-  if (step === CONSENT_STEP) {
+  const closeReplay = () => {
+    replayTour(false);
+    setStep(0);
+  };
+
+  if (firstRun && step === CONSENT_STEP) {
     return (
-      <div role="dialog" aria-modal="true" aria-label="Welcome to VaaniTrack" className="fixed inset-0 z-[70] flex min-h-dvh flex-col overflow-y-auto overscroll-contain bg-paper px-6 pb-[calc(2rem+env(safe-area-inset-bottom))] pt-8">
-        <FlowHeader />
+      <div role="dialog" aria-modal="true" aria-label="Welcome to VaaniTrack" className={`${shell} bg-paper`}>
+        <FlowHeader onBack={() => setStep(CONSENT_STEP - 1)} />
         <div className="mt-10 flex flex-1 flex-col items-start justify-center [@media(max-height:680px)]:mt-5">
-          <p className="display-type text-subheading text-fog">Welcome to VaaniTrack.</p>
-          <h2 className="display-type mt-2 text-heading-sm text-vast-ink">
+          <p className="display-type text-subheading text-charcoal">One question first.</p>
+          <h2 ref={heading} tabIndex={-1} className="display-type mt-2 text-heading-sm text-vast-ink outline-none">
             Can we keep your recordings?
           </h2>
           <p className="mt-4 max-w-[46ch] font-figtree text-body-sm text-charcoal">
@@ -142,8 +193,8 @@ export function Onboarding() {
             <li>&middot; You can say no and everything still works.</li>
           </ul>
         </div>
-        <div className="flex flex-col gap-3">
-          <Progress step={step} />
+        <div className="mt-6 flex flex-col gap-3">
+          <Progress step={step} total={TOTAL_STEPS} />
           <div className="flex flex-col gap-3 sm:flex-row">
             <button
               type="button"
@@ -165,37 +216,49 @@ export function Onboarding() {
     );
   }
 
-  const current = STEPS[step];
+  const at = Math.min(step, STEPS.length - 1);
+  const current = STEPS[at];
   const Art = current.Art;
+  const last = at === STEPS.length - 1;
+  const total = firstRun ? TOTAL_STEPS : STEPS.length;
 
   return (
-    <div role="dialog" aria-modal="true" aria-label="Welcome to VaaniTrack" className={`fixed inset-0 z-[70] flex min-h-dvh flex-col overflow-y-auto overscroll-contain px-6 pb-[calc(2rem+env(safe-area-inset-bottom))] pt-8 ${current.tint}`}>
-      <FlowHeader onSkip={() => setStep(CONSENT_STEP)} />
+    <div role="dialog" aria-modal="true" aria-label="Welcome to VaaniTrack" className={`${shell} ${current.tint}`}>
+      <FlowHeader
+        onBack={at > 0 ? () => setStep(at - 1) : undefined}
+        onSkip={firstRun ? () => setStep(CONSENT_STEP) : closeReplay}
+        skipLabel={firstRun ? "Skip" : "Close"}
+      />
 
-      <div key={step} className="rise mt-10 [@media(max-height:680px)]:mt-5">
-        <p className="font-figtree text-caption font-semibold uppercase tracking-[0.08em] text-fog">
-          {String(step + 1).padStart(2, "0")} / {String(STEPS.length).padStart(2, "0")}
+      <div key={at} className="rise mt-10 [@media(max-height:680px)]:mt-5">
+        <p className="font-figtree text-caption font-semibold uppercase tracking-[0.08em] text-charcoal">
+          {String(at + 1).padStart(2, "0")} / {String(STEPS.length).padStart(2, "0")}
         </p>
-        <h1 className="mt-3 max-w-[16ch] font-figtree text-heading-sm font-bold text-vast-ink sm:text-heading">
+        <h1
+          ref={heading}
+          tabIndex={-1}
+          className="mt-3 max-w-[16ch] font-figtree text-heading-sm font-bold text-vast-ink outline-none sm:text-heading"
+        >
           {current.heading}
         </h1>
-        <p className="mt-4 max-w-[38ch] font-figtree text-body text-fog">{current.body}</p>
+        <p className="mt-4 max-w-[38ch] font-figtree text-body text-charcoal">{current.body}</p>
+        <p className="mt-2 max-w-[38ch] font-figtree text-body-sm text-charcoal">{current.note}</p>
       </div>
 
       <div className="flex flex-1 items-center justify-center py-6">
-        <div className="h-[160px] w-full max-w-[220px] sm:h-[200px]">
+        <div key={at} className="w-full max-w-[320px]">
           <Art />
         </div>
       </div>
 
       <div className="flex flex-col gap-4">
-        <Progress step={step} />
+        <Progress step={at} total={total} />
         <button
           type="button"
-          onClick={() => setStep((s) => s + 1)}
-          className="focus-ring w-full rounded-[var(--radius-pill)] border-2 border-vast-ink bg-mint-whisper px-6 py-4 font-figtree text-body-sm font-medium text-vast-ink active:bg-mint-deep"
+          onClick={() => (last && !firstRun ? closeReplay() : setStep(at + 1))}
+          className="focus-ring w-full rounded-[var(--radius-pill)] border-2 border-vast-ink bg-vast-ink px-6 py-4 font-figtree text-body-sm font-medium text-paper active:bg-charcoal"
         >
-          Next
+          {last && !firstRun ? "Done" : "Next"}
         </button>
       </div>
     </div>

@@ -4,7 +4,7 @@ import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { AppHeader } from "@/components/AppHeader";
 import { currentSession, signOut } from "@/lib/auth";
-import { setAudioConsent, useAudioConsent } from "@/lib/device";
+import { replayTour, setAudioConsent, useAudioConsent } from "@/lib/device";
 import { eraseOnServer, wipeThisPhone } from "@/lib/erase";
 import { csvFileName, toCsv } from "@/lib/exportCsv";
 import { sinceLine, todayISO } from "@/lib/journal";
@@ -506,6 +506,15 @@ export default function You() {
           </Card>
 
           <Card title="Help">
+            <div>
+              <button type="button" onClick={() => replayTour(true)} className={buttonQuiet}>
+                See the welcome tour again
+              </button>
+              <p className="mt-2 font-figtree text-caption text-fog">
+                A minute on what VaaniTrack does. It asks nothing and changes nothing.
+              </p>
+            </div>
+
             <div>
               <Link href="/diag/mic" className={`${buttonQuiet} inline-block`}>
                 Check my microphone

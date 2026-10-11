@@ -43,6 +43,7 @@ import {
   sanitizeTransaction,
 } from "../src/lib/types.ts";
 import { readLocal, removeLocal, localKeys } from "../src/lib/localStore.ts";
+import { guideLine, parseStage, shouldGuide, stageFor } from "../src/lib/firstRun.ts";
 import type { Field, Provenance, Transaction } from "../src/lib/types.ts";
 
 let failures = 0;
@@ -498,6 +499,27 @@ check("a default install does not listen by itself", shouldAutoRecord({ search: 
 check("the setting round-trips", parseSettings(JSON.stringify({ openToRecord: true })).openToRecord, true);
 check("anything but true is off", parseSettings(JSON.stringify({ openToRecord: "yes" })).openToRecord, false);
 check("an old settings file reads as off", parseSettings(JSON.stringify({ name: "A", reviewAll: true })).openToRecord, false);
+
+console.log("\n--- after the welcome tour ---");
+check("an unknown stage is no stage", [parseStage(null), parseStage(""), parseStage("done"), parseStage("GUIDE")], [null, null, null, null]);
+check("the two stages read back", [parseStage("guide"), parseStage("next")], ["guide", "next"]);
+check("the guide waits while the journal is empty", stageFor("guide", 0), "guide");
+check("the first expense moves it on", stageFor("guide", 1), "next");
+check("so do several at once", stageFor("guide", 3), "next");
+check("the suggestion stays if that expense is undone", stageFor("next", 0), "next");
+check("finished stays finished", [stageFor(null, 0), stageFor(null, 5)], [null, null]);
+check("a new person is guided", shouldGuide(0), true);
+check("someone with expenses is not", shouldGuide(1), false);
+const idleNow = { state: "idle", busy: false, failed: false, toCheck: 0 };
+check("at rest it says to record", guideLine(idleNow).title, "Record your first one");
+check("at rest it also offers typing", /type it/.test(guideLine(idleNow).body), true);
+check("while the mic warms it does not say tap to finish", /finish/.test(guideLine({ ...idleNow, state: "warming" }).title), false);
+check("asking for the mic reads the same as warming", guideLine({ ...idleNow, state: "requesting" }).title, guideLine({ ...idleNow, state: "warming" }).title);
+check("tap to finish only while recording", /tap to finish/.test(guideLine({ ...idleNow, state: "recording" }).title), true);
+check("reading back", guideLine({ ...idleNow, busy: true }).title, "Reading it back…");
+check("a failure points to typing", /type it/.test(guideLine({ ...idleNow, failed: true }).title), true);
+check("an old error does not hide a take in progress", guideLine({ ...idleNow, failed: true, state: "recording" }).title, "Say it, then tap to finish");
+check("a card to check outranks everything", guideLine({ state: "recording", busy: true, failed: true, toCheck: 1 }).title, "Check it, then save");
 
 console.log(
   failures === 0 ? "\nall passed\n" : `\n${failures} FAILED\n`,

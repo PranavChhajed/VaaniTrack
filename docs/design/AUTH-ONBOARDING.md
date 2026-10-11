@@ -30,7 +30,60 @@ This is not a shortcut, it is the honest scope. Signing in on a second device to
 
 **Consequence for the design:** the auth screens must never be a gate. See §6.
 
-## 4. First-run flow
+## 4a. First run, rebuilt (11 October 2026)
+
+The flow below (§4) was written before Insights, the Android widget, typing, Undo
+and "start listening when I open the app" existed, and its second promise had gone
+stale: "Check it before it's saved" is no longer what happens (a clear expense is
+saved at once, with Undo; only an unsure one is held). This is what ships now. §4 is
+kept as the record of the reasoning, most of which still holds.
+
+**A. The tour: three explainers, then the question.** Each explainer is one thing a
+person does, not one feature.
+
+| # | Heading | Body | Small line | Tint |
+|---|---|---|---|---|
+| 1 | Say what you spent | "250 lunch" is a whole entry. Speak it, or type it. | English for now. Amounts in Hindi, like "dhai sau", are understood. | mint |
+| 2 | Sure? Saved. Not sure? It asks. | A clear expense is saved at once, with Undo. If something wasn't heard properly, it shows you first. | Nothing is guessed. | sage |
+| 3 | See where it went | The Journal keeps every day. Insights adds up your week. | It stays on this phone. No account needed. | paper |
+| 4 | *(the recordings question, copy unchanged)* | | | paper |
+
+- **The language line says only what is true.** Speech is transcribed as English
+  (`src/lib/asr.ts`); the only Hindi understood is amount words (`src/lib/extract.ts`).
+  Hindi proper is not built, so the tour does not promise it.
+- `Back` from step 2 on, including back out of the question. `Skip` still jumps *to*
+  the question and never past it. Focus moves to each step's heading.
+- `Next` is a solid ink pill (`THEME-ONBOARDING.md` §4 always said "black, not mint";
+  the first build shipped mint, which vanished on the mint screen).
+
+**B. The first expense, on the real capture screen** (`FirstExpenseGuide`). Order is
+explain, ask, record: the question still has its context, and nothing is recorded
+before it is answered. A recorder inside the tour was rejected: it would be a second
+copy of the capture logic and would teach a screen nobody sees again. The card sits
+above the record button and says the next thing to do from the recorder's real state
+(`guideLine` in `src/lib/firstRun.ts`): record, getting the mic ready, say it then tap
+to finish, reading it back, check it then save, or type it if the microphone won't
+start. "Tap to finish" is never said before the microphone is live (`DESIGN.md` §7).
+
+**C. One suggestion, once, right after the first expense.** In the Android app: "Put
+the record button on your home screen", whose button connects the widget and has
+Android offer to place it (`WIDGET.md`). Everywhere else: the home-screen icon and the
+"start listening when I open the app" switch. Asked after the first expense because
+a shortcut is worth more once you have seen what it shortcuts, and because widget
+set-up needs the recordings answer.
+
+**D. Nothing is forced, and nobody is asked twice.** Both cards have "Not now" and do
+not return. `vaanitrack.firstRun` holds `guide` or `next` and is removed when done;
+absent means show nothing, so everyone who used the app before this sees neither
+card. Someone who already has expenses is not guided. You, under Help, has "See the
+welcome tour again": the three explainers, ending on Done, with no question and
+nothing stored.
+
+Tests: `qa/qa2.cjs` (tour, Back, guide, both suggestions, replay), `qa/qa3.cjs` (every
+small size), `qa/qa4.cjs` (a spoken first expense, a refused microphone), `qa/qa5.cjs`
+(axe on every step and card), `scripts/journal.test.ts` (stages and the guide's words).
+
+## 4. First-run flow (as first built, 18 September)
 
 ### Shape
 

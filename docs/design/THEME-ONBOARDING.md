@@ -71,6 +71,13 @@ One shape, four fills:
 
 `min-h-dvh`, flex column, content vertically centred in the middle band. This is the same skeleton on all four onboarding screens; only the tint, heading, subcopy and progress state change.
 
+> **Revised 11 October 2026.** The three line drawings were replaced in the tour by
+> three small pieces of the real app, built from its own classes (`.wave-bar`,
+> `.money`, `.prov-inferred`, `.prov-unknown`): the card a capture lands on, the two
+> ways a capture ends (saved with Undo, or held as "Check this"), and the Insights week.
+> What a new person sees in the tour is what they meet a minute later. The drawings
+> remain on the landing page. No Ember anywhere in the tour: nothing there is listening.
+
 ## 5. The drawn element — no character illustrations
 
 The reference spends most of its visual weight on a custom hand-drawn character per screen. That is the single most expensive thing to reproduce well, and a mediocre version would read worse than nothing.

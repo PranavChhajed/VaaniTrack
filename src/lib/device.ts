@@ -128,3 +128,19 @@ export function useAudioConsent(): AudioConsent | null {
 export function useOnboarded(): boolean | null {
   return useLocalValue<boolean | null>(hasOnboarded, null);
 }
+
+/**
+ * The welcome tour, asked for again from the You screen. Held in memory only:
+ * it is a thing to look at, not a state to be in, so a reload ends it and
+ * nothing about first run or the recordings answer is touched.
+ */
+let replaying = false;
+
+export function replayTour(on: boolean): void {
+  replaying = on;
+  notifyLocal();
+}
+
+export function useTourReplay(): boolean {
+  return useLocalValue<boolean>(() => replaying, false);
+}

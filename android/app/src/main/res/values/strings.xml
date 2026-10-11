@@ -12,6 +12,7 @@
     <string name="notice_title">VaaniTrack is listening</string>
     <string name="notice_text">Tap to finish</string>
     <string name="setup_ok">VaaniTrack widget is ready</string>
+    <string name="setup_add">Connected. To add the widget: press and hold your home screen, choose Widgets, then VaaniTrack.</string>
     <string name="setup_no_mic">The widget can’t listen until the microphone is allowed</string>
     <string name="setup_bad">That setup link wasn’t valid. Open it from VaaniTrack’s You screen.</string>
     <string name="setup_consent">Answer the recordings question in VaaniTrack first, then connect the widget.</string>
