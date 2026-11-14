@@ -5,9 +5,11 @@
 Keep Whisper large-v3 and GPT-OSS-120B for general capture. Do not bundle an
 SLM into the Android app: the local candidate failed the accuracy gate and
 was slower on the test host. Use a small, closed-grammar parser before cloud
-extraction for explicit numeric amounts with ten known expense labels.
+extraction for explicit integer amounts with ten known expense labels.
 Corrections, dates, people, payment overrides, multiple expenses, approximate
-amounts, and unfamiliar phrases continue through the existing model.
+amounts, decimal/currency formatting, and unfamiliar phrases continue through
+the existing model. Decimal-looking ASR can be a misheard rupee amount, so it
+must not bypass the existing interpretation rules.
 
 The parser runs in the shared server extraction function, so web and widget
 both benefit without an APK update. It does not make recording offline.
@@ -52,7 +54,7 @@ requests are included in the final Qwen measurements. The attempted hosted
 Llama 8B was unavailable to this key and is excluded from model comparisons.
 Desktop CPU latency is not Android latency.
 
-The exact parser measured median 0.0039 ms and p95 0.0081 ms over 1,000 local
+The exact parser measured median 0.0010 ms and p95 0.0023 ms over 1,000 local
 calls. This replaces only extraction for supported phrases; it excludes ASR,
 network, rendering and correction time. It matched 8/120 existing synthetic
 corpus entries with no differences in compared amount/count/description/date/
@@ -79,7 +81,7 @@ Nothing Phone latency, so auto language was not shipped as the default.
   requires GROQ_API_KEY. Direct model calls only, paced 11 seconds apart.
 - `scripts/model-eval.ts local`: OpenAI-compatible llama.cpp on localhost:11435.
 - `qa/make-synthetic-speech.ps1` then `scripts/speech-eval.ts`: synthetic ASR test.
-- `scripts/capture-pipeline.test.ts`: 520 checks, no network; all passed.
+- `scripts/capture-pipeline.test.ts`: 523 checks, no network; all passed.
 - `scripts/quick-eval.ts`: compatibility check using the existing local synthetic
   baseline at `.captures/eval/baseline.json`, plus parser timing.
 - Raw evaluation logs and outputs are in ignored `qa/shots/verification/`.

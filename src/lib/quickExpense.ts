@@ -9,7 +9,9 @@ const categories: Record<string, string> = {
 };
 
 export function quickExpense(text: string, today: string, payment: PaymentMethod): ExtractedTransaction[] | null {
-  const match = /^(?:(?:i\s+)?(?:just\s+)?(?:spent|paid)\s+)?([1-9]\d{0,6}(?:\.\d{1,2})?)(?:\s+rupees)?\s+(?:(?:on|for)\s+)?(lunch|breakfast|dinner|chai|coffee|snacks|tea|auto|taxi|uber)[.!]?$/i.exec(text.trim());
+  // Decimal-looking ASR output can be "two fifty" rendered as "2.50".
+  // Leave all fractions/currency formatting to the established model rules.
+  const match = /^(?:(?:i\s+)?(?:just\s+)?(?:spent|paid)\s+)?([1-9]\d{0,6})(?:\s+rupees)?\s+(?:(?:on|for)\s+)?(lunch|breakfast|dinner|chai|coffee|snacks|tea|auto|taxi|uber)[.!]?$/i.exec(text.trim());
   if (!match) return null;
   const description = match[2].toLowerCase();
   return [{

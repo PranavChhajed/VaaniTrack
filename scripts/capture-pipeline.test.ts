@@ -7,7 +7,7 @@ async function main() {
   let checks=0;
   for (const payment of ['UPI','Cash','Card'] as const) {
     for (const label of ['lunch','breakfast','dinner','chai','coffee','snacks','tea','auto','taxi','uber']) {
-      for(const amount of ['1','250','1800','12.50']) {
+      for(const amount of ['1','250','1800','9999']) {
         for(const phrase of [`${amount} ${label}`,`I spent ${amount} on ${label}`,`Paid ${amount} rupees for ${label}`,`I just paid ${amount} for ${label}`]) {
         const row=quickExpense(phrase,'2026-11-15',payment)![0];
         assert.equal(row.amount,Number(amount)); assert.equal(row.paymentMethod,payment);
@@ -24,6 +24,9 @@ async function main() {
   }
   for(const text of ['thanks for watching','just lunch','something','someone','दोपहर का खाना']) {
     assert.equal(hasNumber(text),false,text); checks++;
+  }
+  for(const text of ['2.50 lunch','1.20 chai','12.50 coffee']) {
+    assert.equal(quickExpense(text,'2026-11-15','UPI'),null,text); checks++;
   }
   const original=globalThis.fetch;
   let requests=0;

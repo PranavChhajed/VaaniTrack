@@ -18,6 +18,12 @@ async function main() {
     rows=await page.evaluate(()=>JSON.parse(localStorage.getItem('vaanitrack.transactions')));
     assert.equal(rows.length,1);
     assert.deepEqual(errors,[]);
+    // The fixture rejects all model calls: an ambiguous decimal must take
+    // that fallback, while a supported integer remains local to the parser.
+    const fractional=await context.request.post('http://127.0.0.1:3202/api/extract',{
+      data:{text:'2.50 lunch',today:'2026-11-15',defaultPayment:'Cash'},
+    });
+    assert.equal(fractional.status(),502);
     await page.screenshot({path:'qa/shots/verification/slm-browser.png'});
     console.log('PASS real API → parser → browser save → reload persistence');
     await context.close();
