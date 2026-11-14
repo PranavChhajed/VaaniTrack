@@ -69,6 +69,9 @@ public class RecordService extends Service {
     private double sumDb;
     private int samples;
     private boolean active;
+    private VoiceLevel voiceLevel = new VoiceLevel();
+    private long levelUpdatedAt;
+    private int levelFrame = -1;
 
     @Override
     public void onCreate() {
@@ -149,6 +152,9 @@ public class RecordService extends Service {
         active = true;
         startedAt = System.currentTimeMillis();
         soundAt = 0;
+        voiceLevel = new VoiceLevel();
+        levelUpdatedAt = 0;
+        levelFrame = -1;
         peakDb = -200;
         sumDb = 0;
         samples = 0;
@@ -171,10 +177,21 @@ public class RecordService extends Service {
                 amp = 0;
             }
             long now = System.currentTimeMillis();
+            int frame = voiceLevel.sample(amp);
             if (soundAt == 0 && (amp >= SOUND || now - startedAt >= WARM_LIMIT_MS)) {
                 soundAt = now;
                 store.setState(WidgetStore.State.RECORDING, "");
                 RecordWidgetProvider.refresh(RecordService.this);
+            }
+            long elapsed = android.os.SystemClock.elapsedRealtime();
+            if (soundAt != 0 && elapsed - levelUpdatedAt >= 140) {
+                // Partial updates touch only the bars, not text, intents or storage.
+                int visibleFrame = RecordWidgetProvider.animationsWanted(RecordService.this) ? frame : 0;
+                if (visibleFrame != levelFrame) {
+                    RecordWidgetProvider.updateLevel(RecordService.this, visibleFrame);
+                    levelFrame = visibleFrame;
+                }
+                levelUpdatedAt = elapsed;
             }
             if (soundAt != 0 && amp > 0) {
                 double db = 20 * Math.log10(amp / 32767.0);

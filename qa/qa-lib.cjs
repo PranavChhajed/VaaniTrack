@@ -101,6 +101,7 @@ async function installMocks(ctx, state) {
       state.transcribe.push({ size: (req.postData() || "").length });
       const r = (state.onTranscribe || (() => ({ text: "two fifty lunch", transactions: [txn({ amount: 250, description: "lunch" })] })))();
       if (r.fail) return route.fulfill({ status: r.fail, contentType: "application/json", body: JSON.stringify({ error: r.error || "no" }) });
+      if (r.streamBody !== undefined) return route.fulfill({ status: 200, contentType: "application/x-ndjson", body: r.streamBody });
       const lines = [{ heard: r.text, confidence: r.confidence ?? 0.9 }, { text: r.text, confidence: r.confidence ?? 0.9, captureId: "cap-v1", debug: { bytes: 1000, type: "audio/webm", noSpeechProb: 0.01, confidence: 0.9, asrMs: 100, extractMs: 100 }, ...(r.extractError ? { extractError: r.extractError } : { transactions: r.transactions }) }];
       return route.fulfill({ status: 200, contentType: "application/x-ndjson", body: lines.map((l) => JSON.stringify(l)).join("\n") + "\n" });
     }

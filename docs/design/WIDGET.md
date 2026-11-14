@@ -66,13 +66,14 @@ Rules carried over from the design file, and why they matter here:
 
 ### How it moves
 
-Android runs no animation code in a widget; a `ViewFlipper` cycling pre-drawn
-frames is the one thing that loops. `android/tools/make_widget_frames.py` draws
-the two loops (listening: ember bars breathing as a wave travels across them, 12
-frames at 75 ms, the web's 900 ms `.wave-bar`; reading: mint bars sweeping) and
-the still states. It only moves while recording or reading, which is also the
-battery argument for not animating an idle tile. With animations switched off or
-battery saver on, the listening picture is still.
+Recording uses 12 amplitude levels drawn by `android/tools/make_widget_frames.py`.
+The service reads the microphone every 70 ms, smooths its level with a faster
+attack than release, and partially updates the displayed frame at most once
+per 140 ms, only when the frame changes. Silence settles to short bars; louder
+speech raises them. These are volume bars, not a frequency-spectrum display.
+The recording `ViewFlipper` never cycles by itself. Processing keeps its mint
+animation. Animations disabled or battery saver selects a still recording
+picture. No level updates run after recording ends.
 
 ## Saving: the inbox
 

@@ -9,7 +9,7 @@
  *                    five seconds of a screen the person could already tap, and then a tour
  *                    arriving on top of it.
  *   data-cold        this is a fresh page load, not a move between screens. The entrance
- *                    animation (`.enter` in globals.css) plays only then, and it is CSS, so it
+ *                    animation (`.enter-children` in globals.css) plays only then, and it is CSS, so it
  *                    plays on the first paint and not whenever the scripts get there.
  *
  * An inline script for the reason OpenOnCapture.tsx gives: it must run while the HTML is still

@@ -40,7 +40,7 @@ export function Logo({ size = 28, className }: LogoProps) {
       height={size}
       width={Math.round(size * ASPECT)}
       className={className}
-      priority
+      preload
     />
   );
 }

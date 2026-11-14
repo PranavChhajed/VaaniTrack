@@ -327,19 +327,24 @@ async function connect() {
     await until((x) => x.state === "RECORDING", 8000);
     await sleep(800);
     // Only the picture on the tile, so the clock and status icons cannot count as movement.
-    const frames = new Set();
+    const frameFiles = [];
     for (let i = 0; i < 6; i++) {
       const png = execSync(`${ADB} exec-out screencap -p`, { maxBuffer: 1 << 26 });
-      const file = path.join(OUT, "widget-frame.png");
+      const file = path.join(OUT, `widget-frame-${i}.png`);
       fs.writeFileSync(file, png);
-      const hash = execSync(`python -I -c "import hashlib,sys; from PIL import Image; im=Image.open(sys.argv[1]).convert('RGB').crop((340,570,740,880)); print(hashlib.md5(im.tobytes()).hexdigest())" "${file}"`, { encoding: "utf8" }).trim();
-      frames.add(hash);
+      frameFiles.push(file);
       await sleep(120);
     }
-    shell("settings put global animator_duration_scale 1");
-    t.eq("the picture does not move", frames.size, 1);
-    tap(TILE);
+    // Stop before decoding screenshots: repeatedly starting Python can take
+    // longer than the 45-second recording limit on a busy Windows host. A tap
+    // after that limit starts a NEW take, contaminating the next test.
+    const current = last();
+    if (current?.state === "RECORDING") tap(TILE);
+    else t.ok("screenshots completed while recording", false, current?.state);
     await until((x) => x.state === "SAVED", 15000);
+    const hashes = execSync(`python -I -c "import hashlib,sys; from PIL import Image; print(' '.join(hashlib.md5(Image.open(p).convert('RGB').crop((340,570,740,880)).tobytes()).hexdigest() for p in sys.argv[1:]))" ${frameFiles.map(f => `"${f}"`).join(" ")}`, { encoding: "utf8" }).trim().split(/\s+/);
+    shell("settings put global animator_duration_scale 1");
+    t.eq("the picture does not move", new Set(hashes).size, 1);
   });
 
   await test("large system text: the tile still shows its words", async (t) => {

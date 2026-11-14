@@ -1,9 +1,9 @@
 """Draws the widget's microphone in every state, one vector file each.
 
 An Android widget cannot run animation code: the home screen draws it from a
-description, and the one thing that moves on its own is a ViewFlipper cycling
-through pre-drawn frames. So the two moving states (listening, reading) are
-drawn here as loops, and the still states as single pictures.
+description. Recording frames are amplitude levels selected by the microphone
+service; the processing ViewFlipper cycles its frames independently. The other
+states are single pictures.
 
 Everything follows docs/DESIGN.md: flat colour, a 2px ink border, no shadow or
 glow. Mint is the idle button, Ember Glow means the microphone is live (and
@@ -67,8 +67,8 @@ REST = [3.0, 5.8, 8.0, 5.8, 3.0]
 
 
 def listening(t):
-    p = t / FRAMES
-    return [2.4 + 7.0 * (0.5 + 0.5 * math.sin(2 * math.pi * p - i * 0.95)) for i in range(5)]
+    # These are amplitude levels, not an autonomous animation loop.
+    return [1.2 + (peak - 1.2) * t / (FRAMES - 1) for peak in [4.8, 7.2, 9.4, 7.2, 4.8]]
 
 
 def reading(t):

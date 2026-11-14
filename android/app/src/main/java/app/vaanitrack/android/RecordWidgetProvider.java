@@ -46,6 +46,7 @@ public class RecordWidgetProvider extends AppWidgetProvider {
 
     /** A flip interval so long that the picture stays on its first frame. */
     private static final int STILL = Integer.MAX_VALUE / 2;
+    private static int currentLevel;
 
     @Override
     public void onUpdate(Context context, AppWidgetManager manager, int[] appWidgetIds) {
@@ -121,6 +122,8 @@ public class RecordWidgetProvider extends AppWidgetProvider {
         }
 
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_tile);
+        if (state != WidgetStore.State.RECORDING) currentLevel = 0;
+        views.setDisplayedChild(R.id.flip_rec, currentLevel);
 
         int picture = R.id.mic_idle;
         String title = context.getString(R.string.widget_title);
@@ -235,7 +238,21 @@ public class RecordWidgetProvider extends AppWidgetProvider {
         manager.updateAppWidget(appWidgetId, views);
     }
 
-    private static boolean animationsWanted(Context context) {
+    static void updateLevel(Context context, int frame) {
+        currentLevel = Math.max(0, Math.min(11, frame));
+        AppWidgetManager manager = AppWidgetManager.getInstance(context);
+        int[] ids = manager.getAppWidgetIds(new ComponentName(context, RecordWidgetProvider.class));
+        RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_tile);
+        views.setDisplayedChild(R.id.flip_rec, currentLevel);
+        try {
+            manager.partiallyUpdateAppWidget(ids, views);
+        } catch (RuntimeException error) {
+            // A launcher refresh must never interrupt the microphone service.
+            Log.w("VaaniWidget", "Could not update microphone level", error);
+        }
+    }
+
+    static boolean animationsWanted(Context context) {
         float scale = Settings.Global.getFloat(
                 context.getContentResolver(), Settings.Global.ANIMATOR_DURATION_SCALE, 1f);
         PowerManager power = (PowerManager) context.getSystemService(Context.POWER_SERVICE);

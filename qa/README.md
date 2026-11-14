@@ -79,6 +79,30 @@ node cdp.cjs
 
 ## Limits
 
+### Isolated verification for native navigation
+
+Run `node qa/serve-isolated.cjs` from the repository root after building. It
+serves port 3202 with database, model and storage credentials disabled, so an
+Android browser outside Playwright cannot report synthetic transactions to
+production. Playwright suites still intercept API requests as before.
+
+If the emulator cannot reach `10.0.2.2`, use adb tunnels:
+
+```
+adb -s emulator-5554 reverse tcp:3202 tcp:3202
+adb -s emulator-5554 reverse tcp:4010 tcp:4010
+```
+
+Build the test APK with `-PvaaniUrl=http://127.0.0.1:3202`
+and `-PvaaniApi=http://127.0.0.1:4010`. Keep that APK separate from the signed
+production artifact. Wake the emulator, keep its screen on, and verify widget
+placement before the coordinate-based suite. `NOCLEAR=1` preserves a placed
+widget; clearing the app can remove its launcher registration on this emulator.
+
+`node qa/production-launch.cjs` checks the launch matrix. `node qa/install-audit.cjs`
+checks Chrome installability without allowing app API traffic. Both accept
+`BASE`; install-audit defaults to the public production origin.
+
 WebKit on Windows has no microphone API, so recording is tested in Chromium and
 on the Android emulator. None of this is a real iPhone: it is the same engine,
 not the same device. See `docs/design/WIDGET.md`.

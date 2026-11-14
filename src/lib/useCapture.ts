@@ -120,10 +120,12 @@ async function postCapture(
   const decoder = new TextDecoder();
   let buffered = "";
   let last: Record<string, unknown> | null = null;
+  let complete = false;
   const take = (text: string) => {
     if (!text.trim()) return;
     last = JSON.parse(text) as Record<string, unknown>;
     if (typeof last.heard === "string") onHeard(last.heard);
+    complete = typeof last.text === "string" || typeof last.error === "string";
   };
 
   try {
@@ -138,6 +140,10 @@ async function postCapture(
       }
     }
     take(buffered + decoder.decode());
+    // A clean EOF can still be a truncated response: the early transcript
+    // is not a completed extraction. Fail through the recovery path so those
+    // words remain editable instead of disappearing with the listening UI.
+    if (!complete) throw new Error("Response ended before the result arrived");
   } catch (err) {
     // The connection went, or a line was not JSON. Whatever was heard before
     // that has already been handed to `onHeard`.
@@ -147,6 +153,8 @@ async function postCapture(
         "The connection dropped before that finished. Check what was heard below, or try again.",
       detail: `stream: ${err instanceof Error ? err.message : String(err)}`,
     };
+  } finally {
+    reader.releaseLock();
   }
 
   return last ? { ok: true, status: res.status, body: last } : unreadable("");

@@ -48,7 +48,7 @@
                 android:id="@+id/flip_rec"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:autoStart="true"
+                android:autoStart="false"
                 android:flipInterval="75"
                 android:importantForAccessibility="no"
                 android:visibility="gone">

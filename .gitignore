@@ -65,3 +65,4 @@ android/local.properties
 /qa/*.png
 /qa/all.out
 qa/shots/
+qa/.java-tests/

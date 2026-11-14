@@ -89,6 +89,19 @@ async function record(p, ms = 1500) {
     await close();
   });
 
+  await test("an incomplete streamed response preserves words for correction", async (t) => {
+    for (const suffix of ["", "\n", "\n{broken"]) {
+      const { page, go, state, close } = await open(engine, profile, { init: WRAP });
+      state.onTranscribe = () => ({ streamBody: JSON.stringify({ heard: "250 lunch" }) + suffix });
+      await go("/app"); await record(page);
+      await page.waitForFunction(() => /connection dropped/i.test(document.body.innerText));
+      t.eq("words remain editable", await typed(page).inputValue(), "250 lunch");
+      t.eq("nothing saved", (await store(page)).length, 0);
+      t.eq("microphone released", await live(page), 0);
+      await close();
+    }
+  });
+
   await test("the transcriber failing is survivable and retryable", async (t) => {
     const { page, go, state, close } = await open(engine, profile, { init: WRAP });
     state.onTranscribe = () => ({ fail: 500, error: "The transcriber is down." });
