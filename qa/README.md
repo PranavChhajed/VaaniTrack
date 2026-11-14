@@ -106,3 +106,16 @@ checks Chrome installability without allowing app API traffic. Both accept
 WebKit on Windows has no microphone API, so recording is tested in Chromium and
 on the Android emulator. None of this is a real iPhone: it is the same engine,
 not the same device. See `docs/design/WIDGET.md`.
+# Exact-expense pipeline integration
+
+After a production build, set `QA_PIPELINE_FIXTURE=1` and run
+`node qa/serve-isolated.cjs`. This uses an explicitly fake API key and intercepts
+ASR in the test process; unexpected extraction-model calls fail. Database and
+storage credentials remain blank. `node qa/pipeline-browser.cjs` tests the real
+local route, parser, browser save and reload.
+
+For the widget smoke test, start `qa/widget-mock.cjs` with
+`PIPELINE_URL=http://127.0.0.1:3202`, use the existing QA APK and adb tunnels,
+then run `qa/qa-widget.cjs` with `ONLY=a logged expense` and `NOCLEAR=1`.
+The proxy only accepts loopback destinations. Use normal mock mode for the
+rest of the widget suite; the fixed ASR fixture is not an uncertainty simulator.

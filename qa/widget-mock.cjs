@@ -77,6 +77,23 @@ http.createServer((req, res) => {
     const whole = Buffer.concat(chunks);
     const f = fields(whole);
     log.push({ at: Date.now(), mode, bodyBytes: whole.length, ...f, head: process.env.MOCK_DEBUG ? whole.toString('latin1').split('audio').slice(0,3).join('|AUDIO|').slice(0, 600) : undefined });
+    // Optional real local pipeline, with ASR mocked by upstream-fixture.cjs.
+    // Loopback only: this must never forward synthetic captures to production.
+    if (process.env.PIPELINE_URL) {
+      const target = new URL(process.env.PIPELINE_URL);
+      if (!['localhost', '127.0.0.1'].includes(target.hostname)) {
+        res.statusCode = 500; res.end('Pipeline target must be loopback'); return;
+      }
+      try {
+        const response = await fetch(new URL('/api/transcribe',target), {
+          method:'POST', headers:{'Content-Type':req.headers['content-type']}, body:whole,
+        });
+        res.statusCode=response.status;
+        res.setHeader('Content-Type',response.headers.get('content-type') || 'application/json');
+        res.end(await response.text());
+      } catch { res.statusCode=502; res.end('Local pipeline unavailable'); }
+      return;
+    }
     const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
     if (mode === "drop") { req.socket.destroy(); return; }

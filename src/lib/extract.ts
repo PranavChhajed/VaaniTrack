@@ -4,6 +4,7 @@ import {
   type ExtractedTransaction,
   type PaymentMethod,
 } from "./types";
+import { quickExpense } from "./quickExpense";
 
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 
@@ -33,7 +34,7 @@ export function cleanPayment(value: unknown): PaymentMethod {
   return PAYMENT_OPTIONS.find((p) => p === value) ?? DEFAULTS.paymentMethod;
 }
 
-function buildSystemPrompt(today: string, payment: PaymentMethod): string {
+export function buildSystemPrompt(today: string, payment: PaymentMethod): string {
   return `Convert spoken expense notes (Indian English, rupees) into JSON.
 Today is ${today}.
 
@@ -87,11 +88,19 @@ export async function extractTransactions(
     defaultPayment?: PaymentMethod;
     /** Only the replay harness sets these; the app runs the defaults. */
     reasoningEffort?: "low" | "medium" | "high";
+    /** Benchmark the upstream model independently of the exact-phrase parser. */
+    skipQuick?: boolean;
   },
 ): Promise<ExtractResult> {
   const model = opts.model ?? EXTRACT_MODEL;
   const started = Date.now();
   const elapsed = () => Date.now() - started;
+
+  const quick = opts.skipQuick ? null : quickExpense(text, today, opts.defaultPayment ?? DEFAULTS.paymentMethod);
+  if (quick) {
+    return { kind: "ok", model: "exact-expense-v1", transactions: quick,
+      raw: { transactions: quick }, ms: elapsed() };
+  }
 
   let content: string | undefined;
   try {

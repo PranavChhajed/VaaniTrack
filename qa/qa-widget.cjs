@@ -119,6 +119,8 @@ async function connect() {
 }
 
 (async () => {
+  shell("input keyevent KEYCODE_WAKEUP");
+  shell("wm dismiss-keyguard");
   shell("settings put global animator_duration_scale 1");
   shell("settings put system font_scale 1.0");
   // A clean slate: no queue, no set-up, no permissions. The tile stays where it was placed.
@@ -132,7 +134,10 @@ async function connect() {
     await speak();
     await until((x) => x.state === "SAVED", 15000, "saved");
     const s = states();
-    t.eq("states in order (no mic-ready lie, no skipped step)", s, ["WARMING", "RECORDING", "READING", "SAVED"]);
+    // A delayed launcher refresh can log IDLE after fresh() clears logcat.
+    // The recording lifecycle starts at WARMING; still reject any skipped or
+    // extra state after that boundary.
+    t.eq("states in order (no mic-ready lie, no skipped step)", s.slice(s.indexOf("WARMING")), ["WARMING", "RECORDING", "READING", "SAVED"]);
     const saved = last();
     t.eq("amount", saved.amount, "₹250");
     t.eq("what", saved.title, "Lunch");

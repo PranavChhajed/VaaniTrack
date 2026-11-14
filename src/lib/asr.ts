@@ -115,9 +115,11 @@ function normalise(text: string): string {
     .trim();
 }
 
-/** No digits anywhere means no amount, which means no expense. */
-function hasNumber(text: string): boolean {
-  return /\d/.test(text) || /\b(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand|lakh|crore|k)\b/i.test(text);
+/** This is only a presence check, never an amount parser. Keep Hindi number
+ * words and Unicode digits for the extractor; ASCII-only checks discarded them. */
+export function hasNumber(text: string): boolean {
+  return /\p{Nd}/u.test(text) || /\b(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand|lakh|crore|k|ek|do|teen|char|paanch|panch|das|bees|pachas|pachaas|sau|hazaar|hazar|dhai|dedh)\b/i.test(text)
+    || /(?:^|[^\p{L}\p{M}])(?:एक|दो|तीन|चार|पांच|पाँच|छह|सात|आठ|नौ|दस|ग्यारह|बारह|तेरह|चौदह|पंद्रह|पन्द्रह|सोलह|सत्रह|अठारह|उन्नीस|बीस|तीस|चालीस|पचास|साठ|सत्तर|अस्सी|नब्बे|सौ|हजार|हज़ार|लाख|करोड़|ढाई|डेढ़)(?=$|[^\p{L}\p{M}])/u.test(text);
 }
 
 export type Segment = {
@@ -157,7 +159,7 @@ export type AsrResult =
 export async function transcribeAudio(
   bytes: ArrayBuffer,
   mime: string,
-  opts: { apiKey: string; vocab?: string[]; model?: string },
+  opts: { apiKey: string; vocab?: string[]; model?: string; language?: "en" | "auto" },
 ): Promise<AsrResult> {
   const model = opts.model ?? ASR_MODEL;
   const upstream = new FormData();
@@ -167,7 +169,7 @@ export async function transcribeAudio(
     `capture.${extensionFor(mime)}`,
   );
   upstream.append("model", model);
-  upstream.append("language", "en");
+  if (opts.language !== "auto") upstream.append("language", "en");
   upstream.append("response_format", "verbose_json");
   upstream.append("temperature", "0");
   upstream.append("prompt", decoderPrompt(opts.vocab ?? []));
