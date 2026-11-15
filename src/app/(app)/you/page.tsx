@@ -380,7 +380,16 @@ export default function You() {
                 What the widget records shows up in your journal the next time you open the app. Until then it tells you how many are waiting. If it is unsure of one, it opens here as a card for you to check, and never saves it on a guess.
               </p>
             </Card>
-          ) : null}
+          ) : (
+            <Card
+              title="Home-screen widget"
+              intro="The recording widget requires the VaaniTrack Android APK. Installing this website through Chrome adds the web app, which does not include the recording widget."
+            >
+              <p className="max-w-[52ch] font-figtree text-body-sm text-fog">
+                After installing the Android APK, open it and return here to connect the widget. Keep your browser data: it contains your journal.
+              </p>
+            </Card>
+          )}
 
           <Card title="Your voice">
             <Switch

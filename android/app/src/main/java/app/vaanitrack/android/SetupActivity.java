@@ -30,10 +30,21 @@ public class SetupActivity extends Activity {
     private static final Pattern UUID = Pattern.compile(
             "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$");
     private static final int ASK = 1;
+    private boolean completed;
+    private boolean asking;
+    private static long pinRequestedAt;
 
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
+        if (state != null) {
+            completed = state.getBoolean("completed");
+            asking = state.getBoolean("asking");
+            if (completed) { finish(); return; }
+            // Android delivers the pending permission result to the recreated
+            // activity; issuing another request here duplicates the setup flow.
+            if (asking) return;
+        }
         Uri data = getIntent() == null ? null : getIntent().getData();
         String device = data == null ? null : data.getQueryParameter("d");
         String consent = data == null ? null : data.getQueryParameter("c");
@@ -64,6 +75,7 @@ public class SetupActivity extends Activity {
         if (need.isEmpty()) {
             done();
         } else {
+            asking = true;
             requestPermissions(need.toArray(new String[0]), ASK);
         }
     }
@@ -71,10 +83,19 @@ public class SetupActivity extends Activity {
     @Override
     public void onRequestPermissionsResult(int code, String[] permissions, int[] results) {
         super.onRequestPermissionsResult(code, permissions, results);
-        done();
+        if (code == ASK) { asking = false; done(); }
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle state) {
+        state.putBoolean("completed", completed);
+        state.putBoolean("asking", asking);
+        super.onSaveInstanceState(state);
     }
 
     private void done() {
+        if (completed || isFinishing()) return;
+        completed = true;
         boolean mic = checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED;
         int said = mic ? R.string.setup_ok : R.string.setup_no_mic;
         if (mic && !placed() && !offerToPlace()) said = R.string.setup_add;
@@ -100,9 +121,18 @@ public class SetupActivity extends Activity {
         try {
             AppWidgetManager manager = AppWidgetManager.getInstance(this);
             if (!manager.isRequestPinAppWidgetSupported()) return false;
-            return manager.requestPinAppWidget(
+            // Pending requests are owned by the launcher, and are not included
+            // in getAppWidgetIds until placement finishes. Repeated setup links
+            // must not open overlapping launcher placement dialogs.
+            long now = android.os.SystemClock.elapsedRealtime();
+            if (pinRequestedAt != 0 && now - pinRequestedAt < 60_000) return false;
+            pinRequestedAt = now;
+            boolean requested = manager.requestPinAppWidget(
                     new ComponentName(this, RecordWidgetProvider.class), null, null);
+            if (!requested) pinRequestedAt = 0;
+            return requested;
         } catch (RuntimeException e) {
+            pinRequestedAt = 0;
             return false;
         }
     }
@@ -111,6 +141,8 @@ public class SetupActivity extends Activity {
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
+        // Do not replace a pending permission flow with a second setup request.
+        if (asking || completed) return;
         setIntent(intent);
         recreate();
     }
