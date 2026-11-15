@@ -2,6 +2,7 @@
 
 import {
   createContext,
+  Fragment,
   useCallback,
   useContext,
   useMemo,
@@ -9,11 +10,12 @@ import {
 } from "react";
 import { deleteTransaction, updateTransaction } from "@/lib/journal";
 import { readLocal } from "@/lib/localStore";
+import { activeAccount, cacheKey } from "@/lib/account/local";
+import { AccountWorkspace } from "@/components/AccountWorkspace";
 import { useLocalValue } from "@/lib/useLocalValue";
 import {
   TRANSACTIONS_KEY,
   loadTransactions,
-  parseTransactions,
   saveTransactions,
   type Transaction,
 } from "@/lib/types";
@@ -56,15 +58,16 @@ const NONE: Transaction[] = [];
  * here too.
  */
 export function TransactionsProvider({ children }: { children: ReactNode }) {
+  const accountId = useLocalValue(() => activeAccount()?.id ?? "guest", "guest");
   // The raw text is the snapshot: it is a string, so React can tell whether
   // it changed. Parsed once per change below.
   const raw = useLocalValue<string | null | undefined>(
-    () => readLocal(TRANSACTIONS_KEY),
+    () => { const account = activeAccount(); return account ? `${account.id}:${readLocal(cacheKey(account.id)) ?? ""}` : readLocal(TRANSACTIONS_KEY); },
     undefined,
   );
   const hydrated = raw !== undefined;
   const transactions = useMemo(
-    () => (raw ? parseTransactions(raw) : NONE),
+    () => (raw !== undefined ? loadTransactions() : NONE),
     [raw],
   );
 
@@ -92,7 +95,7 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
 
   return (
     <TransactionsContext.Provider value={value}>
-      {children}
+      <Fragment key={accountId}>{accountId === "guest" ? children : <AccountWorkspace id={accountId}>{children}</AccountWorkspace>}</Fragment>
     </TransactionsContext.Provider>
   );
 }

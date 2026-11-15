@@ -41,6 +41,9 @@ import java.util.Locale;
 public class RecordService extends Service {
 
     static final String ACTION_TOGGLE = "app.vaanitrack.android.TOGGLE";
+    static final String ACTION_START = "app.vaanitrack.android.START";
+    static final String ACTION_STOP = "app.vaanitrack.android.STOP";
+    static final String ACTION_CANCEL = "app.vaanitrack.android.CANCEL";
 
     private static final String CHANNEL = "listening";
     private static final int NOTIFICATION = 7;
@@ -85,6 +88,7 @@ public class RecordService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         store = new WidgetStore(this);
+        if (intent == null) { stopSelf(); return START_NOT_STICKY; }
 
         // A microphone service cannot start without the microphone permission:
         // Android throws, and the app would crash. A tile can be a little behind
@@ -108,6 +112,25 @@ public class RecordService extends Service {
         }
 
         WidgetStore.State state = store.state();
+        String action = intent == null ? null : intent.getAction();
+        if (ACTION_CANCEL.equals(action)) {
+            if (active) {
+                active = false;
+                handler.removeCallbacksAndMessages(null);
+                release(); deleteFile();
+                store.setState(WidgetStore.State.IDLE, "");
+                RecordWidgetProvider.refresh(this);
+                leave();
+            }
+            else if (state != WidgetStore.State.READING) leave();
+            return START_NOT_STICKY;
+        }
+        if (ACTION_STOP.equals(action)) {
+            if (active && state == WidgetStore.State.RECORDING) finishTake();
+            else if (!active && state != WidgetStore.State.READING) leave();
+            return START_NOT_STICKY;
+        }
+        if (ACTION_START.equals(action) && (active || state == WidgetStore.State.READING)) return START_NOT_STICKY;
         if (active) {
             // A second tap while listening finishes the take; while the mic is
             // still warming up or the reply is being read, it does nothing.
@@ -441,11 +464,12 @@ public class RecordService extends Service {
                     CHANNEL, getString(R.string.notice_channel), NotificationManager.IMPORTANCE_LOW);
             nm.createNotificationChannel(channel);
         }
-        Intent toggle = new Intent(this, RecordService.class).setAction(ACTION_TOGGLE);
+        Intent toggle = new Intent(this, RecordService.class).setAction(ACTION_STOP);
         PendingIntent finish = serviceIntent(this, 9, toggle);
         Notification.Builder b = Build.VERSION.SDK_INT >= 26
                 ? new Notification.Builder(this, CHANNEL) : new Notification.Builder(this);
         b.setSmallIcon(R.drawable.ic_waveform)
+                .setVisibility(Notification.VISIBILITY_SECRET)
                 .setContentTitle(title)
                 .setContentText(text)
                 .setOngoing(true)

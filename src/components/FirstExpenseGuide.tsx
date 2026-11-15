@@ -102,6 +102,9 @@ export function FirstExpenseGuide({
                 ? "If your phone didn’t offer to add it: press and hold your home screen, choose Widgets, then VaaniTrack."
                 : "With the widget you record an expense without opening the app. Your phone asks once for the microphone, then offers to add it."}
             </p>
+            <p className="mt-2 max-w-[44ch] font-figtree text-caption text-fog">
+              With APK 1.3.0 or later, you can also add “Record expense” in Quick Settings: swipe down twice, then Edit. Connect the widget first so the recorder has your settings.
+            </p>
             <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-3">
               {connected ? (
                 <button type="button" onClick={done} className={buttonMint}>

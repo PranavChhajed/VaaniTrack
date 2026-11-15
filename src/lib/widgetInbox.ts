@@ -1,4 +1,5 @@
 import { readLocal, writeLocal } from "./localStore";
+import { activeAccount } from "./account/local";
 import { sanitizeTransaction, type Transaction } from "./types";
 
 /**
@@ -157,6 +158,7 @@ export function subscribeReviews(listener: () => void): () => void {
 }
 
 export function reviewSnapshot(): InboxItem[] {
+  if (activeAccount()) return NONE;
   return waiting.length === 0 ? NONE : waiting;
 }
 

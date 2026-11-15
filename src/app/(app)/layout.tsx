@@ -5,6 +5,7 @@ import { Onboarding } from "@/components/Onboarding";
 import { StorageNotice } from "@/components/StorageNotice";
 import { WidgetInbox } from "@/components/WidgetInbox";
 import { TransactionsProvider } from "@/lib/useTransactions";
+import { AccountSync } from "@/components/AccountSync";
 
 /**
  * The shell for the product screens, capture and journal.
@@ -27,6 +28,7 @@ import { TransactionsProvider } from "@/lib/useTransactions";
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <TransactionsProvider>
+      <AccountSync />
       {children}
       {/* The way between the two screens. Here rather than on each page so it
           does not remount, and so its active tab is one decision. */}

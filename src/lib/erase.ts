@@ -2,6 +2,7 @@
 
 import { deviceId } from "./device";
 import { localKeys, removeLocal } from "./localStore";
+import { activeAccount } from "./account/local";
 
 /** Kept through a wipe: the welcome tour is not data, and showing it again to
  *  someone who has just cleared their journal would read as the app having
@@ -22,6 +23,7 @@ export type EraseOutcome =
 export async function eraseOnServer(
   scope: "recordings" | "everything",
 ): Promise<EraseOutcome> {
+  if (activeAccount()) return { ok: false, error: "This tool deletes guest data only. Delete account expenses in Journal to sync their removal, or sign out to manage this device’s guest data." };
   const id = deviceId();
   // No device id means storage is blocked, so nothing was ever filed under one.
   if (!id) return { ok: true, recordings: 0, captures: 0 };
@@ -56,6 +58,7 @@ export async function eraseOnServer(
  */
 export function wipeThisPhone(): void {
   for (const key of localKeys("vaanitrack.")) {
+    if (key.startsWith("vaanitrack.account.")) continue;
     if (!KEEP.has(key)) removeLocal(key);
   }
 }

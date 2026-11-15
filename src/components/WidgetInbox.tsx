@@ -5,6 +5,9 @@ import { reportTransactions } from "@/lib/report";
 import { noteShell } from "@/lib/shell";
 import { loadTransactions } from "@/lib/types";
 import { useTransactions } from "@/lib/useTransactions";
+import { activeAccount } from "@/lib/account/local";
+import { readLocal, writeLocal } from "@/lib/localStore";
+import { parseTransactions, TRANSACTIONS_KEY } from "@/lib/types";
 import {
   decodeInbox,
   holdForReview,
@@ -41,13 +44,16 @@ export function WidgetInbox() {
     url.searchParams.delete("inbox");
     window.history.replaceState(window.history.state, "", url.pathname + url.search + url.hash);
 
-    const inJournal = new Set(loadTransactions().map((t) => t.id));
+    const account = activeAccount();
+    const guest = parseTransactions(readLocal(TRANSACTIONS_KEY));
+    const inJournal = new Set((account ? guest : loadTransactions()).map((t) => t.id));
     const fresh: InboxItem[] = takeNew(decodeInbox(packed), inJournal);
     const saved = fresh.filter((i) => i.kind === "saved");
     const review = fresh.filter((i) => i.kind === "review");
 
     if (saved.length > 0) {
-      add(saved.map((i) => i.transaction));
+      if (account) writeLocal(TRANSACTIONS_KEY, JSON.stringify([...saved.map(i => i.transaction), ...guest]));
+      else add(saved.map((i) => i.transaction));
       // Told to the server the way a capture made on screen is, per capture.
       const byCapture = new Map<string | null, typeof saved>();
       for (const item of saved) {
@@ -60,7 +66,7 @@ export function WidgetInbox() {
     holdForReview(review);
 
     const parts = [
-      saved.length > 0 ? `${saved.length} logged from your widget` : null,
+      saved.length > 0 ? `${saved.length} logged from your widget${account ? " to this device’s local journal" : ""}` : null,
       review.length > 0 ? `${review.length} to check` : null,
     ].filter(Boolean);
     if (parts.length > 0) {

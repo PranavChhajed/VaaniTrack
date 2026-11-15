@@ -1,4 +1,5 @@
 import { readLocal, writeLocal } from "./localStore";
+import { activeAccount, queueJournal, readCache, visibleRows } from "./account/local";
 
 /**
  * Core types for VaaniTrack.
@@ -200,6 +201,8 @@ export function parseTransactions(raw: string | null): Transaction[] {
 }
 
 export function loadTransactions(): Transaction[] {
+  const account = activeAccount();
+  if (account) return visibleRows(readCache(account.id));
   return parseTransactions(readLocal(TRANSACTIONS_KEY));
 }
 
@@ -212,5 +215,7 @@ export function loadTransactions(): Transaction[] {
  * never persisted, so it came back on reload.
  */
 export function saveTransactions(transactions: Transaction[]): void {
+  const account = activeAccount();
+  if (account) { queueJournal(account.id, transactions); return; }
   writeLocal(TRANSACTIONS_KEY, JSON.stringify(transactions));
 }

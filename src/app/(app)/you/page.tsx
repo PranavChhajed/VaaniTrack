@@ -379,6 +379,12 @@ export default function You() {
               <p className="max-w-[52ch] font-figtree text-caption text-fog">
                 What the widget records shows up in your journal the next time you open the app. Until then it tells you how many are waiting. If it is unsure of one, it opens here as a card for you to check, and never saves it on a guess.
               </p>
+              <p className="max-w-[52ch] font-figtree text-body-sm text-charcoal">
+                For quicker access in APK version 1.3.0 or later: swipe down twice, edit Quick Settings, and add “Record expense”. Connect the widget above first. The tile opens a private recorder with Stop and Cancel controls.
+              </p>
+              <p className="max-w-[52ch] font-figtree text-caption text-fog">
+                Recording while locked is optional in that recorder. If Android requires unlocking, unlock first. On supported Nothing OS versions, you can also choose VaaniTrack in the phone’s double-press power shortcut settings; availability depends on your phone’s settings.
+              </p>
             </Card>
           ) : (
             <Card
@@ -589,7 +595,7 @@ export default function You() {
                 </>
               ) : (
                 <>
-                  <p>Accounts aren’t connected yet, so signing in doesn’t move your journal anywhere.</p>
+                  <p>Optional accounts are in an invite-only beta. Without an account, your journal stays on this device.</p>
                   <Link
                     href="/signin"
                     className="focus-ring inline-block py-3 text-body-sm text-vast-ink underline underline-offset-4"

@@ -3,6 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "worker:whatsapp": "tsx --env-file=.env.whatsapp.local scripts/whatsapp-worker.ts",
+    "test:accounts": "tsx scripts/account-local.test.ts && tsx scripts/account-auth.test.ts",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
@@ -28,6 +30,7 @@
     "eslint-config-next": "16.3.4",
     "qrcode": "^1.5.4",
     "tailwindcss": "^4",
+    "tsx": "^4.23.15",
     "typescript": "^5"
   }
 }
